@@ -17,6 +17,7 @@ import { parsePlaybook, compilePlaybookToGraph, graphToMermaid, summarizePlayboo
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, ParsedReference, CompiledGraphNode } from '../../parser/types';
 import { CLAIMS_PLAYBOOK_CONTENT } from '../../data/playbook';
+import { REGISTRY } from '../../data/registry';
 
 // ─── Smart Chip Component ──────────────────────────────────────────────
 
@@ -110,9 +111,12 @@ function ReferenceTable({ refs }: { refs: ParsedReference[] }) {
               <span className="text-xs text-gray-400">{uniqueNames.length} unique</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {uniqueNames.map(name => (
-                <SmartChip key={`${type}:${name}`} type={type} name={name} resolved={true} />
-              ))}
+              {uniqueNames.map(name => {
+                const ref = typeRefs.find(r => r.name === name);
+                return (
+                  <SmartChip key={`${type}:${name}`} type={type} name={name} resolved={ref?.resolved ?? false} />
+                );
+              })}
             </div>
           </div>
         );
@@ -128,7 +132,7 @@ export function ParserDemo() {
   const [activeTab, setActiveTab] = useState<'parsed' | 'graph' | 'mermaid'>('parsed');
 
   // Live parse + compile on every edit
-  const parsed = useMemo(() => parsePlaybook(content), [content]);
+  const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
   const mermaid = useMemo(() => graphToMermaid(graph), [graph]);
   const summary = useMemo(() => summarizePlaybook(parsed), [parsed]);
