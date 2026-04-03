@@ -1,15 +1,18 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { ParserDemo } from './components/editor/ParserDemo';
+import { RegistryCatalog } from './components/registry/RegistryCatalog';
+import { ConnectorHub } from './components/connectors/ConnectorHub';
+import { VersionHistory } from './components/versioning/VersionHistory';
 
 const screens = [
   { path: '/editor', label: 'Playbook Editor', desc: 'Document | Flow | Notebook — three views of one agent', ready: false },
   { path: '/parser-demo', label: 'Parser Demo', desc: 'Live playbook parsing + graph compilation', ready: true },
   { path: '/notebook', label: 'Notebook', desc: 'Colab-style cell-based development', ready: false },
-  { path: '/registry', label: 'Registry', desc: 'Searchable asset catalog for all @-references', ready: false },
+  { path: '/registry', label: 'Registry', desc: 'Searchable asset catalog for all @-references', ready: true },
   { path: '/live-authoring', label: 'Gemini Live', desc: 'Voice-driven playbook generation', ready: false },
   { path: '/skill-editor', label: 'Skill Editor', desc: 'SKILL.md authoring with smart chips', ready: false },
-  { path: '/connectors', label: 'Connector Hub', desc: 'Gemini Enterprise data source management', ready: false },
-  { path: '/history', label: 'Version History', desc: 'Chip-aware diffing and version timeline', ready: false },
+  { path: '/connectors', label: 'Connector Hub', desc: 'Gemini Enterprise data source management', ready: true },
+  { path: '/history', label: 'Version History', desc: 'Chip-aware diffing and version timeline', ready: true },
   { path: '/docs-embed', label: 'Docs Embed', desc: 'Agent block in Google Docs', ready: false },
   { path: '/sheets-schema', label: 'Sheets Schema', desc: 'Spreadsheet as tool parameter schema', ready: false },
 ];
@@ -102,6 +105,9 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/parser-demo" element={<ParserDemo />} />
+        <Route path="/registry" element={<RegistryCatalog />} />
+        <Route path="/connectors" element={<ConnectorHub />} />
+        <Route path="/history" element={<VersionHistory />} />
       </Routes>
     </BrowserRouter>
   );
