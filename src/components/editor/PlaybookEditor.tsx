@@ -81,7 +81,7 @@ function InlineChip({
         style={{ borderColor: '#DC2626', color: '#DC2626', background: '#FEF2F2' }}
         onClick={onClick}
       >
-        {icon} {name} ⚠️
+        {icon} {name}
       </span>
     );
   }
@@ -370,8 +370,8 @@ function FlowGraph({
 
       {/* Controls */}
       <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-        <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-700 flex items-center gap-1.5">
-          <span>🔒</span> Compiled from playbook — click a node to go to source
+        <div className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[11px] text-gray-500 flex items-center gap-1.5">
+          Compiled from playbook — click a node to go to source
         </div>
       </div>
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
@@ -423,7 +423,7 @@ function FlowGraph({
                   fill={region.color} fillOpacity={0.05} stroke={region.color} strokeOpacity={0.2}
                   strokeWidth={1.5} strokeDasharray="8 4" />
                 <text x={rxMin + 10} y={ryMin + 16} fill={region.color} fontSize={11} fontWeight={600} opacity={0.6}>
-                  ✨ {region.label}
+                  {region.label}
                 </text>
               </g>
             );
@@ -632,7 +632,7 @@ function ContextStrategyCard() {
     <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 space-y-2.5">
       {/* Header */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[11px]" style={{ lineHeight: 1 }}>🧠</span>
+        <span className="text-[11px] text-indigo-500 font-bold" style={{ lineHeight: 1 }}>C</span>
         <span className="text-[11px] font-semibold text-gray-600" style={{ fontFamily: 'var(--font-ui)' }}>
           Context Strategy
         </span>
@@ -909,8 +909,8 @@ function ProblemSpaceVisualizer() {
         <circle cx={cx} cy={cy} r={90} fill="none" stroke="#94A3B8" strokeWidth={1} strokeDasharray="2 2" opacity={0.2} />
         <circle cx={cx} cy={cy} r={55} fill="#7C3AED" fillOpacity={0.04} stroke="#7C3AED" strokeWidth={1} strokeDasharray="2 2" opacity={0.3} />
         <circle cx={cx} cy={cy} r={22} fill="#1A73E8" fillOpacity={0.1} stroke="#1A73E8" strokeWidth={2} />
-        <text x={cx} y={cy - 3} textAnchor="middle" fill="#1A73E8" fontSize={12}>🔄</text>
-        <text x={cx} y={cy + 10} textAnchor="middle" fill="#1A73E8" fontSize={7} fontWeight={600}>LOOP</text>
+        <text x={cx} y={cy - 2} textAnchor="middle" fill="#1A73E8" fontSize={8} fontWeight={700}>AGENT</text>
+        <text x={cx} y={cy + 9} textAnchor="middle" fill="#1A73E8" fontSize={7} fontWeight={600}>LOOP</text>
         {arcSegments(parsed.referencesByType.trigger || [], 125, '#EA580C', -120, 60)}
         {arcSegments(parsed.referencesByType.guard || [], 120, '#E11D48', 30, 120)}
         {arcSegments([...(parsed.referencesByType.tool || []), ...(parsed.referencesByType.connector || [])], 88, '#4F46E5', -60, 180)}
@@ -1016,7 +1016,7 @@ export function PlaybookEditor() {
   }, [selectedNodeId, graph.nodes]);
 
   return (
-    <div className="h-screen flex flex-col bg-[var(--color-surface-0)]">
+    <div className="h-full flex flex-col bg-[var(--color-surface-0)]">
       <style>{STYLE_TAG}</style>
 
       {/* ── Top Bar ── */}
