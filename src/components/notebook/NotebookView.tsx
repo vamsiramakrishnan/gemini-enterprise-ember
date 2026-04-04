@@ -951,7 +951,7 @@ function CodeExecutionCell() {
 export function NotebookView() {
   return (
     <div
-      className="min-h-screen"
+      className="h-full"
       style={{
         background: '#FAFAF9',
         backgroundImage: 'radial-gradient(circle, #D1D5DB 0.5px, transparent 0.5px)',
@@ -962,28 +962,16 @@ export function NotebookView() {
       <header className="border-b border-[var(--color-border)] bg-white/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              to="/"
-              className="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1"
-            >
-              &larr; Home
-            </Link>
-            <span className="text-gray-300">|</span>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-green-600 flex items-center justify-center text-white text-[10px] font-bold">
-                N
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
-                  Claims Processing Agent
-                </h1>
-                <span className="text-[10px] text-gray-500">Notebook View &mdash; 8 cells</span>
-              </div>
+            <div>
+              <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
+                Claims Processing Agent
+              </h1>
+              <span className="text-[10px] text-gray-500">Notebook View &mdash; 8 cells</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-              &#x25CF; v2.1 Production
+              v2.1 Production
             </span>
             <Link
               to="/editor"

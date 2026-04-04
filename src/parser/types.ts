@@ -357,13 +357,13 @@ export const CHIP_COLORS: Record<ChipType, { bg: string; text: string; border: s
 };
 
 export const CHIP_ICONS: Record<ChipType, string> = {
-  doc:       '📄',
-  tool:      '🔧',
-  agent:     '🤖',
-  guard:     '🛡️',
-  data:      '📊',
-  schema:    '📐',
-  connector: '🔗',
-  skill:     '✨',
-  trigger:   '⚡',
+  doc:       '◇',
+  tool:      '⬡',
+  agent:     '◎',
+  guard:     '△',
+  data:      '▣',
+  schema:    '▢',
+  connector: '◈',
+  skill:     '✦',
+  trigger:   '▸',
 };

@@ -11,7 +11,6 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType } from '../../parser/types';
 
@@ -650,31 +649,13 @@ export function SkillEditor() {
   );
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+    <div className="h-full bg-[#FAFAF9] flex flex-col">
       {/* --- Top Bar ---------------------------------------------------- */}
       <header className="border-b border-gray-200 bg-white/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-[1440px] mx-auto px-5 py-3 flex items-center gap-4">
-          {/* Back link */}
-          <Link
-            to="/"
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
-          >
-            <span>&larr;</span> Home
-          </Link>
-
-          <div className="w-px h-5 bg-gray-200" />
-
-          {/* Skill icon */}
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm"
-            style={{ background: '#7C3AED' }}
-          >
-            &#10024;
-          </div>
-
           {/* Skill name */}
           <h1
-            className="text-lg font-bold text-gray-900"
+            className="text-sm font-semibold text-gray-900"
             style={{ fontFamily: 'var(--font-ui)' }}
           >
             apac-compliance

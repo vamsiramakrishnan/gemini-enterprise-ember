@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { parsePlaybook } from '../../parser/playbook-parser';
 import { compilePlaybookToGraph } from '../../parser/graph-compiler';
 import { CLAIMS_PLAYBOOK_CONTENT } from '../../data/playbook';
@@ -269,12 +268,9 @@ export function LiveSplitView() {
   }, [text]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+    <div className="h-full bg-[#FAFAF9] flex flex-col">
       {/* Top Bar */}
       <header className="border-b border-gray-200 bg-white/90 backdrop-blur-sm px-4 py-2.5 flex items-center gap-4 sticky top-0 z-50">
-        <Link to="/" className="text-xs text-gray-400 hover:text-gray-600">← Home</Link>
-        <div className="w-px h-4 bg-gray-200" />
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">⚡</div>
         <div>
           <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Live Split View</h1>
           <p className="text-[10px] text-gray-400">Claims Processing Agent v2.1 — real-time compilation</p>

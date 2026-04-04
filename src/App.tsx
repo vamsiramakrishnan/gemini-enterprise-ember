@@ -1,140 +1,163 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { ParserDemo } from './components/editor/ParserDemo';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
 import { PlaybookEditor } from './components/editor/PlaybookEditor';
 import { RegistryCatalog } from './components/registry/RegistryCatalog';
 import { ConnectorHub } from './components/connectors/ConnectorHub';
 import { VersionHistory } from './components/versioning/VersionHistory';
 import { LiveAuthoring } from './components/live/LiveAuthoring';
-import { DocsEmbed } from './components/workspace/DocsEmbed';
-import { SheetsSchema } from './components/workspace/SheetsSchema';
 import { SharingModal } from './components/permissions/SharingModal';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 
-// Lazy-loaded screens
-const NotebookView = lazy(() =>
-  import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView }))
-);
-const SkillEditor = lazy(() =>
-  import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor }))
-);
-const LiveSplitView = lazy(() =>
-  import('./components/editor/LiveSplitView').then(m => ({ default: m.LiveSplitView }))
-);
-const AgentPortfolio = lazy(() =>
-  import('./components/dashboard/AgentPortfolio').then(m => ({ default: m.AgentPortfolio }))
-);
-const AdminConsole = lazy(() =>
-  import('./components/admin/AdminConsole').then(m => ({ default: m.AdminConsole }))
-);
-const CostCalculator = lazy(() =>
-  import('./components/shared/CostCalculator').then(m => ({ default: m.CostCalculator }))
-);
+const NotebookView = lazy(() => import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView })));
+const SkillEditor = lazy(() => import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor })));
+const LiveSplitView = lazy(() => import('./components/editor/LiveSplitView').then(m => ({ default: m.LiveSplitView })));
+const AgentPortfolio = lazy(() => import('./components/dashboard/AgentPortfolio').then(m => ({ default: m.AgentPortfolio })));
+const AdminConsole = lazy(() => import('./components/admin/AdminConsole').then(m => ({ default: m.AdminConsole })));
+const CostCalculator = lazy(() => import('./components/shared/CostCalculator').then(m => ({ default: m.CostCalculator })));
 
-const screens = [
-  { path: '/editor', label: 'Playbook Editor', desc: 'Document | Flow | Notebook — three views of one agent', icon: '📝', ready: true },
-  { path: '/split-view', label: 'Live Split View', desc: 'Document + Flow side-by-side with real-time compilation', icon: '⚡', ready: true },
-  { path: '/portfolio', label: 'Agent Portfolio', desc: 'Enterprise fleet view — all agents, metrics, teams', icon: '📊', ready: true },
-  { path: '/admin', label: 'Admin Console', desc: 'Governance, teams, audit logs, policies', icon: '🛡️', ready: true },
-  { path: '/cost-calculator', label: 'Cost Calculator', desc: 'ROI estimator with FTE savings analysis', icon: '💰', ready: true },
-  { path: '/parser-demo', label: 'Parser Demo', desc: 'Live playbook parsing + graph compilation', icon: '🔬', ready: true },
-  { path: '/notebook', label: 'Notebook', desc: 'Colab-style cell-based development', icon: '📓', ready: true },
-  { path: '/registry', label: 'Registry', desc: 'Searchable asset catalog for all @-references', icon: '📚', ready: true },
-  { path: '/permissions', label: 'Permissions', desc: 'Google-Docs-style sharing for agent assets', icon: '🔐', ready: true },
-  { path: '/live-authoring', label: 'Gemini Live', desc: 'Voice-driven playbook generation', icon: '🎤', ready: true },
-  { path: '/skill-editor', label: 'Skill Editor', desc: 'SKILL.md authoring with smart chips', icon: '✨', ready: true },
-  { path: '/connectors', label: 'Connector Hub', desc: 'Gemini Enterprise data source management', icon: '🔗', ready: true },
-  { path: '/history', label: 'Version History', desc: 'Chip-aware diffing and version timeline', icon: '🕐', ready: true },
-  { path: '/docs-embed', label: 'Docs Embed', desc: 'Agent block in Google Docs', icon: '📄', ready: true },
-  { path: '/sheets-schema', label: 'Sheets Schema', desc: 'Spreadsheet as tool parameter schema', icon: '📊', ready: true },
+// ─── SVG Icons (16x16) ─────────────────────────────────────────────
+const icons = {
+  editor: <path d="M3 3h10v10H3z" fill="none" stroke="currentColor" strokeWidth="1.3"/>,
+  splitView: <><path d="M3 3h10v10H3z" fill="none" stroke="currentColor" strokeWidth="1.3"/><path d="M8 3v10" stroke="currentColor" strokeWidth="1.3"/></>,
+  notebook: <><path d="M4 2h8a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" fill="none" stroke="currentColor" strokeWidth="1.3"/><path d="M6 5h4M6 8h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></>,
+  registry: <><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" strokeWidth="1.3"/><path d="M11.5 11.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></>,
+  connectors: <><circle cx="5" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.3"/><circle cx="11" cy="8" r="2" fill="none" stroke="currentColor" strokeWidth="1.3"/><path d="M7 8h2" stroke="currentColor" strokeWidth="1.3"/></>,
+  skills: <><path d="M8 2l1.5 4H14l-3.5 2.5L12 13 8 10l-4 3 1.5-4.5L2 6h4.5z" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></>,
+  history: <><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.3"/><path d="M8 5v3.5l2.5 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></>,
+  live: <><path d="M5 3v10l7-5z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></>,
+  portfolio: <><path d="M3 5h2v7H3zM7 3h2v9H7zM11 6h2v6h-2z" fill="none" stroke="currentColor" strokeWidth="1.2"/></>,
+  admin: <><path d="M8 2L3 5v4c0 3.5 2.2 6 5 7 2.8-1 5-3.5 5-7V5z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></>,
+  cost: <><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.3"/><path d="M8 5v6M6 6.5h3.5a1 1 0 010 2H6.5a1 1 0 000 2H10" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/></>,
+  permissions: <><path d="M5 7V5a3 3 0 016 0v2" fill="none" stroke="currentColor" strokeWidth="1.3"/><rect x="3" y="7" width="10" height="6" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3"/></>,
+};
+
+type IconKey = keyof typeof icons;
+
+function Icon({ name, size = 16 }: { name: IconKey; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className="shrink-0">
+      {icons[name]}
+    </svg>
+  );
+}
+
+// ─── Navigation Structure ───────────────────────────────────────────
+interface NavItem { path: string; label: string; icon: IconKey; section?: string }
+
+const NAV: NavItem[] = [
+  { path: '/editor', label: 'Editor', icon: 'editor', section: 'Build' },
+  { path: '/split-view', label: 'Split View', icon: 'splitView' },
+  { path: '/notebook', label: 'Notebook', icon: 'notebook' },
+  { path: '/registry', label: 'Registry', icon: 'registry', section: 'Manage' },
+  { path: '/connectors', label: 'Connectors', icon: 'connectors' },
+  { path: '/skills', label: 'Skills', icon: 'skills' },
+  { path: '/history', label: 'History', icon: 'history' },
+  { path: '/portfolio', label: 'Portfolio', icon: 'portfolio', section: 'Operate' },
+  { path: '/admin', label: 'Admin', icon: 'admin' },
+  { path: '/cost', label: 'Cost', icon: 'cost' },
+  { path: '/live', label: 'Live Author', icon: 'live', section: 'Other' },
+  { path: '/permissions', label: 'Permissions', icon: 'permissions' },
 ];
 
-function Loading() {
+// ─── Shell ──────────────────────────────────────────────────────────
+function Shell({ children }: { children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-surface-0)]">
-      <div className="text-sm text-gray-400">Loading...</div>
+    <div className="h-screen flex overflow-hidden" style={{ background: '#FAFBFC' }}>
+      {/* Sidebar */}
+      <aside
+        className="h-full flex flex-col border-r shrink-0 transition-all duration-200"
+        style={{
+          width: collapsed ? 52 : 200,
+          borderColor: '#E2E5E9',
+          background: '#FFFFFF',
+        }}
+      >
+        {/* Logo */}
+        <div className="h-[52px] flex items-center px-3 border-b" style={{ borderColor: '#E2E5E9' }}>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+          >
+            <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style={{ background: '#2563EB' }}>
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M3.5 4.5h8M3.5 7.5h5M3.5 10.5h6.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+              </svg>
+            </div>
+            {!collapsed && (
+              <span className="text-[13px] font-semibold text-[#111827] tracking-[-0.01em] whitespace-nowrap">
+                Playbook
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 overflow-y-auto py-2 px-2">
+          {NAV.map((item, i) => {
+            const isActive = location.pathname === item.path;
+            const showSection = item.section && !collapsed;
+
+            return (
+              <div key={item.path}>
+                {showSection && (
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] mt-4 mb-1.5 px-2">
+                    {item.section}
+                  </div>
+                )}
+                {item.section && collapsed && i > 0 && (
+                  <div className="mx-2 my-2 border-t" style={{ borderColor: '#F1F3F5' }} />
+                )}
+                <NavLink
+                  to={item.path}
+                  className="flex items-center gap-2.5 rounded-md transition-colors duration-150"
+                  style={{
+                    padding: collapsed ? '8px' : '6px 8px',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    color: isActive ? '#2563EB' : '#6B7280',
+                    background: isActive ? '#EFF6FF' : 'transparent',
+                    fontWeight: isActive ? 500 : 400,
+                  }}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <Icon name={item.icon} />
+                  {!collapsed && (
+                    <span className="text-[13px] truncate">{item.label}</span>
+                  )}
+                </NavLink>
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* Agent indicator */}
+        <div className="px-3 py-3 border-t" style={{ borderColor: '#E2E5E9' }}>
+          {!collapsed ? (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+              <span className="text-[11px] text-[#6B7280] truncate">Claims Agent v2.1</span>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
     </div>
   );
 }
 
-function Landing() {
+function Loading() {
   return (
-    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b" style={{ borderColor: '#E2E5E9', background: 'rgba(250,251,252,0.85)', backdropFilter: 'blur(12px)' }}>
-        <div className="max-w-[960px] mx-auto px-6 h-[52px] flex items-center">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: '#2563EB' }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 4h8M3 7h5M3 10h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            </div>
-            <span className="text-[13px] font-semibold text-[#111827] tracking-[-0.01em]">Playbook Editor</span>
-          </div>
-          <div className="flex-1" />
-          <span className="text-[11px] text-[#9CA3AF] font-mono">{screens.length} screens</span>
-        </div>
-      </nav>
-
-      <div className="max-w-[960px] mx-auto px-6">
-        {/* Hero */}
-        <div className="pt-12 pb-10 animate-in">
-          <div className="inline-block px-2.5 py-1 rounded-md text-[11px] font-medium mb-6"
-            style={{ background: '#EFF6FF', color: '#2563EB' }}>
-            Gemini Enterprise
-          </div>
-          <h1 className="text-[32px] font-semibold text-[#111827] tracking-[-0.025em] leading-[1.2] mb-4">
-            The agent builder is a document editor.
-          </h1>
-          <p className="text-[15px] text-[#6B7280] leading-[1.65] max-w-[540px]">
-            Writing a playbook IS building an agent. Every{' '}
-            <code className="text-[13px] px-1 py-0.5 rounded" style={{ background: '#F1F3F5', color: '#111827', fontFamily: 'var(--font-mono)' }}>@reference</code>{' '}
-            shapes the action space. The document compiles to a graph. The graph is derived, never authored.
-          </p>
-        </div>
-
-        {/* Screens */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 pb-8 stagger">
-          {screens.map((screen) => (
-            <Link key={screen.path} to={screen.path}
-              className="group flex items-start gap-3 rounded-lg p-4 border transition-all duration-200 hover:border-[#CED4DA]"
-              style={{ borderColor: '#E2E5E9', background: 'white', boxShadow: 'var(--shadow-xs)' }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}>
-              <span className="text-[14px] mt-0.5 shrink-0 w-5 text-center">{screen.icon}</span>
-              <div className="min-w-0">
-                <div className="text-[13px] font-medium text-[#111827] group-hover:text-[#2563EB] transition-colors">{screen.label}</div>
-                <div className="text-[12px] text-[#9CA3AF] leading-[1.5] mt-0.5">{screen.desc}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Pipeline */}
-        <div className="rounded-lg border p-5 mb-6" style={{ borderColor: '#E2E5E9', background: 'white', boxShadow: 'var(--shadow-xs)' }}>
-          <div className="text-[12px] font-semibold text-[#111827] mb-3">Pipeline</div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {['Playbook', 'Parser', 'Compiler', 'Flow'].map((s, i) => (
-              <div key={s} className="flex items-center gap-2">
-                {i > 0 && <span className="text-[#D1D5DB]">→</span>}
-                <div className="px-3 py-1.5 rounded-md text-[12px] font-medium"
-                  style={{ background: '#F1F3F5', color: '#374151' }}>{s}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Principles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pb-16">
-          {[
-            { title: 'The Loop Is Simple', body: 'Every agent is Observe → Reason → Act → Observe. The playbook constrains the space, not the sequence.' },
-            { title: 'Code Is Omnipotent', body: 'Tools, connectors, skills are cached reductions of the code execution space. The enterprise governs the boundary.' },
-            { title: '@ Shapes The Space', body: 'Each @reference is a dimension. Skills reduce. Connectors expand governedly. Guards constrain.' },
-          ].map(c => (
-            <div key={c.title} className="rounded-lg border p-5" style={{ borderColor: '#E2E5E9', background: 'white' }}>
-              <div className="text-[13px] font-semibold text-[#111827] mb-2">{c.title}</div>
-              <div className="text-[12px] text-[#6B7280] leading-[1.6]">{c.body}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="h-full flex items-center justify-center">
+      <div className="w-5 h-5 border-2 border-[#E2E5E9] border-t-[#2563EB] rounded-full animate-spin" />
     </div>
   );
 }
@@ -142,24 +165,24 @@ function Landing() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<Shell><Loading /></Shell>}>
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/editor" element={<PlaybookEditor />} />
-          <Route path="/split-view" element={<LiveSplitView />} />
-          <Route path="/portfolio" element={<AgentPortfolio />} />
-          <Route path="/admin" element={<AdminConsole />} />
-          <Route path="/cost-calculator" element={<CostCalculator />} />
-          <Route path="/parser-demo" element={<ParserDemo />} />
-          <Route path="/notebook" element={<NotebookView />} />
-          <Route path="/registry" element={<RegistryCatalog />} />
-          <Route path="/permissions" element={<SharingModal />} />
-          <Route path="/live-authoring" element={<LiveAuthoring />} />
-          <Route path="/skill-editor" element={<SkillEditor />} />
-          <Route path="/connectors" element={<ConnectorHub />} />
-          <Route path="/history" element={<VersionHistory />} />
-          <Route path="/docs-embed" element={<DocsEmbed />} />
-          <Route path="/sheets-schema" element={<SheetsSchema />} />
+          {/* Default → Editor */}
+          <Route path="/" element={<Navigate to="/editor" replace />} />
+
+          {/* All screens wrapped in Shell */}
+          <Route path="/editor" element={<Shell><PlaybookEditor /></Shell>} />
+          <Route path="/split-view" element={<Shell><LiveSplitView /></Shell>} />
+          <Route path="/notebook" element={<Shell><NotebookView /></Shell>} />
+          <Route path="/registry" element={<Shell><RegistryCatalog /></Shell>} />
+          <Route path="/connectors" element={<Shell><ConnectorHub /></Shell>} />
+          <Route path="/skills" element={<Shell><SkillEditor /></Shell>} />
+          <Route path="/history" element={<Shell><VersionHistory /></Shell>} />
+          <Route path="/portfolio" element={<Shell><AgentPortfolio /></Shell>} />
+          <Route path="/admin" element={<Shell><AdminConsole /></Shell>} />
+          <Route path="/cost" element={<Shell><CostCalculator /></Shell>} />
+          <Route path="/live" element={<Shell><LiveAuthoring /></Shell>} />
+          <Route path="/permissions" element={<Shell><SharingModal /></Shell>} />
         </Routes>
       </Suspense>
     </BrowserRouter>

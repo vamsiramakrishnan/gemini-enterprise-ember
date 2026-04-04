@@ -78,13 +78,10 @@ export function AgentPortfolio() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9]">
+    <div className="h-full bg-[#FAFAF9]">
       {/* Header */}
       <header className="border-b border-gray-200 bg-white/90 backdrop-blur-sm px-6 py-3 sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-xs text-gray-400 hover:text-gray-600">← Home</Link>
-          <div className="w-px h-4 bg-gray-200" />
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">A</div>
           <div>
             <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Agent Portfolio</h1>
             <p className="text-[10px] text-gray-400">ACME Insurance — Enterprise Agent Fleet</p>

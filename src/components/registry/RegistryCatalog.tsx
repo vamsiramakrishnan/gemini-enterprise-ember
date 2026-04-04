@@ -6,7 +6,6 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { REGISTRY } from '../../data/registry';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
@@ -315,14 +314,10 @@ export function RegistryCatalog() {
   }, [search, typeFilter, sortKey]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-surface-0)]">
+    <div className="h-full bg-[var(--color-surface-0)]">
       {/* Header */}
       <header className="border-b border-[var(--color-border)] bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-          <Link to="/" className="text-gray-400 hover:text-gray-600 text-sm">
-            ← Back
-          </Link>
-          <div className="w-px h-5 bg-gray-200" />
           <div>
             <h1 className="text-sm font-semibold text-gray-900">Registry & Catalog</h1>
             <p className="text-[10px] text-gray-500">

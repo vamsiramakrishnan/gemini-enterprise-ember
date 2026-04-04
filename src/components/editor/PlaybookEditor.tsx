@@ -31,15 +31,15 @@ const NODE_COLORS: Record<string, string> = {
 };
 
 const NODE_ICONS: Record<string, string> = {
-  'trigger-entry': '⚡',
-  grounding: '📄',
-  'tool-call': '🔧',
-  'connector-call': '🔗',
-  agent: '🤖',
+  'trigger-entry': '▸',
+  grounding: '◇',
+  'tool-call': '⬡',
+  'connector-call': '◈',
+  agent: '◎',
   decision: '◆',
-  gate: '🛡️',
-  output: '📐',
-  transform: '📊',
+  gate: '△',
+  output: '▢',
+  transform: '◇',
 };
 
 const NW = 200; // node width
@@ -1022,9 +1022,6 @@ export function PlaybookEditor() {
       {/* ── Top Bar ── */}
       <header className="border-b border-[var(--color-border)] bg-white/90 backdrop-blur-sm shrink-0 z-40">
         <div className="px-4 py-2.5 flex items-center gap-3">
-          <Link to="/" className="text-gray-400 hover:text-gray-600 text-sm">← Home</Link>
-          <div className="w-px h-5 bg-gray-200" />
-          <div className="w-7 h-7 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white text-xs font-bold">P</div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Claims Processing Agent</h1>
@@ -1033,7 +1030,7 @@ export function PlaybookEditor() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/history" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1">🕐 History</Link>
+            <Link to="/history" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1">History</Link>
             <Link to="/permissions" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Share</Link>
             <button className="px-3 py-1.5 text-xs text-white bg-[var(--color-accent)] rounded-lg hover:opacity-90">Publish ▾</button>
           </div>
@@ -1048,9 +1045,9 @@ export function PlaybookEditor() {
                   ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`} style={{ fontFamily: 'var(--font-ui)' }}>
-              {tab === 'document' && '📝 Document'}
-              {tab === 'flow' && '🔀 Flow'}
-              {tab === 'notebook' && '📓 Notebook'}
+              {tab === 'document' && 'Document'}
+              {tab === 'flow' && 'Flow'}
+              {tab === 'notebook' && 'Notebook'}
             </button>
           ))}
           <div className="flex-1" />

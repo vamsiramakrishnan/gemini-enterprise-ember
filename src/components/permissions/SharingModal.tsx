@@ -5,7 +5,6 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 
 interface SharedUser {
@@ -20,9 +19,9 @@ const SHARED_USERS: SharedUser[] = [
   { name: 'Priya Sharma', email: 'priya@acme.com', avatar: 'PS', role: 'Admin' },
   { name: 'Vamsi K', email: 'vamsi@acme.com', avatar: 'VK', role: 'Editor' },
   { name: 'Wei Chen', email: 'wei@acme.com', avatar: 'WC', role: 'Editor' },
-  { name: 'APAC Claims Team', email: 'apac-claims@acme.com', avatar: '👥', role: 'Invoker', inherited: 'APAC Support Team catalog' },
-  { name: 'Platform Team', email: 'platform-team@acme.com', avatar: '👥', role: 'Viewer', inherited: 'Engineering org' },
-  { name: 'Security Audit', email: 'security-audit@acme.com', avatar: '🔒', role: 'Viewer' },
+  { name: 'APAC Claims Team', email: 'apac-claims@acme.com', avatar: 'AC', role: 'Invoker', inherited: 'APAC Support Team catalog' },
+  { name: 'Platform Team', email: 'platform-team@acme.com', avatar: 'PT', role: 'Viewer', inherited: 'Engineering org' },
+  { name: 'Security Audit', email: 'security-audit@acme.com', avatar: 'SA', role: 'Viewer' },
 ];
 
 const ROLES = ['Viewer', 'Invoker', 'Editor', 'Admin'] as const;
@@ -42,14 +41,11 @@ export function SharingModal() {
   const [addEmail, setAddEmail] = useState('');
 
   return (
-    <div className="min-h-screen bg-gray-100/80 flex items-center justify-center p-4">
+    <div className="h-full bg-gray-100/80 flex items-center justify-center p-4">
       {/* Background context */}
       <div className="fixed inset-0 bg-[var(--color-surface-0)] -z-10 opacity-50" />
 
       <div className="w-full max-w-lg">
-        <div className="mb-4">
-          <Link to="/" className="text-xs text-gray-500 hover:text-gray-700">← Back to Home</Link>
-        </div>
 
         {/* Modal */}
         <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
@@ -129,9 +125,9 @@ export function SharingModal() {
             <h3 className="text-xs font-semibold text-gray-700 mb-3">General access</h3>
             <div className="space-y-2">
               {[
-                { key: 'restricted' as const, icon: '🔒', label: 'Restricted', desc: 'Only people with explicit access' },
-                { key: 'organization' as const, icon: '🏢', label: 'ACME Insurance', desc: 'Anyone in the organization can discover and invoke' },
-                { key: 'published' as const, icon: '🌐', label: 'Published', desc: 'Available in the public registry for cross-org sharing' },
+                { key: 'restricted' as const, icon: '◉', label: 'Restricted', desc: 'Only people with explicit access' },
+                { key: 'organization' as const, icon: '◎', label: 'ACME Insurance', desc: 'Anyone in the organization can discover and invoke' },
+                { key: 'published' as const, icon: '◈', label: 'Published', desc: 'Available in the public registry for cross-org sharing' },
               ].map(opt => (
                 <label
                   key={opt.key}
@@ -161,7 +157,7 @@ export function SharingModal() {
           {/* Service perimeter */}
           <div className="px-6 py-3 border-t border-gray-100">
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="text-gray-400">🛡️</span>
+              <span className="text-gray-400">△</span>
               <span>Service Perimeter: <span className="font-mono text-gray-700">apac-finance-perimeter</span></span>
             </div>
           </div>
@@ -178,7 +174,7 @@ export function SharingModal() {
           {/* Actions */}
           <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
             <button className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              🔗 Copy link
+              Copy link
             </button>
             <button className="px-5 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
               Done

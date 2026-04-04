@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 type AdminTab = 'overview' | 'governance' | 'teams' | 'audit';
 
 const NAV_ITEMS: { id: AdminTab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '◉' },
-  { id: 'governance', label: 'Governance', icon: '🛡' },
-  { id: 'teams', label: 'Teams & Access', icon: '👥' },
-  { id: 'audit', label: 'Audit Log', icon: '📜' },
+  { id: 'governance', label: 'Governance', icon: '◈' },
+  { id: 'teams', label: 'Teams & Access', icon: '◎' },
+  { id: 'audit', label: 'Audit Log', icon: '◇' },
 ];
 
 // ─── Mock Data ──────────────────────────────────────────────────────────
@@ -66,13 +65,12 @@ export function AdminConsole() {
   const [tab, setTab] = useState<AdminTab>('overview');
 
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex">
+    <div className="h-full bg-[#FAFAF9] flex">
       {/* Sidebar */}
       <aside className="w-52 bg-[#1F2937] text-white flex flex-col sticky top-0 h-screen">
         <div className="p-4 border-b border-gray-700">
-          <Link to="/" className="text-[10px] text-gray-400 hover:text-gray-300 block mb-2">← Home</Link>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-xs font-bold">A</div>
+            <div className="w-7 h-7 rounded-lg bg-[#2563EB] flex items-center justify-center text-xs font-bold">A</div>
             <div>
               <div className="text-xs font-semibold">ACME Insurance</div>
               <div className="text-[9px] text-gray-400">Admin Console</div>
@@ -123,7 +121,7 @@ function OverviewTab() {
             <div className="text-[10px] text-gray-500">{s.label}</div>
             <div className="text-2xl font-semibold flex items-center gap-1.5" style={{ color: s.color }}>
               {s.value}
-              {s.alert && <span className="text-xs">⚠️</span>}
+              {s.alert && <span className="text-xs text-amber-600">!</span>}
             </div>
           </div>
         ))}

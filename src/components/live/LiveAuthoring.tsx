@@ -7,7 +7,6 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 
 // ─── Chip Color Map ──────────────────────────────────────────────────
 
@@ -418,7 +417,7 @@ function MetaDrawer() {
 
 export function LiveAuthoring() {
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
+    <div className="h-full bg-[#FAFAF9] flex flex-col">
       {/* CSS Keyframes */}
       <style>{`
         @keyframes waveformPulse {
@@ -441,27 +440,9 @@ export function LiveAuthoring() {
       {/* Top Bar */}
       <header className="border-b border-[var(--color-border)] bg-white/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex items-center gap-4 px-6 py-3">
-          <Link
-            to="/"
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Home
-          </Link>
-          <div className="w-px h-5 bg-[var(--color-border)]" />
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-[var(--color-accent)] flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 01-14 0v-1" />
-              </svg>
-            </div>
-            <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
-              Gemini Live Authoring
-            </h1>
-          </div>
+          <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
+            Gemini Live Authoring
+          </h1>
           <div className="flex-1" />
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
             SESSION ACTIVE
