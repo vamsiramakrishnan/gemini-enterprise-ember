@@ -531,8 +531,8 @@ export function ConnectorHub() {
     );
   }, [search]);
 
-  const googleConnectors = useMemo(() => connectors.filter((c) => c.category === 'google'), [connectors]);
-  const thirdPartyConnectors = useMemo(() => connectors.filter((c) => c.category === 'third-party'), [connectors]);
+  const googleConnectors = useMemo(() => connectors.filter((c) => c.provider === 'google'), [connectors]);
+  const thirdPartyConnectors = useMemo(() => connectors.filter((c) => c.provider === 'third-party'), [connectors]);
   const googleFiltered = useMemo(() => filterBySearch(googleConnectors), [filterBySearch, googleConnectors]);
   const thirdPartyFiltered = useMemo(() => filterBySearch(thirdPartyConnectors), [filterBySearch, thirdPartyConnectors]);
   const activeCount = connectors.filter((c) => c.status === 'active').length;
