@@ -474,14 +474,14 @@ function RegistryListRow({ chip }: { chip: SmartChip }) {
         gap: 14,
         padding: '10px 14px',
         borderRadius: 8,
-        border: '1px solid #E5E7EB',
+        border: '1px solid var(--color-border)',
         background: '#fff',
         transition: 'box-shadow 150ms ease',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        boxShadow: 'var(--shadow-xs)',
         cursor: 'pointer',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
     >
       <span
         style={{
