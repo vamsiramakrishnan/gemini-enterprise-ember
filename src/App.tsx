@@ -6,6 +6,8 @@ import { VersionHistory } from './components/versioning/VersionHistory';
 import { LiveAuthoring } from './components/live/LiveAuthoring';
 import { SharingModal } from './components/permissions/SharingModal';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
+import { AppProvider, useNotifications } from './contexts/AppContext';
+import { NotificationToast } from './components/shared/NotificationToast';
 
 const NotebookView = lazy(() => import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView })));
 const SkillEditor = lazy(() => import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor })));
@@ -418,26 +420,34 @@ function Loading() {
   );
 }
 
+function NotificationLayer() {
+  const { notifications, removeNotification } = useNotifications();
+  return <NotificationToast notifications={notifications} onDismiss={removeNotification} />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<Shell><Loading /></Shell>}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/editor" replace />} />
-          <Route path="/editor" element={<Shell><PlaybookEditor /></Shell>} />
-          <Route path="/split-view" element={<Shell><LiveSplitView /></Shell>} />
-          <Route path="/notebook" element={<Shell><NotebookView /></Shell>} />
-          <Route path="/registry" element={<Shell><RegistryCatalog /></Shell>} />
-          <Route path="/connectors" element={<Shell><ConnectorHub /></Shell>} />
-          <Route path="/skills" element={<Shell><SkillEditor /></Shell>} />
-          <Route path="/history" element={<Shell><VersionHistory /></Shell>} />
-          <Route path="/portfolio" element={<Shell><AgentPortfolio /></Shell>} />
-          <Route path="/admin" element={<Shell><AdminConsole /></Shell>} />
-          <Route path="/cost" element={<Shell><CostCalculator /></Shell>} />
-          <Route path="/live" element={<Shell><LiveAuthoring /></Shell>} />
-          <Route path="/permissions" element={<Shell><SharingModal /></Shell>} />
-        </Routes>
-      </Suspense>
+      <AppProvider>
+        <Suspense fallback={<Shell><Loading /></Shell>}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/editor" replace />} />
+            <Route path="/editor" element={<Shell><PlaybookEditor /></Shell>} />
+            <Route path="/split-view" element={<Shell><LiveSplitView /></Shell>} />
+            <Route path="/notebook" element={<Shell><NotebookView /></Shell>} />
+            <Route path="/registry" element={<Shell><RegistryCatalog /></Shell>} />
+            <Route path="/connectors" element={<Shell><ConnectorHub /></Shell>} />
+            <Route path="/skills" element={<Shell><SkillEditor /></Shell>} />
+            <Route path="/history" element={<Shell><VersionHistory /></Shell>} />
+            <Route path="/portfolio" element={<Shell><AgentPortfolio /></Shell>} />
+            <Route path="/admin" element={<Shell><AdminConsole /></Shell>} />
+            <Route path="/cost" element={<Shell><CostCalculator /></Shell>} />
+            <Route path="/live" element={<Shell><LiveAuthoring /></Shell>} />
+            <Route path="/permissions" element={<Shell><SharingModal /></Shell>} />
+          </Routes>
+        </Suspense>
+        <NotificationLayer />
+      </AppProvider>
     </BrowserRouter>
   );
 }

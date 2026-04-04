@@ -9,6 +9,8 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTest, useNotifications, useConnectors } from '../../contexts/AppContext';
+import type { SkillActivationResult } from '../../contexts/AppContext';
 
 // ---------------------------------------------------------------------------
 // Chip helper
@@ -95,6 +97,8 @@ const TRIGGERS = [
 ];
 
 function TriggerCell() {
+  const { addNotification } = useNotifications();
+
   return (
     <Cell borderColor="#EA580C">
       <div className="px-5 py-4">
@@ -133,7 +137,10 @@ function TriggerCell() {
               >
                 {t.status === 'Active' ? '\u25CF' : '\u25CB'} {t.status}
               </span>
-              <button className="text-[10px] font-medium text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100">
+              <button
+                onClick={() => addNotification({ type: 'info', title: 'Trigger simulated', message: `Event dispatched to agent loop from @trigger(${t.name})` })}
+                className="text-[10px] font-medium text-orange-600 bg-orange-50 px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100"
+              >
                 Test trigger
               </button>
             </div>
@@ -247,6 +254,29 @@ const TOOL_PARAMS = [
 ];
 
 function ToolCell() {
+  const { runToolTest, running } = useTest();
+  const { addNotification } = useNotifications();
+  const [toolTestResult, setToolTestResult] = useState<string | null>(null);
+  const [deploying, setDeploying] = useState(false);
+
+  const handleTestTool = () => {
+    setToolTestResult(null);
+    runToolTest('tool-policy-lookup', { policy_id: 'POL-SG-001234', include_riders: false, format: 'summary' });
+    // Show a quick preview from the mock iteration that will come through
+    setTimeout(() => {
+      setToolTestResult('{ "policy_id": "POL-SG-001234", "coverage": "auto-comprehensive", "status": "active", "holder": "Sarah Chen" }');
+    }, 1200);
+  };
+
+  const handleDeploy = () => {
+    setDeploying(true);
+    addNotification({ type: 'info', title: 'Deploy initiated', message: 'Deploying policy-lookup to Cloud Run...' });
+    setTimeout(() => {
+      setDeploying(false);
+      addNotification({ type: 'success', title: 'Deploy complete', message: 'policy-lookup deployed to us-central1' });
+    }, 2000);
+  };
+
   return (
     <Cell borderColor="#4F46E5">
       <div className="px-5 py-4">
@@ -308,12 +338,35 @@ function ToolCell() {
           </code>
         </div>
 
+        {/* Tool test result */}
+        {toolTestResult && (
+          <div className="mb-4 rounded-lg overflow-hidden border border-green-200">
+            <div className="flex items-center justify-between px-3 py-1 bg-green-50">
+              <span className="text-[10px] font-semibold text-green-700">Test Result</span>
+              <button onClick={() => setToolTestResult(null)} className="text-[10px] text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <pre className="text-[11px] leading-relaxed px-4 py-2.5 bg-white text-gray-700 overflow-x-auto" style={{ fontFamily: 'var(--font-mono)' }}>
+              {toolTestResult}
+            </pre>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={handleTestTool}
+            disabled={running}
+            className="text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {running ? <span className="inline-block w-3 h-3 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" /> : null}
             Test
           </button>
-          <button className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={handleDeploy}
+            disabled={deploying}
+            className="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {deploying ? <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
             Deploy to Cloud Run
           </button>
         </div>
@@ -368,30 +421,81 @@ const GUARD_CHECKS = [
 ];
 
 function TestCell() {
+  const { runTest, running, currentResult } = useTest();
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({ 1: true, 2: true, 3: true });
+  const [testInput, setTestInput] = useState('I was in a car accident last week. My policy number is POL-SG-004521. I need to file a claim for vehicle damage, estimated around $12,000.');
+  const [hasRun, setHasRun] = useState(false);
 
   const toggleIteration = (id: number) => {
     setExpandedIterations((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleRun = () => {
+    if (!testInput.trim() || running) return;
+    setHasRun(true);
+    runTest(testInput);
+  };
+
+  // Decide what to show: live context result if we ran, otherwise fallback static data
+  const displayIterations = hasRun && currentResult
+    ? currentResult.iterations.map((it) => ({
+        id: it.index,
+        observe: it.observe,
+        reason: it.reason,
+        act: { kind: it.act.chipType as ChipKind, label: it.act.chipName },
+        result: it.result,
+        timing: `${it.durationMs}ms`,
+        decision: it.decision,
+        decisionReason: it.decisionReason,
+        guardChecks: it.guardChecks,
+      }))
+    : ITERATIONS.map((it) => ({ ...it, decision: it.id < 3 ? 'loop' as const : 'respond' as const, decisionReason: undefined as string | undefined, guardChecks: undefined as undefined }));
+
+  const displayStats = hasRun && currentResult
+    ? { iterations: currentResult.iterations.length, totalMs: currentResult.totalDurationMs, tokens: currentResult.tokenCount, allPassed: true }
+    : { iterations: 3, totalMs: 1200, tokens: 847, allPassed: true };
+
+  const displayFinalResponse = hasRun && currentResult?.status === 'complete' ? currentResult.finalResponse : null;
+
   return (
     <Cell borderColor="#16A34A">
       <div className="px-5 py-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h3
             className="text-sm font-semibold text-gray-900 flex items-center gap-2"
             style={{ fontFamily: 'var(--font-ui)' }}
           >
             <span className="text-base">&#x25B6;</span> Test Run
           </h3>
-          <button className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
-            <span>&#x25B6;</span> Run
+          <button
+            onClick={handleRun}
+            disabled={running}
+            className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {running ? (
+              <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>&#x25B6;</span>
+            )}
+            {running ? 'Running...' : 'Run'}
           </button>
+        </div>
+
+        {/* Input field */}
+        <div className="mb-4">
+          <textarea
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            rows={2}
+            placeholder="Enter a test message..."
+            className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-400"
+            style={{ fontFamily: 'var(--font-body)' }}
+          />
         </div>
 
         {/* Iterations */}
         <div className="space-y-2">
-          {ITERATIONS.map((iter, idx) => (
+          {displayIterations.map((iter, idx) => (
             <div key={iter.id}>
               {/* Iteration card */}
               <div className="rounded-lg border border-gray-200 bg-gray-50/50 overflow-hidden">
@@ -443,14 +547,14 @@ function TestCell() {
                         {iter.result}
                       </pre>
                     </div>
-                    {iter.id < 3 && (
+                    {iter.decision === 'loop' && (
                       <div className="text-[10px] text-gray-500 italic flex items-center gap-1">
-                        &#x21BB; Decision: <span className="font-semibold text-blue-600">Loop again</span> &mdash; need more data
+                        &#x21BB; Decision: <span className="font-semibold text-blue-600">Loop again</span> &mdash; {iter.decisionReason || 'need more data'}
                       </div>
                     )}
-                    {iter.id === 3 && (
+                    {iter.decision === 'respond' && (
                       <div className="text-[10px] text-gray-500 italic flex items-center gap-1">
-                        &#x2713; Decision: <span className="font-semibold text-green-600">Respond</span> &mdash; sufficient information gathered
+                        &#x2713; Decision: <span className="font-semibold text-green-600">Respond</span> &mdash; {iter.decisionReason || 'sufficient information gathered'}
                       </div>
                     )}
                   </div>
@@ -458,7 +562,22 @@ function TestCell() {
               </div>
 
               {/* Guard checks between iterations */}
-              {idx < ITERATIONS.length - 1 && (
+              {iter.guardChecks && iter.guardChecks.length > 0 && idx < displayIterations.length - 1 && (
+                <div className="flex items-center gap-2 px-4 py-1.5 flex-wrap">
+                  {iter.guardChecks.map((g) => (
+                    <span
+                      key={g.chipName}
+                      className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                        g.passed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
+                      }`}
+                    >
+                      {g.passed ? '\u2713' : '\u2717'} <Chip kind="guard" label={g.chipName} /> <span className="font-mono text-gray-400">{g.durationMs}ms</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Fallback guard checks for static data */}
+              {!iter.guardChecks && idx < displayIterations.length - 1 && (
                 <div className="flex items-center gap-2 px-4 py-1.5">
                   {GUARD_CHECKS.map((g) => (
                     <span
@@ -474,16 +593,32 @@ function TestCell() {
           ))}
         </div>
 
+        {/* Running indicator */}
+        {running && hasRun && (
+          <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
+            <span className="inline-block w-3 h-3 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-green-700 font-medium">Agent loop running...</span>
+          </div>
+        )}
+
+        {/* Final response */}
+        {displayFinalResponse && (
+          <div className="mt-3 px-4 py-3 rounded-lg bg-green-50 border border-green-200">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-green-700 mb-1">Final Response</div>
+            <p className="text-xs text-gray-700" style={{ fontFamily: 'var(--font-body)' }}>{displayFinalResponse}</p>
+          </div>
+        )}
+
         {/* Bottom stats */}
         <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-200">
           <span className="text-[10px] font-medium text-gray-500">
-            <span className="font-semibold text-gray-700">3</span> iterations
+            <span className="font-semibold text-gray-700">{displayStats.iterations}</span> iterations
           </span>
           <span className="text-[10px] font-medium text-gray-500">
-            <span className="font-semibold text-gray-700">1.2s</span> total
+            <span className="font-semibold text-gray-700">{displayStats.totalMs >= 1000 ? `${(displayStats.totalMs / 1000).toFixed(1)}s` : `${displayStats.totalMs}ms`}</span> total
           </span>
           <span className="text-[10px] font-medium text-gray-500">
-            <span className="font-semibold text-gray-700">847</span> tokens
+            <span className="font-semibold text-gray-700">{displayStats.tokens}</span> tokens
           </span>
           <span className="text-[10px] font-medium text-green-600">&#x2713; All guards passed</span>
         </div>
@@ -497,6 +632,26 @@ function TestCell() {
 // ---------------------------------------------------------------------------
 
 function SkillCell() {
+  const { runSkillActivation } = useTest();
+  const { addNotification } = useNotifications();
+  const [activationResult, setActivationResult] = useState<SkillActivationResult | null>(null);
+  const [testingSkill, setTestingSkill] = useState(false);
+
+  const handleTestActivation = async () => {
+    setTestingSkill(true);
+    setActivationResult(null);
+    try {
+      const result = await runSkillActivation('apac-compliance', 'What are the KYC requirements for our Singapore clients?');
+      setActivationResult(result);
+    } finally {
+      setTestingSkill(false);
+    }
+  };
+
+  const handlePublish = () => {
+    addNotification({ type: 'success', title: 'Skill published', message: 'apac-compliance v1.2.0 published to registry' });
+  };
+
   return (
     <Cell borderColor="#7C3AED">
       <div className="px-5 py-4">
@@ -582,12 +737,37 @@ function SkillCell() {
           </div>
         </div>
 
+        {/* Activation result */}
+        {activationResult && (
+          <div className={`mb-4 rounded-lg px-4 py-3 border ${activationResult.activated ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-[10px] font-semibold ${activationResult.activated ? 'text-green-700' : 'text-yellow-700'}`}>
+                {activationResult.activated ? '\u2713 Skill Activated' : '\u25CB Skill Not Activated'}
+              </span>
+              <span className="text-[10px] font-mono text-gray-500">
+                confidence: {activationResult.confidence}
+              </span>
+            </div>
+            {activationResult.response && (
+              <p className="text-xs text-gray-700" style={{ fontFamily: 'var(--font-body)' }}>{activationResult.response}</p>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={handleTestActivation}
+            disabled={testingSkill}
+            className="text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {testingSkill ? <span className="inline-block w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" /> : null}
             Test Activation
           </button>
-          <button className="text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg transition-colors">
+          <button
+            onClick={handlePublish}
+            className="text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg transition-colors"
+          >
             Publish to Registry
           </button>
         </div>
@@ -610,6 +790,30 @@ const JIRA_ENTITIES = [
 const JIRA_ACTIONS = ['Search Issues', 'Create Issue', 'Add Comment', 'Update Issue'];
 
 function ConnectorCell() {
+  const { syncConnector, testQuery } = useConnectors();
+  const [queryInput, setQueryInput] = useState('');
+  const [queryResults, setQueryResults] = useState<{ results: string[]; latencyMs: number } | null>(null);
+  const [querying, setQuerying] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = () => {
+    setSyncing(true);
+    syncConnector('connector-jira');
+    setTimeout(() => setSyncing(false), 500);
+  };
+
+  const handleQuery = async () => {
+    if (!queryInput.trim() || querying) return;
+    setQuerying(true);
+    setQueryResults(null);
+    try {
+      const result = await testQuery('connector-jira', queryInput);
+      setQueryResults(result);
+    } finally {
+      setQuerying(false);
+    }
+  };
+
   return (
     <Cell borderColor="#2563EB">
       <div className="px-5 py-4">
@@ -667,10 +871,53 @@ function ConnectorCell() {
           <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">OAuth</span>
         </div>
 
-        {/* Link */}
-        <a href="#" className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
-          Open in Console &rarr;
-        </a>
+        {/* Query tester */}
+        <div className="mb-3">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Query Tester</div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleQuery()}
+              placeholder="Try a natural language query..."
+              className="flex-1 text-xs px-3 py-1.5 rounded-md border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+            />
+            <button
+              onClick={handleQuery}
+              disabled={querying || !queryInput.trim()}
+              className="text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1"
+            >
+              {querying ? <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : null}
+              Query
+            </button>
+          </div>
+          {queryResults && (
+            <div className="mt-2 rounded-md border border-blue-200 bg-blue-50/50 px-3 py-2">
+              <div className="text-[10px] text-blue-600 font-medium mb-1">
+                {queryResults.results.length} results ({queryResults.latencyMs}ms)
+              </div>
+              {queryResults.results.map((r, i) => (
+                <div key={i} className="text-xs text-gray-700 py-0.5">{r}</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Actions row */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1"
+          >
+            {syncing ? <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : null}
+            Sync Now
+          </button>
+          <a href="#" className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
+            Open in Console &rarr;
+          </a>
+        </div>
       </div>
     </Cell>
   );
@@ -874,6 +1121,16 @@ const SAMPLE_OUTPUT = `{
 }`;
 
 function CodeExecutionCell() {
+  const { addNotification } = useNotifications();
+
+  const handleConvertToTool = () => {
+    addNotification({ type: 'success', title: 'Converted to Tool', message: 'New tool definition cell created from prototype code' });
+  };
+
+  const handleConvertToSkill = () => {
+    addNotification({ type: 'success', title: 'Converted to Skill', message: 'New SKILL.md created with bundled script' });
+  };
+
   return (
     <Cell borderColor="#DC2626" warningStripe>
       <div className="px-5 py-4">
@@ -929,10 +1186,16 @@ function CodeExecutionCell() {
 
         {/* Promotion actions */}
         <div className="flex items-center gap-2">
-          <button className="text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+          <button
+            onClick={handleConvertToTool}
+            className="text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+          >
             <span>&#x1F527;</span> Convert to Tool
           </button>
-          <button className="text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+          <button
+            onClick={handleConvertToSkill}
+            className="text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+          >
             <span>&#x2728;</span> Convert to Skill
           </button>
           <span className="text-[10px] text-gray-400 ml-2">

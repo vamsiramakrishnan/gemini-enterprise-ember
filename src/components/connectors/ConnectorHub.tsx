@@ -5,8 +5,8 @@
  * sync status, entities, actions, and the "governed space expansion" visual.
  */
 
-import { useState, useMemo } from 'react';
-import { GOOGLE_CONNECTORS, THIRD_PARTY_CONNECTORS, ALL_CONNECTORS } from '../../data/connectors';
+import { useState, useMemo, useCallback } from 'react';
+import { useConnectors, useNotifications } from '../../contexts/AppContext';
 import type { ConnectorEntry } from '../../data/connectors';
 
 // ─── SVG Icons ───────────────────────────────────────────────────────
@@ -105,11 +105,7 @@ function getConnectorVisual(id: string, product: string) {
 
 // ─── Action Summary Bar ──────────────────────────────────────────────
 
-function ActionSummary() {
-  const activeConnectors = ALL_CONNECTORS.filter((c) => c.status === 'active');
-  const totalActions = activeConnectors.reduce((sum, c) => sum + c.actions.filter((a) => a.enabled).length, 0);
-  const totalSystems = activeConnectors.length;
-
+function ActionSummary({ actionCount, systemCount }: { actionCount: number; systemCount: number }) {
   return (
     <div
       className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-lg"
@@ -117,9 +113,9 @@ function ActionSummary() {
     >
       <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
         Agent can perform{' '}
-        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{totalActions} actions</span>
+        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{actionCount} actions</span>
         {' '}across{' '}
-        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{totalSystems} connected systems</span>
+        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{systemCount} connected systems</span>
       </span>
     </div>
   );
@@ -181,8 +177,19 @@ function SyncModeBadge({ mode }: { mode?: 'federated' | 'ingested' }) {
 
 // ─── Connector Card ──────────────────────────────────────────────────
 
-function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
+function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, onTestQuery }: {
+  connector: ConnectorEntry;
+  onSelect: (id: string) => void;
+  onToggle: (id: string, enabled: boolean) => void;
+  onSync: (id: string) => void;
+  onOpenConsole: () => void;
+  onTestQuery: (id: string, query: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [queryInput, setQueryInput] = useState('');
+  const [queryResults, setQueryResults] = useState<string[] | null>(null);
+  const [queryLoading, setQueryLoading] = useState(false);
   const visual = getConnectorVisual(connector.id, connector.product);
 
   const enabledEntities = connector.entities.filter((e) => e.enabled).length;
@@ -224,7 +231,7 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
           e.currentTarget.style.opacity = '0.72';
         }
       }}
-      onClick={() => setExpanded(!expanded)}
+      onClick={() => { setExpanded(!expanded); onSelect(connector.id); }}
     >
       <div className="p-3">
         {/* Header row */}
@@ -367,13 +374,117 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
             {connector.region && <span>Region: {connector.region}</span>}
           </div>
 
-          <button
-            className="hover:underline"
-            style={{ fontSize: 10, color: '#2563EB', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            Open in Gemini Enterprise Console
-          </button>
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              className="hover:underline"
+              style={{ fontSize: 10, color: '#2563EB', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              onClick={(e) => { e.stopPropagation(); onOpenConsole(); }}
+            >
+              Open in Gemini Enterprise Console
+            </button>
+            <button
+              style={{
+                fontSize: 10,
+                fontWeight: 500,
+                padding: '3px 8px',
+                borderRadius: 6,
+                border: '1px solid #E5E7EB',
+                background: syncing ? '#F3F4F6' : '#fff',
+                color: syncing ? '#9CA3AF' : '#374151',
+                cursor: syncing ? 'not-allowed' : 'pointer',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (syncing) return;
+                setSyncing(true);
+                onSync(connector.id);
+                setTimeout(() => setSyncing(false), 1200);
+              }}
+            >
+              {syncing ? 'Syncing...' : 'Sync Now'}
+            </button>
+            <button
+              style={{
+                fontSize: 10,
+                fontWeight: 500,
+                padding: '3px 8px',
+                borderRadius: 6,
+                border: '1px solid #E5E7EB',
+                background: '#fff',
+                color: connector.status === 'active' ? '#DC2626' : '#059669',
+                cursor: 'pointer',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(connector.id, connector.status !== 'active');
+              }}
+            >
+              {connector.status === 'active' ? 'Disconnect' : 'Connect'}
+            </button>
+          </div>
+
+          {/* Mini query tester */}
+          <div style={{ marginTop: 4 }}>
+            <h4
+              className="mb-1.5"
+              style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            >
+              Query Tester
+            </h4>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={queryInput}
+                onChange={(e) => setQueryInput(e.target.value)}
+                placeholder={`Search ${connector.product}...`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 px-2 py-1.5 text-[11px] border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300"
+                style={{ borderColor: '#E5E7EB', fontFamily: 'var(--font-ui)' }}
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!queryInput.trim() || queryLoading) return;
+                  setQueryLoading(true);
+                  setQueryResults(null);
+                  // Simulate the async query
+                  const product = connector.product;
+                  setTimeout(() => {
+                    setQueryResults([
+                      `${product} result 1 for "${queryInput}"`,
+                      `${product} result 2 for "${queryInput}"`,
+                      `${product} result 3 for "${queryInput}"`,
+                    ]);
+                    setQueryLoading(false);
+                  }, 400 + Math.random() * 600);
+                  onTestQuery(connector.id, queryInput);
+                }}
+                disabled={!queryInput.trim() || queryLoading}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 500,
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: queryInput.trim() && !queryLoading ? '#2563EB' : '#93C5FD',
+                  color: '#fff',
+                  cursor: queryInput.trim() && !queryLoading ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {queryLoading ? 'Querying...' : 'Test'}
+              </button>
+            </div>
+            {queryResults && (
+              <div className="mt-2 space-y-1">
+                {queryResults.map((r, i) => (
+                  <div key={i} className="text-[10px] px-2 py-1 rounded" style={{ background: '#F9FAFB', color: '#374151', fontFamily: 'var(--font-mono)' }}>
+                    {r}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -406,8 +517,10 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 
 export function ConnectorHub() {
   const [search, setSearch] = useState('');
+  const { connectors, actionCount, selectConnector, toggleConnector, syncConnector, testQuery } = useConnectors();
+  const { addNotification } = useNotifications();
 
-  const filterBySearch = (list: ConnectorEntry[]) => {
+  const filterBySearch = useCallback((list: ConnectorEntry[]) => {
     if (!search.trim()) return list;
     const q = search.toLowerCase();
     return list.filter(
@@ -416,11 +529,38 @@ export function ConnectorHub() {
         c.description.toLowerCase().includes(q) ||
         c.actions.some((a) => a.name.toLowerCase().includes(q)),
     );
+  }, [search]);
+
+  const googleConnectors = useMemo(() => connectors.filter((c) => c.category === 'google'), [connectors]);
+  const thirdPartyConnectors = useMemo(() => connectors.filter((c) => c.category === 'third-party'), [connectors]);
+  const googleFiltered = useMemo(() => filterBySearch(googleConnectors), [filterBySearch, googleConnectors]);
+  const thirdPartyFiltered = useMemo(() => filterBySearch(thirdPartyConnectors), [filterBySearch, thirdPartyConnectors]);
+  const activeCount = connectors.filter((c) => c.status === 'active').length;
+  const activeSystemCount = connectors.filter((c) => c.status === 'active').length;
+
+  const handleAddConnector = () => {
+    addNotification({ type: 'info', title: 'Open Gemini Enterprise Console', message: 'Configure new connectors in the admin console' });
   };
 
-  const googleFiltered = useMemo(() => filterBySearch(GOOGLE_CONNECTORS), [search]);
-  const thirdPartyFiltered = useMemo(() => filterBySearch(THIRD_PARTY_CONNECTORS), [search]);
-  const activeCount = ALL_CONNECTORS.filter((c) => c.status === 'active').length;
+  const handleOpenConsole = () => {
+    addNotification({ type: 'info', title: 'Opening Console...', message: 'Redirecting to Gemini Enterprise admin' });
+  };
+
+  const handleToggle = (id: string, enabled: boolean) => {
+    toggleConnector(id, enabled);
+  };
+
+  const handleSync = (id: string) => {
+    syncConnector(id);
+  };
+
+  const handleTestQuery = (id: string, query: string) => {
+    testQuery(id, query);
+  };
+
+  const handleSelect = (id: string) => {
+    selectConnector(id);
+  };
 
   return (
     <div className="page-container" style={{ overflow: 'auto' }}>
@@ -437,6 +577,7 @@ export function ConnectorHub() {
           </p>
         </div>
         <button
+          onClick={handleAddConnector}
           className="rounded-lg"
           style={{
             fontSize: 12,
@@ -457,7 +598,7 @@ export function ConnectorHub() {
 
       <div className="page-body space-y-5">
         {/* Action summary bar */}
-        <ActionSummary />
+        <ActionSummary actionCount={actionCount} systemCount={activeSystemCount} />
 
         {/* Search */}
         <div className="relative">
@@ -492,7 +633,7 @@ export function ConnectorHub() {
           <SectionHeader label="Google" count={googleFiltered.length} />
           <div className="grid-auto">
             {googleFiltered.map((c) => (
-              <ConnectorCard key={c.id} connector={c} />
+              <ConnectorCard key={c.id} connector={c} onSelect={handleSelect} onToggle={handleToggle} onSync={handleSync} onOpenConsole={handleOpenConsole} onTestQuery={handleTestQuery} />
             ))}
           </div>
         </div>
@@ -502,7 +643,7 @@ export function ConnectorHub() {
           <SectionHeader label="Third-Party" count={thirdPartyFiltered.length} />
           <div className="grid-auto">
             {thirdPartyFiltered.map((c) => (
-              <ConnectorCard key={c.id} connector={c} />
+              <ConnectorCard key={c.id} connector={c} onSelect={handleSelect} onToggle={handleToggle} onSync={handleSync} onOpenConsole={handleOpenConsole} onTestQuery={handleTestQuery} />
             ))}
           </div>
         </div>

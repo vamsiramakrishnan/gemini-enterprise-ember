@@ -6,7 +6,8 @@
  * is itself an agent running the same loop (meta-circularity).
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNotifications } from '../../contexts/AppContext';
 
 // ─── Chip Color Map ──────────────────────────────────────────────────
 
@@ -257,13 +258,46 @@ function MessageBubble({ message }: { message: Message }) {
   );
 }
 
+// ─── Mock Gemini Responses ──────────────────────────────────────────
+
+const MOCK_RESPONSES = [
+  "I can help with that. Let me check the registry for relevant assets and update the playbook accordingly.",
+  "Good idea. I've noted that change and will incorporate it into the playbook draft. Anything else you'd like to adjust?",
+  "Understood. I'll update the escalation rules and add the appropriate @guard(compliance-check) to enforce that policy.",
+  "I've found @connector(google-drive) in your workspace which could be useful for document retrieval. Want me to add it?",
+  "That makes sense. I'll refine the process steps and add @tool(status-checker) as a draft for your team to implement.",
+];
+
+const MOCK_PLAYBOOK_ADDITIONS: string[] = [
+  '\n## Additional Notes\nIncorporate user feedback on escalation routing.',
+  '\n- Use @tool(status-checker) for order verification',
+  '\n- Apply @guard(compliance-check) for regulatory adherence',
+];
+
 // ─── Input Area ─────────────────────────────────────────────────────
 
-function InputArea() {
+function InputArea({ onSend, onMic }: { onSend: (text: string) => void; onMic: () => void }) {
+  const [inputText, setInputText] = useState('');
+
+  const handleSend = () => {
+    const trimmed = inputText.trim();
+    if (!trimmed) return;
+    onSend(trimmed);
+    setInputText('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
     <div className="border-t border-[var(--color-border)] bg-white px-3 py-2 md:px-4 md:py-3">
       <div className="flex items-center gap-2">
         <button
+          onClick={onMic}
           className="w-9 h-9 rounded-lg bg-[var(--color-accent)] text-white flex items-center justify-center hover:bg-[var(--color-accent-hover)] transition-colors cursor-pointer flex-shrink-0"
           title="Microphone"
         >
@@ -272,12 +306,16 @@ function InputArea() {
         <div className="flex-1 relative">
           <input
             type="text"
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Type a message or use voice..."
             className="w-full px-3 py-2 text-[13px] text-[var(--color-text-primary)] bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded-lg outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/20 transition-colors"
             style={{ fontFamily: 'var(--font-body)' }}
           />
         </div>
         <button
+          onClick={handleSend}
           className="w-9 h-9 rounded-lg border border-[var(--color-border)] text-[var(--color-text-tertiary)] flex items-center justify-center hover:text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer flex-shrink-0"
           title="Send"
         >
@@ -290,12 +328,13 @@ function InputArea() {
 
 // ─── Playbook Renderer ───────────────────────────────────────────────
 
-function PlaybookDocument() {
+function PlaybookDocument({ extraLines = [] }: { extraLines?: PlaybookLine[] }) {
   const draftChips = ['tool:warehouse-return-check'];
+  const allLines = [...PLAYBOOK_LINES, ...extraLines];
 
   return (
     <div className="px-4 py-4 md:px-8 md:py-6">
-      {PLAYBOOK_LINES.map((line, i) => {
+      {allLines.map((line, i) => {
         if (line.type === 'blank') {
           return <div key={i} className="h-3" />;
         }
@@ -449,6 +488,64 @@ function MetaDrawer() {
 // ─── Main Component ──────────────────────────────────────────────────
 
 export function LiveAuthoring() {
+  const { addNotification } = useNotifications();
+  const [messages, setMessages] = useState<Message[]>([...CONVERSATION]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [extraPlaybookLines, setExtraPlaybookLines] = useState<PlaybookLine[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const responseIndexRef = useRef(0);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  const handleSend = useCallback((text: string) => {
+    const now = new Date();
+    const timestamp = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+    // Add user message
+    const userMsg: Message = { role: 'user', text, timestamp };
+    setMessages(prev => [...prev, userMsg]);
+    addNotification({ type: 'info', title: 'Message sent' });
+
+    // Show typing indicator then add mock Gemini response
+    setIsTyping(true);
+    const delay = 1000 + Math.random() * 1000;
+    setTimeout(() => {
+      setIsTyping(false);
+      const idx = responseIndexRef.current % MOCK_RESPONSES.length;
+      responseIndexRef.current += 1;
+      const geminiMsg: Message = {
+        role: 'gemini',
+        text: MOCK_RESPONSES[idx],
+        timestamp: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, geminiMsg]);
+
+      // Append to playbook panel
+      const playbookIdx = idx % MOCK_PLAYBOOK_ADDITIONS.length;
+      const addition = MOCK_PLAYBOOK_ADDITIONS[playbookIdx];
+      setExtraPlaybookLines(prev => [
+        ...prev,
+        { type: 'blank' as const, content: '' },
+        { type: 'text' as const, content: addition.trim() },
+      ]);
+    }, delay);
+  }, [addNotification]);
+
+  const handleMic = useCallback(() => {
+    addNotification({ type: 'info', title: 'Voice input', message: 'Gemini Live voice mode would activate here' });
+  }, [addNotification]);
+
+  const handleAcceptDraft = useCallback(() => {
+    addNotification({ type: 'success', title: 'Draft accepted', message: 'Playbook saved to editor' });
+  }, [addNotification]);
+
+  const handleKeepEditing = useCallback(() => {
+    addNotification({ type: 'info', title: 'Continuing edit session' });
+  }, [addNotification]);
+
   return (
     <div className="h-full bg-white flex flex-col">
       {/* CSS Keyframes + Responsive layout */}
@@ -512,13 +609,28 @@ export function LiveAuthoring() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4 space-y-3 md:space-y-4">
-            {CONVERSATION.map((msg, i) => (
+            {messages.map((msg, i) => (
               <MessageBubble key={i} message={msg} />
             ))}
+            {isTyping && (
+              <div className="flex gap-2 md:gap-3 flex-row">
+                <div className="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-white text-[9px] md:text-[10px] font-bold flex-shrink-0 bg-[var(--color-accent)]">
+                  G
+                </div>
+                <div className="rounded-lg px-3 py-2 md:px-4 md:py-3 text-[13px] bg-white border border-[var(--color-border)]">
+                  <span className="inline-flex gap-1 items-center text-[var(--color-text-tertiary)]">
+                    <span className="animate-pulse">.</span>
+                    <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>.</span>
+                    <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>.</span>
+                  </span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
-          <InputArea />
+          <InputArea onSend={handleSend} onMic={handleMic} />
         </div>
 
         {/* Right Panel — Live Playbook (full width on mobile, 45% on md+) */}
@@ -547,7 +659,7 @@ export function LiveAuthoring() {
 
           {/* Playbook Content */}
           <div className="flex-1 overflow-y-auto">
-            <PlaybookDocument />
+            <PlaybookDocument extraLines={extraPlaybookLines} />
           </div>
 
           {/* Action Buttons */}
@@ -556,12 +668,14 @@ export function LiveAuthoring() {
             style={{ borderTop: '1px solid var(--color-border)' }}
           >
             <button
+              onClick={handleKeepEditing}
               className="px-4 py-2 text-[12px] font-medium text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-1)] transition-colors cursor-pointer"
               style={{ fontFamily: 'var(--font-ui)' }}
             >
               Keep Editing
             </button>
             <button
+              onClick={handleAcceptDraft}
               className="px-5 py-2 text-[12px] font-semibold text-white bg-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors cursor-pointer"
               style={{ fontFamily: 'var(--font-ui)' }}
             >

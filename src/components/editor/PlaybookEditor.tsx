@@ -9,12 +9,14 @@
  */
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CLAIMS_PLAYBOOK_CONTENT } from '../../data/playbook';
 import { REGISTRY, findChip } from '../../data/registry';
 import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types';
+import { usePlaybook, useNotifications, useRegistry } from '../../contexts/AppContext';
+import { PublishModal } from '../versioning/PublishModal';
 
 // ─── Responsive hook ────────────────────────────────────────────────────
 function useBreakpoint() {
@@ -723,10 +725,11 @@ function ContextStrategyCard() {
 // ─── Inspector Sidebar ──────────────────────────────────────────────────
 
 function InspectorDetails({
-  chip, chipType, chipName, sourceLine, onGoToSource,
+  chip, chipType, chipName, sourceLine, onGoToSource, onCreateChip,
 }: {
   chip: SmartChip | null; chipType: ChipType; chipName: string;
   sourceLine?: number; onGoToSource?: () => void;
+  onCreateChip?: (type: ChipType, name: string) => void;
 }) {
   if (!chip) {
     return (
@@ -735,7 +738,10 @@ function InspectorDetails({
         <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
           <div className="font-semibold mb-1">Unresolved Reference</div>
           <div className="text-xs text-red-500">@{chipType}({chipName}) is not in the registry.</div>
-          <button className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700">Create →</button>
+          <button
+            className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700"
+            onClick={() => onCreateChip?.(chipType, chipName)}
+          >Create →</button>
         </div>
       </div>
     );
@@ -945,7 +951,7 @@ function ProblemSpaceVisualizer() {
 
 // ─── Command Palette ────────────────────────────────────────────────────
 
-function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CommandPalette({ open, onClose, onAction }: { open: boolean; onClose: () => void; onAction: (action: string) => void }) {
   const [query, setQuery] = useState('');
 
   const commands = useMemo(() => [
@@ -1012,7 +1018,7 @@ function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void 
                 <button
                   key={item.label}
                   className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
-                  onClick={onClose}
+                  onClick={() => { onAction(item.action); onClose(); }}
                 >
                   <span className="text-[13px] text-gray-700 flex-1">{item.label}</span>
                   {item.shortcut && (
@@ -1097,6 +1103,10 @@ type InspectorTab = 'details' | 'space';
 export function PlaybookEditor() {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
+  const navigate = useNavigate();
+  const { openPublishModal, publishModalOpen, closePublishModal, publish, save, dirty, saving, currentVersion } = usePlaybook();
+  const { addNotification } = useNotifications();
+  const { createChip } = useRegistry();
   const [activeTab, setActiveTab] = useState<EditorTab>('document');
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('space');
   const [inspectorOpen, setInspectorOpen] = useState(!isMobile);
@@ -1210,7 +1220,20 @@ export function PlaybookEditor() {
   return (
     <div className="h-full flex flex-col bg-[var(--color-surface-0)]">
       <style>{STYLE_TAG}</style>
-      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onAction={(action) => {
+          if (action === 'tab:document') setActiveTab('document');
+          else if (action === 'tab:flow') setActiveTab('flow');
+          else if (action === 'tab:notebook') setActiveTab('notebook');
+          else if (action === 'publish') openPublishModal();
+          else if (action === 'share') navigate('/permissions');
+          else if (action === 'history') navigate('/history');
+          else if (action === 'test') addNotification({ type: 'info', title: 'Test mode', message: 'Switch to Notebook tab to run tests' });
+          else if (action.startsWith('insert:')) addNotification({ type: 'info', title: 'Use @ in the editor to insert references' });
+        }}
+      />
 
       {/* ── Top Bar — Google Docs-inspired chrome ── */}
       <header className="shrink-0 z-40 bg-white" style={{ borderBottom: '1px solid var(--color-border)' }}>
@@ -1226,13 +1249,15 @@ export function PlaybookEditor() {
             </h1>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#DCFCE7] text-[#166534]">
-                v2.1
+                v{currentVersion}
               </span>
               {!isMobile && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
                   Published
                 </span>
               )}
+              {dirty && !saving && <span className="text-[10px] text-amber-500">Unsaved changes</span>}
+              {saving && <span className="text-[10px] text-gray-400">Saving...</span>}
             </div>
           </div>
 
@@ -1283,6 +1308,7 @@ export function PlaybookEditor() {
               </>
             )}
             <button
+              onClick={() => openPublishModal()}
               className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 text-[12px] font-medium text-white rounded-lg transition-colors"
               style={{ background: 'var(--color-accent)' }}
             >
@@ -1441,6 +1467,7 @@ export function PlaybookEditor() {
                   chipName={selectedChip.name}
                   sourceLine={inspectorSourceLine}
                   onGoToSource={handleInspectorGoToSource}
+                  onCreateChip={(type, name) => createChip({ type, name, status: 'draft' })}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-center px-8">
@@ -1468,6 +1495,19 @@ export function PlaybookEditor() {
         nodeCount={graph.nodes.length}
         edgeCount={graph.edges.length}
         activeTab={activeTab}
+      />
+
+      <PublishModal
+        open={publishModalOpen}
+        onClose={closePublishModal}
+        onPublish={(config) => {
+          publish(
+            config.bump,
+            config.description,
+            config.reviewers.map(r => r.email),
+            config.target === 'draft' ? 'draft' : config.target === 'staging' ? 'staging' : 'production',
+          );
+        }}
       />
     </div>
   );

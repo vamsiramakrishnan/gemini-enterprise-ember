@@ -6,7 +6,8 @@
  */
 
 import { useState, useMemo } from 'react';
-import { REGISTRY } from '../../data/registry';
+import { useNavigate } from 'react-router-dom';
+import { useRegistry, useNotifications } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
 
@@ -252,7 +253,7 @@ function SearchIcon() {
 
 // ─── Registry Card ────────────────────────────────────────────────────
 
-function RegistryCard({ chip }: { chip: SmartChip }) {
+function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: SmartChip; onSelect: (id: string) => void; onOpenEditor: () => void; onViewHistory: () => void }) {
   const colors = CHIP_COLORS[chip.type];
   const icon = CHIP_ICONS[chip.type];
   const [expanded, setExpanded] = useState(false);
@@ -269,7 +270,7 @@ function RegistryCard({ chip }: { chip: SmartChip }) {
 
   return (
     <div
-      onClick={() => setExpanded(!expanded)}
+      onClick={() => { setExpanded(!expanded); onSelect(chip.id); }}
       style={{
         background: '#fff',
         border: `1px solid ${expanded ? colors.bg + '50' : 'var(--color-border)'}`,
@@ -415,6 +416,7 @@ function RegistryCard({ chip }: { chip: SmartChip }) {
           )}
           <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
             <button
+              onClick={(e) => { e.stopPropagation(); onOpenEditor(); }}
               style={{
                 padding: '4px 10px',
                 borderRadius: 6,
@@ -430,6 +432,7 @@ function RegistryCard({ chip }: { chip: SmartChip }) {
               Open in Editor
             </button>
             <button
+              onClick={(e) => { e.stopPropagation(); onViewHistory(); }}
               style={{
                 padding: '4px 10px',
                 borderRadius: 6,
@@ -462,12 +465,13 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 // ─── List Row Variant ─────────────────────────────────────────────────
 
-function RegistryListRow({ chip }: { chip: SmartChip }) {
+function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: string) => void }) {
   const colors = CHIP_COLORS[chip.type];
   const icon = CHIP_ICONS[chip.type];
 
   return (
     <div
+      onClick={() => onSelect(chip.id)}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -548,33 +552,184 @@ function EmptyState({ onClear }: { onClear: () => void }) {
 
 // ─── Main Catalog ─────────────────────────────────────────────────────
 
+// ─── Create Modal ────────────────────────────────────────────────────
+
+const CREATABLE_TYPES: ChipType[] = ['tool', 'doc', 'agent', 'guard', 'data', 'schema', 'connector', 'skill', 'trigger'];
+
+function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (partial: { type: ChipType; name: string; description: string }) => void }) {
+  const [newType, setNewType] = useState<ChipType>('tool');
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.3)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: 12,
+          padding: 24,
+          width: 420,
+          maxWidth: '90vw',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+          fontFamily: 'var(--font-ui)',
+        }}
+      >
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0, marginBottom: 16 }}>
+          Create New Asset
+        </h2>
+
+        {/* Type selector */}
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 4 }}>Type</label>
+        <select
+          value={newType}
+          onChange={(e) => setNewType(e.target.value as ChipType)}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid #E5E7EB',
+            fontSize: 12,
+            marginBottom: 12,
+            outline: 'none',
+            background: '#fff',
+          }}
+        >
+          {CREATABLE_TYPES.map((t) => (
+            <option key={t} value={t}>@{t}</option>
+          ))}
+        </select>
+
+        {/* Name */}
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 4 }}>Name</label>
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="e.g. my-new-tool"
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid #E5E7EB',
+            fontSize: 12,
+            marginBottom: 12,
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+
+        {/* Description */}
+        <label style={{ display: 'block', fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 4 }}>Description</label>
+        <textarea
+          value={newDesc}
+          onChange={(e) => setNewDesc(e.target.value)}
+          placeholder="Brief description of this asset..."
+          rows={3}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            borderRadius: 8,
+            border: '1px solid #E5E7EB',
+            fontSize: 12,
+            marginBottom: 16,
+            outline: 'none',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 8,
+              border: '1px solid #E5E7EB',
+              background: '#fff',
+              color: '#6B7280',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              if (newName.trim()) {
+                onCreate({ type: newType, name: newName.trim(), description: newDesc.trim() });
+              }
+            }}
+            disabled={!newName.trim()}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 8,
+              border: 'none',
+              background: newName.trim() ? '#2563EB' : '#93C5FD',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: newName.trim() ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Catalog ─────────────────────────────────────────────────────
+
 export function RegistryCatalog() {
-  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const { filteredChips: contextFilteredChips, chips: allChips, searchQuery, setSearchQuery, selectChip, createModalOpen, openCreateModal, closeCreateModal, createChip } = useRegistry();
+  const { addNotification } = useNotifications();
+
   const [typeFilter, setTypeFilter] = useState<ChipType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('relevance');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchFocused, setSearchFocused] = useState(false);
 
   const filtered = useMemo(() => {
-    let items = REGISTRY;
+    let items = contextFilteredChips;
 
     if (typeFilter !== 'all') {
       items = items.filter((c) => c.type === typeFilter);
     }
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      items = items.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.description.toLowerCase().includes(q) ||
-          c.type.includes(q) ||
-          c.owner.toLowerCase().includes(q),
-      );
-    }
-
     return sortChips(items, sortKey);
-  }, [search, typeFilter, sortKey]);
+  }, [contextFilteredChips, typeFilter, sortKey]);
+
+  const handleOpenEditor = () => {
+    navigate('/editor');
+  };
+
+  const handleViewHistory = () => {
+    navigate('/history');
+  };
+
+  const handleSelect = (id: string) => {
+    selectChip(id);
+  };
+
+  const handleCreate = (partial: { type: ChipType; name: string; description: string }) => {
+    createChip(partial);
+  };
 
   return (
     <div className="page-container" style={{ overflow: 'auto' }}>
@@ -595,11 +750,29 @@ export function RegistryCatalog() {
               Registry & Catalog
             </h1>
             <p style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)', margin: 0, marginTop: 1 }}>
-              All @-referenceable assets -- {REGISTRY.length} entries
+              All @-referenceable assets -- {allChips.length} entries
             </p>
           </div>
-          <div style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
-            {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
+              {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={openCreateModal}
+              style={{
+                padding: '5px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: 'var(--color-accent, #2563EB)',
+                color: '#fff',
+                fontSize: 11,
+                fontWeight: 500,
+                fontFamily: 'var(--font-ui)',
+                cursor: 'pointer',
+              }}
+            >
+              + Create New
+            </button>
           </div>
         </div>
       </header>
@@ -614,8 +787,8 @@ export function RegistryCatalog() {
             </span>
             <input
               type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
               placeholder="Search assets by name, type, owner, or description..."
@@ -633,9 +806,9 @@ export function RegistryCatalog() {
                 transition: 'border-color 150ms ease, box-shadow 150ms ease',
               }}
             />
-            {search && (
+            {searchQuery && (
               <button
-                onClick={() => setSearch('')}
+                onClick={() => setSearchQuery('')}
                 style={{
                   position: 'absolute',
                   right: 10,
@@ -735,17 +908,17 @@ export function RegistryCatalog() {
 
         {/* Results */}
         {filtered.length === 0 ? (
-          <EmptyState onClear={() => { setSearch(''); setTypeFilter('all'); }} />
+          <EmptyState onClear={() => { setSearchQuery(''); setTypeFilter('all'); }} />
         ) : viewMode === 'grid' ? (
           <div className="grid-auto">
             {filtered.map((chip) => (
-              <RegistryCard key={chip.id} chip={chip} />
+              <RegistryCard key={chip.id} chip={chip} onSelect={handleSelect} onOpenEditor={handleOpenEditor} onViewHistory={handleViewHistory} />
             ))}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filtered.map((chip) => (
-              <RegistryListRow key={chip.id} chip={chip} />
+              <RegistryListRow key={chip.id} chip={chip} onSelect={handleSelect} />
             ))}
           </div>
         )}
@@ -776,7 +949,7 @@ export function RegistryCatalog() {
           </h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {(['connector', 'skill', 'trigger', 'doc', 'tool', 'agent', 'guard', 'data', 'schema'] as ChipType[]).map((t) => {
-              const count = REGISTRY.filter((c) => c.type === t).length;
+              const count = allChips.filter((c) => c.type === t).length;
               return (
                 <button
                   key={t}
@@ -812,6 +985,11 @@ export function RegistryCatalog() {
           </div>
         </div>
       </div>
+
+      {/* Create Modal */}
+      {createModalOpen && (
+        <CreateModal onClose={closeCreateModal} onCreate={handleCreate} />
+      )}
     </div>
   );
 }

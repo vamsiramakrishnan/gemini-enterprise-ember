@@ -13,6 +13,7 @@
  */
 
 import { useState, useMemo } from 'react';
+import { useNotifications, usePlaybook } from '../../contexts/AppContext';
 import { VERSIONS, DIFF_V21_V22, DIFF_SUMMARY } from '../../data/versions';
 import type { VersionEntry, DiffLineEntry } from '../../data/versions';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
@@ -598,6 +599,7 @@ function SummaryPanel({
         }}
       >
         <button
+          onClick={() => openPublishModal()}
           style={{
             width: '100%',
             padding: '7px 0',
@@ -614,6 +616,10 @@ function SummaryPanel({
           Publish v{selected.version}
         </button>
         <button
+          onClick={() => {
+            restoreVersion(selected.version);
+            addNotification({ type: 'success', title: `Restored to v${selected.version}` });
+          }}
           style={{
             width: '100%',
             padding: '7px 0',
@@ -630,6 +636,9 @@ function SummaryPanel({
           Restore This Version
         </button>
         <button
+          onClick={() => {
+            addNotification({ type: 'info', title: 'Fork created', message: `Forked from v${selected.version} as a new draft` });
+          }}
           style={{
             width: '100%',
             padding: '7px 0',
@@ -700,6 +709,8 @@ function SummaryPanel({
 /* ─── Main Component ────────────────────────────────────────────────── */
 
 export function VersionHistory() {
+  const { addNotification } = useNotifications();
+  const { restoreVersion, openPublishModal } = usePlaybook();
   const [selectedVersion, setSelectedVersion] = useState('2.2.0');
   const [expandedUnchanged, setExpandedUnchanged] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
