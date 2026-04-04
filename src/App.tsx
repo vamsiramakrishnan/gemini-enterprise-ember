@@ -60,106 +60,132 @@ function Landing() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-0)]">
       {/* Header */}
-      <header className="border-b border-[var(--color-border)] bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <div className="w-8 h-8 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white font-bold text-sm">
-            P
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
-              Agent Playbook Editor
-            </h1>
-            <p className="text-xs text-gray-500">UI Mockup Suite — powered by adk-fluent</p>
+      <header className="border-b border-[var(--color-border)] bg-[var(--color-surface-0)]/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-[1120px] mx-auto px-8 py-4 flex items-center gap-5">
+          <div className="flex items-center gap-3">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <rect width="28" height="28" rx="7" fill="#1A73E8"/>
+              <path d="M8 9h12M8 14h8M8 19h10" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            <div>
+              <h1 className="text-[15px] font-semibold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>
+                Agent Playbook Editor
+              </h1>
+              <p className="text-[11px] tracking-wide" style={{ color: '#9B9590' }}>powered by adk-fluent</p>
+            </div>
           </div>
           <div className="flex-1" />
-          <span className="text-[10px] text-gray-400">{screens.length} screens</span>
+          <span className="text-[11px] font-medium tracking-wide" style={{ color: '#9B9590', fontFamily: 'var(--font-mono)' }}>
+            {screens.length} surfaces
+          </span>
         </div>
       </header>
 
       {/* Hero */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <h2 className="text-3xl font-semibold text-gray-900 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
-            The agent builder is a document editor.
+      <div className="max-w-[1120px] mx-auto px-8">
+        <div className="pt-16 pb-12 animate-in">
+          <p className="text-[11px] font-medium uppercase tracking-[2px] mb-5"
+            style={{ fontFamily: 'var(--font-mono)', color: '#9B9590' }}>
+            Gemini Enterprise Concept
+          </p>
+          <h2 className="text-[38px] font-semibold tracking-[-0.03em] leading-[1.15] mb-5"
+            style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>
+            The agent builder is<br/>
+            <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, fontStyle: 'italic', color: '#4F46E5' }}>
+              a document editor.
+            </span>
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl" style={{ fontFamily: 'var(--font-body)' }}>
-            Writing a playbook IS building an agent. Every <code className="text-sm bg-gray-100 px-1.5 py-0.5 rounded font-mono">@reference</code> shapes
-            the agent's action space. The document compiles into a graph. The graph is derived, never authored.
+          <p className="text-[17px] leading-[1.7] max-w-[600px]"
+            style={{ fontFamily: 'var(--font-body)', color: '#5C5550' }}>
+            Writing a playbook IS building an agent. Every{' '}
+            <code className="text-[13px] px-1.5 py-0.5 rounded font-mono"
+              style={{ background: 'rgba(79, 70, 229, 0.07)', color: '#4F46E5', fontFamily: 'var(--font-mono)' }}>
+              @reference
+            </code>{' '}
+            shapes the agent's action space. The document compiles into a graph.
+            The graph is derived, never authored.
           </p>
         </div>
 
         {/* Screen Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
           {screens.map((screen) => (
             <Link
               key={screen.path}
               to={screen.path}
-              className={`group block rounded-xl border p-5 transition-all hover:shadow-md ${
-                screen.ready
-                  ? 'border-[var(--color-accent)]/30 bg-white hover:border-[var(--color-accent)]'
-                  : 'border-[var(--color-border)] bg-white/60 hover:bg-white'
-              }`}
+              className="group block rounded-xl p-5 bg-white border border-[var(--color-border)] transition-all duration-300"
+              style={{
+                boxShadow: 'var(--depth-resting)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--depth-lifted)'; e.currentTarget.style.borderColor = 'var(--color-border-strong)'; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--depth-resting)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-base">{screen.icon}</span>
-                <h3 className="text-sm font-semibold text-gray-900">{screen.label}</h3>
-                {screen.ready ? (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
-                    LIVE
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                    PLANNED
-                  </span>
-                )}
+              <div className="flex items-center gap-2.5 mb-2.5">
+                <span className="text-[15px]">{screen.icon}</span>
+                <h3 className="text-[13px] font-semibold tracking-[-0.01em]"
+                  style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>{screen.label}</h3>
+                <span className="badge badge-live" style={{ fontSize: 9 }}>LIVE</span>
               </div>
-              <p className="text-xs text-gray-500">{screen.desc}</p>
+              <p className="text-[12px] leading-[1.6]" style={{ color: '#9B9590', fontFamily: 'var(--font-body)' }}>
+                {screen.desc}
+              </p>
             </Link>
           ))}
         </div>
 
-        {/* Architecture Note */}
-        <div className="mt-12 rounded-xl border border-[var(--color-border)] bg-white p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Architecture: Playbook → Parse → Compile → Graph</h3>
-          <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
-            <span className="px-3 py-1.5 rounded-lg bg-teal-50 text-teal-700 font-medium">Playbook (Markdown + @chips)</span>
-            <span className="text-gray-400">→</span>
-            <span className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 font-medium">Parser (extract refs + conditionals)</span>
-            <span className="text-gray-400">→</span>
-            <span className="px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 font-medium">Graph Compiler (IR nodes + edges)</span>
-            <span className="text-gray-400">→</span>
-            <span className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 font-medium">Flow Tab (interactive DAG)</span>
+        {/* Architecture */}
+        <div className="mt-14 rounded-xl bg-white border border-[var(--color-border)] p-7 animate-in"
+          style={{ boxShadow: 'var(--depth-resting)', animationDelay: '300ms' }}>
+          <h3 className="text-[13px] font-semibold tracking-[-0.01em] mb-4"
+            style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>
+            Architecture: Playbook → Parse → Compile → Graph
+          </h3>
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { label: 'Playbook', sub: 'Markdown + @chips', color: '#0D9488' },
+              { label: 'Parser', sub: 'refs + conditionals', color: '#4F46E5' },
+              { label: 'Compiler', sub: 'IR nodes + edges', color: '#7C3AED' },
+              { label: 'Flow Tab', sub: 'interactive DAG', color: '#D97706' },
+            ].map((step, i) => (
+              <div key={step.label} className="flex items-center gap-3">
+                {i > 0 && (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 8h8M9 5l3 3-3 3" stroke="#D6D2CC" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+                <div className="px-3.5 py-2 rounded-lg" style={{ background: `${step.color}08`, border: `1px solid ${step.color}18` }}>
+                  <div className="text-[11px] font-semibold" style={{ color: step.color, fontFamily: 'var(--font-ui)' }}>{step.label}</div>
+                  <div className="text-[10px]" style={{ color: '#9B9590', fontFamily: 'var(--font-mono)' }}>{step.sub}</div>
+                </div>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-gray-500 mt-3">
-            Mirrors adk-fluent's pipeline: <code className="font-mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">parse_skill_file()</code> →{' '}
-            <code className="font-mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">Skill.build()</code> →{' '}
-            <code className="font-mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">viz.ir_to_mermaid()</code>
+          <p className="text-[11px] mt-4 leading-relaxed" style={{ color: '#9B9590', fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>
+            Mirrors adk-fluent's pipeline:{' '}
+            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5C5550' }}>parse_skill_file()</code> →{' '}
+            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5C5550' }}>Skill.build()</code> →{' '}
+            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5C5550' }}>viz.ir_to_mermaid()</code>
           </p>
         </div>
 
         {/* Thesis Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <div className="text-base mb-2">🔄</div>
-            <h4 className="text-xs font-semibold text-gray-900 mb-1">The Loop Is Simple</h4>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Every agent is the same loop: Observe → Reason → Act → Observe. No magic graph. The playbook constrains the <em>space</em>, not the <em>sequence</em>.
-            </p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <div className="text-base mb-2">💎</div>
-            <h4 className="text-xs font-semibold text-gray-900 mb-1">Code Is Omnipotent</h4>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Tools, connectors, skills — they're all cached reductions of the code execution space. The enterprise governs the boundary.
-            </p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <div className="text-base mb-2">📐</div>
-            <h4 className="text-xs font-semibold text-gray-900 mb-1">@ Shapes The Manifold</h4>
-            <p className="text-[11px] text-gray-500 leading-relaxed">
-              Each @reference is a dimension. Skills reduce. Connectors expand governedly. Guards constrain. The playbook IS the manifold definition.
-            </p>
-          </div>
+        <div className="mt-8 mb-16 grid grid-cols-1 md:grid-cols-3 gap-3 stagger" style={{ animationDelay: '200ms' }}>
+          {[
+            { title: 'The Loop Is Simple', body: 'Every agent is the same loop: Observe → Reason → Act → Observe. No magic graph. The playbook constrains the space, not the sequence.', accent: '#0D9488' },
+            { title: 'Code Is Omnipotent', body: 'Tools, connectors, skills — they\'re all cached reductions of the code execution space. The enterprise governs the boundary.', accent: '#4F46E5' },
+            { title: '@ Shapes The Manifold', body: 'Each @reference is a dimension. Skills reduce. Connectors expand governedly. Guards constrain. The playbook IS the manifold definition.', accent: '#7C3AED' },
+          ].map(card => (
+            <div key={card.title} className="rounded-xl bg-white border border-[var(--color-border)] p-6"
+              style={{ boxShadow: 'var(--depth-resting)' }}>
+              <div className="w-1 h-5 rounded-full mb-4" style={{ background: card.accent }} />
+              <h4 className="text-[13px] font-semibold tracking-[-0.01em] mb-2"
+                style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>{card.title}</h4>
+              <p className="text-[12.5px] leading-[1.7]"
+                style={{ fontFamily: 'var(--font-body)', color: '#5C5550' }}>
+                {card.body}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
