@@ -2,55 +2,73 @@
  * PlaybookEditor — Screen 1: The hero mockup.
  *
  * Three tabs: Document | Flow | Notebook
- * - Document: playbook with inline smart chips
- * - Flow: compiled DAG (read-only)
+ * - Document: playbook with inline smart chips, line highlighting
+ * - Flow: beautiful interactive compiled DAG with pan/zoom
+ * - Bidirectional: click chip → highlight node, click node → scroll to source
  * - Inspector sidebar with Details + Space tabs
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { CLAIMS_PLAYBOOK_CONTENT } from '../../data/playbook';
 import { REGISTRY, findChip } from '../../data/registry';
 import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
-import type { ChipType, SmartChip } from '../../parser/types';
+import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types';
 
-// ─── Chip Colors (inline for the flow view) ─────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────
 
 const NODE_COLORS: Record<string, string> = {
   'trigger-entry': '#EA580C',
-  'grounding': '#0D9488',
+  grounding: '#0D9488',
   'tool-call': '#4F46E5',
   'connector-call': '#2563EB',
-  'agent': '#D97706',
-  'decision': '#374151',
-  'gate': '#E11D48',
-  'output': '#475569',
-  'transform': '#059669',
+  agent: '#D97706',
+  decision: '#374151',
+  gate: '#E11D48',
+  output: '#475569',
+  transform: '#059669',
 };
 
 const NODE_ICONS: Record<string, string> = {
   'trigger-entry': '⚡',
-  'grounding': '📄',
+  grounding: '📄',
   'tool-call': '🔧',
   'connector-call': '🔗',
-  'agent': '🤖',
-  'decision': '◆',
-  'gate': '🛡️',
-  'output': '📐',
-  'transform': '📊',
+  agent: '🤖',
+  decision: '◆',
+  gate: '🛡️',
+  output: '📐',
+  transform: '📊',
 };
+
+const NW = 200; // node width
+const NH = 64;  // node height
+
+// ─── CSS Keyframes (injected once) ───────────────────────────────────────
+
+const STYLE_TAG = `
+@keyframes nodePulse {
+  0%, 100% { stroke-opacity: 0.7; }
+  50% { stroke-opacity: 1; }
+}
+@keyframes lineHighlightPulse {
+  0% { background-color: #DBEAFE; }
+  50% { background-color: #BFDBFE; }
+  100% { background-color: #EFF6FF; }
+}
+@keyframes dotFlow {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+`;
 
 // ─── Inline Smart Chip ──────────────────────────────────────────────────
 
 function InlineChip({
-  type,
-  name,
-  onClick,
+  type, name, onClick, glowing,
 }: {
-  type: ChipType;
-  name: string;
-  onClick?: () => void;
+  type: ChipType; name: string; onClick?: () => void; glowing?: boolean;
 }) {
   const colors = CHIP_COLORS[type];
   const icon = CHIP_ICONS[type];
@@ -70,8 +88,11 @@ function InlineChip({
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-white cursor-pointer hover:opacity-90 transition-all mx-0.5 shadow-sm"
-      style={{ background: colors.bg }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-white cursor-pointer hover:opacity-90 transition-all mx-0.5"
+      style={{
+        background: colors.bg,
+        boxShadow: glowing ? `0 0 0 3px ${colors.bg}44, 0 0 12px ${colors.bg}33` : '0 1px 2px rgba(0,0,0,0.1)',
+      }}
       onClick={onClick}
     >
       {icon} {name}
@@ -79,100 +100,112 @@ function InlineChip({
   );
 }
 
-// ─── Playbook Renderer (Document Tab) ───────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────
 
-function renderPlaybookLine(line: string, lineIdx: number, onChipClick: (chip: SmartChip | null, type: ChipType, name: string) => void) {
-  // Parse @type(name) references and render them as chips
+function findNodeForChip(
+  nodes: CompiledGraphNode[], chipType: ChipType, chipName: string,
+): CompiledGraphNode | undefined {
+  return nodes.find(
+    (n) => n.chipType === chipType && n.label === chipName,
+  );
+}
+
+// ─── Document Tab ────────────────────────────────────────────────────────
+
+function renderPlaybookLine(
+  line: string, lineIdx: number,
+  onChipClick: (chip: SmartChip | null, type: ChipType, name: string) => void,
+  selectedChipKey: string | null,
+) {
   const chipRegex = /@(doc|tool|agent|guard|data|schema|connector|skill|trigger)\(([^)]+)\)/g;
   const parts: (string | React.JSX.Element)[] = [];
   let lastIndex = 0;
   let match;
 
   while ((match = chipRegex.exec(line)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(line.slice(lastIndex, match.index));
-    }
+    if (match.index > lastIndex) parts.push(line.slice(lastIndex, match.index));
     const type = match[1] as ChipType;
     const name = match[2];
     const chip = findChip(type, name);
+    const key = `${type}:${name}`;
     parts.push(
       <InlineChip
         key={`${lineIdx}-${match.index}`}
-        type={type}
-        name={name}
+        type={type} name={name}
+        glowing={selectedChipKey === key}
         onClick={() => onChipClick(chip || null, type, name)}
       />,
     );
     lastIndex = match.index + match[0].length;
   }
-
-  if (lastIndex < line.length) {
-    parts.push(line.slice(lastIndex));
-  }
-
+  if (lastIndex < line.length) parts.push(line.slice(lastIndex));
   return parts;
 }
 
-function DocumentTab({ onChipClick }: { onChipClick: (chip: SmartChip | null, type: ChipType, name: string) => void }) {
+function DocumentTab({
+  onChipClick, highlightedLines, selectedChipKey, lineRefs,
+}: {
+  onChipClick: (chip: SmartChip | null, type: ChipType, name: string) => void;
+  highlightedLines: number[];
+  selectedChipKey: string | null;
+  lineRefs: React.MutableRefObject<Map<number, HTMLElement>>;
+}) {
   const lines = CLAIMS_PLAYBOOK_CONTENT.split('\n');
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4" style={{ fontFamily: 'var(--font-body)' }}>
       {lines.map((line, idx) => {
         const trimmed = line.trimStart();
+        const isHighlighted = highlightedLines.includes(idx);
+        const hlStyle: React.CSSProperties = isHighlighted
+          ? { borderLeft: '3px solid #3B82F6', paddingLeft: 12, background: '#EFF6FF', borderRadius: 4, animation: 'lineHighlightPulse 1.5s ease-out' }
+          : {};
 
-        // Heading
+        const refCb = (el: HTMLElement | null) => {
+          if (el) lineRefs.current.set(idx, el);
+        };
+
         if (trimmed.startsWith('### ')) {
           return (
-            <h3 key={idx} className="text-base font-semibold text-gray-800 mt-6 mb-2" style={{ fontFamily: 'var(--font-ui)' }}>
-              {renderPlaybookLine(trimmed.slice(4), idx, onChipClick)}
+            <h3 key={idx} ref={refCb} className="text-base font-semibold text-gray-800 mt-6 mb-2 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
+              {renderPlaybookLine(trimmed.slice(4), idx, onChipClick, selectedChipKey)}
             </h3>
           );
         }
         if (trimmed.startsWith('## ')) {
           return (
-            <h2 key={idx} className="text-lg font-semibold text-gray-900 mt-8 mb-3 pb-1 border-b border-gray-200" style={{ fontFamily: 'var(--font-ui)' }}>
-              {renderPlaybookLine(trimmed.slice(3), idx, onChipClick)}
+            <h2 key={idx} ref={refCb} className="text-lg font-semibold text-gray-900 mt-8 mb-3 pb-1 border-b border-gray-200 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
+              {renderPlaybookLine(trimmed.slice(3), idx, onChipClick, selectedChipKey)}
             </h2>
           );
         }
         if (trimmed.startsWith('# ')) {
           return (
-            <h1 key={idx} className="text-2xl font-bold text-gray-900 mb-4" style={{ fontFamily: 'var(--font-ui)' }}>
-              {renderPlaybookLine(trimmed.slice(2), idx, onChipClick)}
+            <h1 key={idx} ref={refCb} className="text-2xl font-bold text-gray-900 mb-4 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
+              {renderPlaybookLine(trimmed.slice(2), idx, onChipClick, selectedChipKey)}
             </h1>
           );
         }
-
-        // Numbered list
         if (/^\d+\./.test(trimmed)) {
           return (
-            <div key={idx} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed">
+            <div key={idx} ref={refCb} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed transition-all" style={hlStyle}>
               <span className="text-gray-400 font-mono text-sm mt-0.5 shrink-0">{trimmed.match(/^\d+/)![0]}.</span>
-              <span>{renderPlaybookLine(trimmed.replace(/^\d+\.\s*/, ''), idx, onChipClick)}</span>
+              <span>{renderPlaybookLine(trimmed.replace(/^\d+\.\s*/, ''), idx, onChipClick, selectedChipKey)}</span>
             </div>
           );
         }
-
-        // Bullet list
         if (trimmed.startsWith('- ')) {
           return (
-            <div key={idx} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed">
+            <div key={idx} ref={refCb} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed transition-all" style={hlStyle}>
               <span className="text-gray-400 mt-1 shrink-0">•</span>
-              <span>{renderPlaybookLine(trimmed.slice(2), idx, onChipClick)}</span>
+              <span>{renderPlaybookLine(trimmed.slice(2), idx, onChipClick, selectedChipKey)}</span>
             </div>
           );
         }
-
-        // Empty line
-        if (trimmed === '') {
-          return <div key={idx} className="h-3" />;
-        }
-
-        // Normal paragraph
+        if (trimmed === '') return <div key={idx} className="h-3" />;
         return (
-          <p key={idx} className="text-[15px] text-gray-700 leading-relaxed mb-1">
-            {renderPlaybookLine(line, idx, onChipClick)}
+          <p key={idx} ref={refCb} className="text-[15px] text-gray-700 leading-relaxed mb-1 transition-all" style={hlStyle}>
+            {renderPlaybookLine(line, idx, onChipClick, selectedChipKey)}
           </p>
         );
       })}
@@ -180,46 +213,170 @@ function DocumentTab({ onChipClick }: { onChipClick: (chip: SmartChip | null, ty
   );
 }
 
-// ─── Flow Tab (Compiled DAG) ────────────────────────────────────────────
+// ─── Interactive Flow Graph ──────────────────────────────────────────────
 
-function FlowTab() {
+function FlowGraph({
+  selectedNodeId, hoveredNodeId,
+  onNodeClick, onNodeHover, onNodeLeave,
+  onGoToSource,
+}: {
+  selectedNodeId: string | null;
+  hoveredNodeId: string | null;
+  onNodeClick: (nodeId: string) => void;
+  onNodeHover: (nodeId: string) => void;
+  onNodeLeave: () => void;
+  onGoToSource: (nodeId: string) => void;
+}) {
   const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
 
-  // Calculate bounding box
-  const minX = Math.min(...graph.nodes.map(n => n.position?.x ?? 0)) - 60;
-  const maxX = Math.max(...graph.nodes.map(n => n.position?.x ?? 0)) + 240;
-  const minY = Math.min(...graph.nodes.map(n => n.position?.y ?? 0)) - 40;
-  const maxY = Math.max(...graph.nodes.map(n => n.position?.y ?? 0)) + 100;
-  const width = maxX - minX;
-  const height = maxY - minY;
+  // Pan & zoom state
+  const [pan, setPan] = useState({ x: 40, y: 40 });
+  const [zoom, setZoom] = useState(0.85);
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
 
-  const getNodeCenter = useCallback((nodeId: string) => {
-    const node = graph.nodes.find(n => n.id === nodeId);
-    if (!node?.position) return { x: 0, y: 0 };
-    return { x: node.position.x - minX + 90, y: node.position.y - minY + 30 };
-  }, [graph.nodes, minX, minY]);
+  // Connected node tracking
+  const connectedNodeIds = useMemo(() => {
+    const active = hoveredNodeId || selectedNodeId;
+    if (!active) return new Set<string>();
+    const ids = new Set<string>();
+    ids.add(active);
+    for (const e of graph.edges) {
+      if (e.from === active) ids.add(e.to);
+      if (e.to === active) ids.add(e.from);
+    }
+    return ids;
+  }, [hoveredNodeId, selectedNodeId, graph.edges]);
+
+  // Fit to screen
+  const fitToScreen = useCallback(() => {
+    setPan({ x: 60, y: 60 });
+    setZoom(0.85);
+  }, []);
+
+  // Pan handlers
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as Element).closest('.graph-node')) return;
+    setDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  }, [pan]);
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!dragging) return;
+    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  }, [dragging, dragStart]);
+
+  const onMouseUp = useCallback(() => setDragging(false), []);
+
+  // Zoom handler
+  const onWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setZoom(z => Math.max(0.3, Math.min(2, z - e.deltaY * 0.001)));
+  }, []);
+
+  // Bezier path between two nodes
+  function edgePath(fromId: string, toId: string) {
+    const fromNode = graph.nodes.find(n => n.id === fromId);
+    const toNode = graph.nodes.find(n => n.id === toId);
+    if (!fromNode?.position || !toNode?.position) return '';
+    const x1 = fromNode.position.x + NW;
+    const y1 = fromNode.position.y + NH / 2;
+    const x2 = toNode.position.x;
+    const y2 = toNode.position.y + NH / 2;
+    const cx1 = x1 + (x2 - x1) * 0.4;
+    const cx2 = x2 - (x2 - x1) * 0.4;
+    return `M${x1},${y1} C${cx1},${y1} ${cx2},${y2} ${x2},${y2}`;
+  }
 
   return (
-    <div className="w-full h-full overflow-auto bg-gray-50 p-4">
-      {/* Read-only notice */}
-      <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700 flex items-center gap-2">
-        <span>🔒</span>
-        <span>This view is compiled from your playbook. Edit the document to change the flow.</span>
+    <div
+      className="w-full h-full overflow-hidden relative"
+      style={{ background: '#FAFBFC', cursor: dragging ? 'grabbing' : 'grab' }}
+      onMouseDown={onMouseDown}
+      onMouseMove={onMouseMove}
+      onMouseUp={onMouseUp}
+      onMouseLeave={onMouseUp}
+      onWheel={onWheel}
+    >
+      {/* Dot grid background */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.4 }}>
+        <defs>
+          <pattern id="dotgrid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <circle cx="12" cy="12" r="1" fill="#CBD5E1" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#dotgrid)" />
+      </svg>
+
+      {/* Controls */}
+      <div className="absolute top-3 left-3 z-10 flex gap-1.5">
+        <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-700 flex items-center gap-1.5">
+          <span>🔒</span> Compiled from playbook — click a node to go to source
+        </div>
+      </div>
+      <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+        <button onClick={fitToScreen} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-600 hover:bg-gray-50 shadow-sm">
+          Fit ⊞
+        </button>
+        <button onClick={() => setZoom(z => Math.min(2, z + 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">+</button>
+        <button onClick={() => setZoom(z => Math.max(0.3, z - 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">−</button>
+        <span className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] text-gray-400 font-mono">{(zoom * 100).toFixed(0)}%</span>
       </div>
 
-      {/* SVG DAG */}
-      <div className="overflow-auto rounded-xl border border-gray-200 bg-white" style={{ minHeight: 400 }}>
-        <svg
-          viewBox={`0 0 ${width + 120} ${height + 80}`}
-          width={width + 120}
-          height={height + 80}
-          className="block"
-        >
+      {/* SVG Canvas */}
+      <svg
+        ref={svgRef}
+        className="w-full h-full"
+        style={{ cursor: dragging ? 'grabbing' : 'default' }}
+      >
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+            <polygon points="0 0, 10 4, 0 8" fill="#94A3B8" />
+          </marker>
+          <marker id="arrowGreen" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+            <polygon points="0 0, 10 4, 0 8" fill="#16A34A" />
+          </marker>
+          <marker id="arrowRed" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+            <polygon points="0 0, 10 4, 0 8" fill="#E11D48" />
+          </marker>
+          <filter id="nodeShadow" x="-10%" y="-10%" width="120%" height="130%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.08" />
+          </filter>
+          <filter id="nodeShadowHover" x="-10%" y="-10%" width="120%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15" />
+          </filter>
+        </defs>
+
+        <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
+
+          {/* Skill regions (background) */}
+          {graph.skillRegions.map((region, i) => {
+            const rNodes = graph.nodes.filter(n => region.nodeIds.includes(n.id));
+            if (!rNodes.length) return null;
+            const rxMin = Math.min(...rNodes.map(n => (n.position?.x ?? 0))) - 16;
+            const rxMax = Math.max(...rNodes.map(n => (n.position?.x ?? 0))) + NW + 16;
+            const ryMin = Math.min(...rNodes.map(n => (n.position?.y ?? 0))) - 28;
+            const ryMax = Math.max(...rNodes.map(n => (n.position?.y ?? 0))) + NH + 16;
+            return (
+              <g key={`region-${i}`}>
+                <rect x={rxMin} y={ryMin} width={rxMax - rxMin} height={ryMax - ryMin} rx={12}
+                  fill={region.color} fillOpacity={0.05} stroke={region.color} strokeOpacity={0.2}
+                  strokeWidth={1.5} strokeDasharray="8 4" />
+                <text x={rxMin + 10} y={ryMin + 16} fill={region.color} fontSize={11} fontWeight={600} opacity={0.6}>
+                  ✨ {region.label}
+                </text>
+              </g>
+            );
+          })}
+
           {/* Edges */}
           {graph.edges.map((edge) => {
-            const from = getNodeCenter(edge.from);
-            const to = getNodeCenter(edge.to);
+            const d = edgePath(edge.from, edge.to);
+            if (!d) return null;
+            const active = hoveredNodeId || selectedNodeId;
+            const isConnected = active && (edge.from === active || edge.to === active);
             const isDashed = edge.type === 'guard-block' || edge.type === 'conditional-false';
             const color =
               edge.type === 'guard-pass' ? '#16A34A' :
@@ -227,151 +384,152 @@ function FlowTab() {
               edge.type === 'conditional-true' ? '#16A34A' :
               edge.type === 'conditional-false' ? '#DC2626' :
               edge.type === 'data-flow' ? '#0D9488' :
-              '#94A3B8';
-
-            // Curved path
-            const midX = (from.x + to.x) / 2;
-            const d = `M ${from.x} ${from.y} C ${midX} ${from.y}, ${midX} ${to.y}, ${to.x} ${to.y}`;
+              isConnected ? '#64748B' : '#CBD5E1';
+            const marker = edge.type === 'guard-pass' || edge.type === 'conditional-true'
+              ? 'url(#arrowGreen)'
+              : edge.type === 'guard-block' ? 'url(#arrowRed)' : 'url(#arrow)';
 
             return (
               <g key={edge.id}>
-                <path
-                  d={d}
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={1.5}
+                <path d={d} fill="none" stroke={color}
+                  strokeWidth={isConnected ? 2.5 : 1.5}
                   strokeDasharray={isDashed ? '6 4' : undefined}
-                  markerEnd="url(#arrowhead)"
+                  markerEnd={marker}
+                  opacity={active && !isConnected ? 0.25 : 1}
+                  style={{ transition: 'all 0.3s ease' }}
                 />
+                {/* Flowing dot animation */}
+                {isConnected && (
+                  <circle r="3" fill={color} opacity={0.8}>
+                    <animateMotion dur="2s" repeatCount="indefinite" path={d} />
+                  </circle>
+                )}
+                {/* Edge label */}
                 {edge.label && (
-                  <text
-                    x={midX}
-                    y={(from.y + to.y) / 2 - 6}
-                    textAnchor="middle"
-                    fill={color}
-                    fontSize={9}
-                    fontWeight={500}
-                  >
-                    {edge.label}
+                  <text dy={-8} fill={color} fontSize={10} fontWeight={500}>
+                    <textPath href={`#epath-${edge.id}`} startOffset="50%" textAnchor="middle">
+                      {edge.label}
+                    </textPath>
                   </text>
                 )}
-              </g>
-            );
-          })}
-
-          {/* Arrowhead marker */}
-          <defs>
-            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-              <polygon points="0 0, 8 3, 0 6" fill="#94A3B8" />
-            </marker>
-          </defs>
-
-          {/* Skill regions */}
-          {graph.skillRegions.map((region, i) => {
-            const regionNodes = graph.nodes.filter(n => region.nodeIds.includes(n.id));
-            if (regionNodes.length === 0) return null;
-            const rxMin = Math.min(...regionNodes.map(n => (n.position?.x ?? 0) - minX)) - 10;
-            const rxMax = Math.max(...regionNodes.map(n => (n.position?.x ?? 0) - minX)) + 195;
-            const ryMin = Math.min(...regionNodes.map(n => (n.position?.y ?? 0) - minY)) - 10;
-            const ryMax = Math.max(...regionNodes.map(n => (n.position?.y ?? 0) - minY)) + 70;
-            return (
-              <g key={`region-${i}`}>
-                <rect
-                  x={rxMin}
-                  y={ryMin}
-                  width={rxMax - rxMin}
-                  height={ryMax - ryMin}
-                  rx={8}
-                  fill={region.color}
-                  fillOpacity={0.06}
-                  stroke={region.color}
-                  strokeOpacity={0.2}
-                  strokeWidth={1.5}
-                  strokeDasharray="8 4"
-                />
-                <text x={rxMin + 6} y={ryMin + 14} fill={region.color} fontSize={10} fontWeight={600} opacity={0.7}>
-                  ✨ {region.label}
-                </text>
+                {edge.label && <path id={`epath-${edge.id}`} d={d} fill="none" stroke="none" />}
               </g>
             );
           })}
 
           {/* Nodes */}
           {graph.nodes.map((node) => {
-            const x = (node.position?.x ?? 0) - minX;
-            const y = (node.position?.y ?? 0) - minY;
+            const x = node.position?.x ?? 0;
+            const y = node.position?.y ?? 0;
             const color = NODE_COLORS[node.type] || '#6B7280';
             const icon = NODE_ICONS[node.type] || '●';
+            const isSelected = selectedNodeId === node.id;
+            const isHovered = hoveredNodeId === node.id;
+            const isActive = isSelected || isHovered;
+            const isConnected = connectedNodeIds.has(node.id);
+            const dimmed = (hoveredNodeId || selectedNodeId) && !isConnected;
             const isDecision = node.type === 'decision';
-            const isGate = node.type === 'gate';
 
             if (isDecision) {
-              // Diamond shape
+              const cx = x + NW / 2;
+              const cy = y + NH / 2;
+              const hw = 100, hh = 32;
               return (
-                <g key={node.id}>
+                <g key={node.id} className="graph-node cursor-pointer"
+                  onClick={() => onNodeClick(node.id)}
+                  onMouseEnter={() => onNodeHover(node.id)}
+                  onMouseLeave={onNodeLeave}
+                  onDoubleClick={() => onGoToSource(node.id)}
+                  style={{ opacity: dimmed ? 0.3 : 1, transition: 'opacity 0.3s ease' }}
+                >
                   <polygon
-                    points={`${x + 90},${y} ${x + 180},${y + 30} ${x + 90},${y + 60} ${x},${y + 30}`}
-                    fill="white"
-                    stroke={color}
-                    strokeWidth={2}
+                    points={`${cx},${cy - hh} ${cx + hw},${cy} ${cx},${cy + hh} ${cx - hw},${cy}`}
+                    fill="white" stroke={color} strokeWidth={isActive ? 3 : 2}
+                    filter={isActive ? 'url(#nodeShadowHover)' : 'url(#nodeShadow)'}
                   />
-                  <text x={x + 90} y={y + 34} textAnchor="middle" fill={color} fontSize={9} fontWeight={500}>
-                    {node.label.length > 30 ? node.label.slice(0, 30) + '...' : node.label}
+                  {isSelected && (
+                    <polygon
+                      points={`${cx},${cy - hh - 4} ${cx + hw + 4},${cy} ${cx},${cy + hh + 4} ${cx - hw - 4},${cy}`}
+                      fill="none" stroke={color} strokeWidth={2} strokeDasharray="4 2"
+                      style={{ animation: 'nodePulse 2s infinite' }}
+                    />
+                  )}
+                  <text x={cx} y={cy + 4} textAnchor="middle" fill={color} fontSize={10} fontWeight={600}>
+                    {node.label.length > 28 ? node.label.slice(0, 28) + '…' : node.label}
                   </text>
                 </g>
               );
             }
 
+            const isGate = node.type === 'gate';
+            const isTrigger = node.type === 'trigger-entry';
+            const rx = isGate ? 24 : isTrigger ? 24 : 10;
+
             return (
-              <g key={node.id} className="cursor-pointer">
-                <rect
-                  x={x}
-                  y={y}
-                  width={180}
-                  height={isGate ? 52 : 48}
-                  rx={isGate ? 20 : 10}
-                  fill="white"
-                  stroke={color}
-                  strokeWidth={2}
+              <g key={node.id} className="graph-node cursor-pointer"
+                onClick={() => onNodeClick(node.id)}
+                onMouseEnter={() => onNodeHover(node.id)}
+                onMouseLeave={onNodeLeave}
+                onDoubleClick={() => onGoToSource(node.id)}
+                style={{ opacity: dimmed ? 0.3 : 1, transition: 'opacity 0.3s ease' }}
+              >
+                {/* Selection ring */}
+                {isSelected && (
+                  <rect x={x - 4} y={y - 4} width={NW + 8} height={NH + 8} rx={rx + 4}
+                    fill="none" stroke={color} strokeWidth={2.5} strokeDasharray="none"
+                    style={{ animation: 'nodePulse 2s infinite' }}
+                  />
+                )}
+                {/* Card body */}
+                <rect x={x} y={y} width={NW} height={NH} rx={rx}
+                  fill="white" stroke={isActive ? color : '#E2E8F0'}
+                  strokeWidth={isActive ? 2 : 1}
+                  filter={isActive ? 'url(#nodeShadowHover)' : 'url(#nodeShadow)'}
+                  style={{ transition: 'all 0.2s ease' }}
                 />
-                <rect
-                  x={x}
-                  y={y}
-                  width={180}
-                  height={isGate ? 52 : 48}
-                  rx={isGate ? 20 : 10}
-                  fill={color}
-                  fillOpacity={0.08}
+                {/* Color tint */}
+                <rect x={x} y={y} width={NW} height={NH} rx={rx}
+                  fill={color} fillOpacity={isActive ? 0.08 : 0.03}
+                  style={{ transition: 'fill-opacity 0.2s ease' }}
                 />
-                {/* Colored left accent */}
-                <rect
-                  x={x}
-                  y={y}
-                  width={4}
-                  height={isGate ? 52 : 48}
-                  rx={2}
-                  fill={color}
-                />
-                <text x={x + 14} y={y + (isGate ? 20 : 18)} fill="#374151" fontSize={12}>
-                  {icon}
+                {/* Left accent bar */}
+                <rect x={x} y={y + 8} width={4} height={NH - 16} rx={2} fill={color} />
+                {/* Trigger: double circle accent */}
+                {isTrigger && (
+                  <circle cx={x + NW - 16} cy={y + 16} r={6} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray="3 2" />
+                )}
+                {/* Icon + Label */}
+                <text x={x + 16} y={y + 24} fill="#374151" fontSize={14}>{icon}</text>
+                <text x={x + 34} y={y + 25} fill="#1F2937" fontSize={12} fontWeight={600}
+                  style={{ fontFamily: 'var(--font-ui)' }}>
+                  {node.label.length > 16 ? node.label.slice(0, 16) + '…' : node.label}
                 </text>
-                <text x={x + 30} y={y + (isGate ? 21 : 19)} fill="#374151" fontSize={11} fontWeight={600}>
-                  {node.label.length > 18 ? node.label.slice(0, 18) + '...' : node.label}
-                </text>
-                <text x={x + 14} y={y + (isGate ? 38 : 36)} fill="#9CA3AF" fontSize={9}>
+                {/* Type label */}
+                <text x={x + 16} y={y + 44} fill="#9CA3AF" fontSize={10}>
                   {node.type.replace(/-/g, ' ')}
                 </text>
+                {/* Line badge */}
+                {node.sourceLines[0] != null && (
+                  <>
+                    <rect x={x + NW - 36} y={y + 38} width={28} height={16} rx={4}
+                      fill={color} fillOpacity={0.1} />
+                    <text x={x + NW - 22} y={y + 50} textAnchor="middle" fill={color}
+                      fontSize={9} fontWeight={500}>
+                      L{node.sourceLines[0]}
+                    </text>
+                  </>
+                )}
               </g>
             );
           })}
-        </svg>
-      </div>
+        </g>
+      </svg>
 
       {/* Legend */}
-      <div className="mt-4 flex flex-wrap gap-3 text-[10px] text-gray-500">
+      <div className="absolute bottom-3 left-3 flex flex-wrap gap-2 text-[10px] text-gray-500 bg-white/80 backdrop-blur rounded-lg px-3 py-2 border border-gray-100">
         {Object.entries(NODE_COLORS).map(([type, color]) => (
           <span key={type} className="flex items-center gap-1">
-            <span className="w-3 h-3 rounded-sm" style={{ background: color }} />
+            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
             {type.replace(/-/g, ' ')}
           </span>
         ))}
@@ -382,19 +540,20 @@ function FlowTab() {
 
 // ─── Inspector Sidebar ──────────────────────────────────────────────────
 
-function InspectorDetails({ chip, chipType, chipName }: { chip: SmartChip | null; chipType: ChipType; chipName: string }) {
+function InspectorDetails({
+  chip, chipType, chipName, sourceLine, onGoToSource,
+}: {
+  chip: SmartChip | null; chipType: ChipType; chipName: string;
+  sourceLine?: number; onGoToSource?: () => void;
+}) {
   if (!chip) {
     return (
       <div className="p-4">
-        <div className="mb-3">
-          <InlineChip type={chipType} name={chipName} />
-        </div>
+        <div className="mb-3"><InlineChip type={chipType} name={chipName} /></div>
         <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
           <div className="font-semibold mb-1">Unresolved Reference</div>
           <div className="text-xs text-red-500">@{chipType}({chipName}) is not in the registry.</div>
-          <button className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700">
-            Create →
-          </button>
+          <button className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700">Create →</button>
         </div>
       </div>
     );
@@ -403,41 +562,43 @@ function InspectorDetails({ chip, chipType, chipName }: { chip: SmartChip | null
   const colors = CHIP_COLORS[chip.type];
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
       <div>
         <InlineChip type={chip.type} name={chip.name} />
         <div className="mt-2 text-xs text-gray-500">{chip.registryId}</div>
       </div>
 
-      {/* Metadata card */}
+      {/* Source line link */}
+      {sourceLine != null && onGoToSource && (
+        <button
+          onClick={onGoToSource}
+          className="w-full flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 hover:bg-blue-100 transition-colors"
+        >
+          <span>↩</span>
+          <span>Go to source — Line {sourceLine}</span>
+        </button>
+      )}
+
       <div className="bg-white rounded-lg border border-gray-200 p-3 space-y-2">
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-500">Version</span>
-          <span className="font-mono font-medium">{chip.version}</span>
-        </div>
+        {[
+          ['Version', chip.version],
+          ['Owner', chip.owner],
+          ['Permission', chip.permissions.currentUser],
+          ['Usage', `${chip.usageCount} playbooks`],
+        ].map(([label, value]) => (
+          <div key={label} className="flex justify-between text-xs">
+            <span className="text-gray-500">{label}</span>
+            <span className="font-medium text-gray-700">{value}</span>
+          </div>
+        ))}
         <div className="flex justify-between text-xs">
           <span className="text-gray-500">Status</span>
-          <span
-            className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold"
             style={{
               background: chip.status === 'resolved' ? '#DCFCE7' : chip.status === 'draft' ? '#FEF9C3' : '#FEE2E2',
               color: chip.status === 'resolved' ? '#166534' : chip.status === 'draft' ? '#854D0E' : '#991B1B',
-            }}
-          >
+            }}>
             {chip.status.toUpperCase()}
           </span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-500">Owner</span>
-          <span className="text-gray-700">{chip.owner}</span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-500">Permission</span>
-          <span className="text-gray-700">{chip.permissions.currentUser}</span>
-        </div>
-        <div className="flex justify-between text-xs">
-          <span className="text-gray-500">Usage</span>
-          <span className="text-gray-700">{chip.usageCount} playbooks</span>
         </div>
         {chip.endpoint && (
           <div className="flex justify-between text-xs">
@@ -449,55 +610,37 @@ function InspectorDetails({ chip, chipType, chipName }: { chip: SmartChip | null
           <div className="flex justify-between text-xs">
             <span className="text-gray-500">Health</span>
             <span className="flex items-center gap-1">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{
-                  background: chip.healthStatus === 'healthy' ? '#16A34A' : chip.healthStatus === 'degraded' ? '#EAB308' : '#DC2626'
-                }}
-              />
+              <span className="w-2 h-2 rounded-full" style={{
+                background: chip.healthStatus === 'healthy' ? '#16A34A' : chip.healthStatus === 'degraded' ? '#EAB308' : '#DC2626'
+              }} />
               <span className="text-gray-700">{chip.healthStatus}</span>
             </span>
           </div>
         )}
       </div>
 
-      {/* Description */}
       <div>
         <div className="text-xs font-medium text-gray-500 mb-1">Description</div>
         <div className="text-xs text-gray-700 leading-relaxed">{chip.description}</div>
       </div>
 
-      {/* Actions */}
-      <div className="space-y-1.5">
-        <button
-          className="w-full text-left px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          style={{ color: colors.bg }}
-        >
-          Open in Registry →
-        </button>
-      </div>
+      <button className="w-full text-left px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        style={{ color: colors.bg }}>
+        Open in Registry →
+      </button>
     </div>
   );
 }
 
 function ProblemSpaceVisualizer() {
   const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
-
-  const triggers = parsed.referencesByType.trigger || [];
-  const skills = parsed.referencesByType.skill || [];
-  const tools = parsed.referencesByType.tool || [];
-  const connectors = parsed.referencesByType.connector || [];
-  const docs = parsed.referencesByType.doc || [];
-  const guards = parsed.referencesByType.guard || [];
-  const schemas = parsed.referencesByType.schema || [];
-  const data = parsed.referencesByType.data || [];
-
   const cx = 140, cy = 140;
 
   function arcSegments(items: { name: string }[], radius: number, color: string, startAngle: number, arcSpan: number) {
-    if (items.length === 0) return null;
-    const step = arcSpan / items.length;
-    return items.map((item, i) => {
+    if (!items.length) return null;
+    const unique = items.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i);
+    const step = arcSpan / unique.length;
+    return unique.map((item, i) => {
       const angle = startAngle + i * step + step / 2;
       const rad = (angle * Math.PI) / 180;
       const x = cx + radius * Math.cos(rad);
@@ -515,59 +658,26 @@ function ProblemSpaceVisualizer() {
 
   return (
     <div className="p-4">
-      <div className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
-        Problem Space Visualizer
-      </div>
+      <div className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>Problem Space Visualizer</div>
       <svg viewBox="0 0 280 280" className="w-full">
-        {/* Outer ring — Guards (rose) */}
         <circle cx={cx} cy={cy} r={125} fill="none" stroke="#E11D48" strokeWidth={2} strokeDasharray="4 2" opacity={0.3} />
-
-        {/* Middle ring — Tools + Connectors */}
         <circle cx={cx} cy={cy} r={90} fill="none" stroke="#94A3B8" strokeWidth={1} strokeDasharray="2 2" opacity={0.2} />
-
-        {/* Inner ring — Skills */}
         <circle cx={cx} cy={cy} r={55} fill="#7C3AED" fillOpacity={0.04} stroke="#7C3AED" strokeWidth={1} strokeDasharray="2 2" opacity={0.3} />
-
-        {/* Center — Agent */}
         <circle cx={cx} cy={cy} r={22} fill="#1A73E8" fillOpacity={0.1} stroke="#1A73E8" strokeWidth={2} />
         <text x={cx} y={cy - 3} textAnchor="middle" fill="#1A73E8" fontSize={12}>🔄</text>
         <text x={cx} y={cy + 10} textAnchor="middle" fill="#1A73E8" fontSize={7} fontWeight={600}>LOOP</text>
-
-        {/* Triggers (top arc) */}
-        {arcSegments(triggers.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i), 125, '#EA580C', -120, 60)}
-
-        {/* Guards (outer ring, bottom) */}
-        {arcSegments(guards.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i), 120, '#E11D48', 30, 120)}
-
-        {/* Tools + Connectors (middle ring) */}
-        {arcSegments(
-          [...tools, ...connectors].filter((t, i, a) => a.findIndex(x => x.name === t.name) === i),
-          88, '#4F46E5', -60, 180
-        )}
-
-        {/* Skills (inner ring) */}
-        {arcSegments(skills.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i), 52, '#7C3AED', 160, 100)}
-
-        {/* Docs (between inner and middle) */}
-        {arcSegments(docs.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i), 70, '#0D9488', 120, 60)}
-
-        {/* Schemas (bottom) */}
-        {arcSegments(schemas.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i), 88, '#475569', 160, 40)}
-
-        {/* Data */}
-        {arcSegments(data.filter((t, i, a) => a.findIndex(x => x.name === t.name) === i), 70, '#059669', 200, 40)}
+        {arcSegments(parsed.referencesByType.trigger || [], 125, '#EA580C', -120, 60)}
+        {arcSegments(parsed.referencesByType.guard || [], 120, '#E11D48', 30, 120)}
+        {arcSegments([...(parsed.referencesByType.tool || []), ...(parsed.referencesByType.connector || [])], 88, '#4F46E5', -60, 180)}
+        {arcSegments(parsed.referencesByType.skill || [], 52, '#7C3AED', 160, 100)}
+        {arcSegments(parsed.referencesByType.doc || [], 70, '#0D9488', 120, 60)}
+        {arcSegments(parsed.referencesByType.schema || [], 88, '#475569', 160, 40)}
+        {arcSegments(parsed.referencesByType.data || [], 70, '#059669', 200, 40)}
       </svg>
-
-      {/* Legend */}
       <div className="mt-3 grid grid-cols-2 gap-1 text-[9px]">
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#EA580C'}} />Triggers (entry)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#7C3AED'}} />Skills (reduce)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#4F46E5'}} />Tools (capability)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#2563EB'}} />Connectors (expand)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#0D9488'}} />Docs (ground)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#E11D48'}} />Guards (constrain)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#475569'}} />Schemas (shape)</div>
-        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:'#059669'}} />Data (bind)</div>
+        {[['#EA580C','Triggers (entry)'],['#7C3AED','Skills (reduce)'],['#4F46E5','Tools (capability)'],['#2563EB','Connectors (expand)'],['#0D9488','Docs (ground)'],['#E11D48','Guards (constrain)'],['#475569','Schemas (shape)'],['#059669','Data (bind)']].map(([c,l]) => (
+          <div key={l} className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:c}} />{l}</div>
+        ))}
       </div>
     </div>
   );
@@ -583,71 +693,124 @@ export function PlaybookEditor() {
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('space');
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [selectedChip, setSelectedChip] = useState<{ chip: SmartChip | null; type: ChipType; name: string } | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
 
+  const lineRefs = useRef<Map<number, HTMLElement>>(new Map());
+
+  // Parse + compile once
+  const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
+  const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
+
+  // Derive selected chip key for glowing
+  const selectedChipKey = useMemo(() => {
+    if (!selectedChip) return null;
+    return `${selectedChip.type}:${selectedChip.name}`;
+  }, [selectedChip]);
+
+  // Scroll to line helper
+  const scrollToLine = useCallback((line: number) => {
+    const el = lineRefs.current.get(line);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  // Document chip click → highlight node in graph
   const handleChipClick = useCallback((chip: SmartChip | null, type: ChipType, name: string) => {
     setSelectedChip({ chip, type, name });
     setInspectorTab('details');
     setInspectorOpen(true);
-  }, []);
+
+    // Find corresponding graph node
+    const node = findNodeForChip(graph.nodes, type, name);
+    if (node) {
+      setSelectedNodeId(node.id);
+      setHighlightedLines(node.sourceLines);
+    }
+  }, [graph.nodes]);
+
+  // Flow node click → select + show inspector
+  const handleNodeClick = useCallback((nodeId: string) => {
+    const node = graph.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    setSelectedNodeId(nodeId);
+    setHighlightedLines(node.sourceLines);
+
+    // Find chip for inspector
+    if (node.chipType && node.label) {
+      const chip = findChip(node.chipType, node.label);
+      setSelectedChip({ chip: chip || null, type: node.chipType, name: node.label });
+      setInspectorTab('details');
+      setInspectorOpen(true);
+    }
+  }, [graph.nodes]);
+
+  // Flow node double-click → go to source in document
+  const handleGoToSource = useCallback((nodeId: string) => {
+    const node = graph.nodes.find(n => n.id === nodeId);
+    if (!node || !node.sourceLines.length) return;
+    setHighlightedLines(node.sourceLines);
+    setActiveTab('document');
+    // Defer scroll so DOM is ready
+    setTimeout(() => scrollToLine(node.sourceLines[0]), 100);
+  }, [graph.nodes, scrollToLine]);
+
+  // Inspector "go to source" button
+  const handleInspectorGoToSource = useCallback(() => {
+    if (!selectedNodeId) return;
+    handleGoToSource(selectedNodeId);
+  }, [selectedNodeId, handleGoToSource]);
+
+  // Get source line for inspector
+  const inspectorSourceLine = useMemo(() => {
+    if (!selectedNodeId) return undefined;
+    const node = graph.nodes.find(n => n.id === selectedNodeId);
+    return node?.sourceLines[0];
+  }, [selectedNodeId, graph.nodes]);
 
   return (
     <div className="h-screen flex flex-col bg-[var(--color-surface-0)]">
+      <style>{STYLE_TAG}</style>
+
       {/* ── Top Bar ── */}
       <header className="border-b border-[var(--color-border)] bg-white/90 backdrop-blur-sm shrink-0 z-40">
         <div className="px-4 py-2.5 flex items-center gap-3">
           <Link to="/" className="text-gray-400 hover:text-gray-600 text-sm">← Home</Link>
           <div className="w-px h-5 bg-gray-200" />
-          <div className="w-7 h-7 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white text-xs font-bold">
-            P
-          </div>
+          <div className="w-7 h-7 rounded-lg bg-[var(--color-accent)] flex items-center justify-center text-white text-xs font-bold">P</div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
-                Claims Processing Agent
-              </h1>
+              <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Claims Processing Agent</h1>
               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700">v2.1</span>
               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-50 text-green-600">PUBLISHED</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/history"
-              className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1"
-            >
-              🕐 History
-            </Link>
-            <button className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-              Share
-            </button>
-            <button className="px-3 py-1.5 text-xs text-white bg-[var(--color-accent)] rounded-lg hover:opacity-90">
-              Publish ▾
-            </button>
+            <Link to="/history" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1">🕐 History</Link>
+            <Link to="/permissions" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Share</Link>
+            <button className="px-3 py-1.5 text-xs text-white bg-[var(--color-accent)] rounded-lg hover:opacity-90">Publish ▾</button>
           </div>
         </div>
 
         {/* ── Tab Bar ── */}
         <div className="px-4 flex gap-0 border-t border-gray-100">
           {(['document', 'flow', 'notebook'] as EditorTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+            <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              style={{ fontFamily: 'var(--font-ui)' }}
-            >
+              }`} style={{ fontFamily: 'var(--font-ui)' }}>
               {tab === 'document' && '📝 Document'}
               {tab === 'flow' && '🔀 Flow'}
               {tab === 'notebook' && '📓 Notebook'}
             </button>
           ))}
           <div className="flex-1" />
-          <button
-            onClick={() => setInspectorOpen(!inspectorOpen)}
-            className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={() => setInspectorOpen(!inspectorOpen)}
+            className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700">
             {inspectorOpen ? 'Hide Inspector ›' : '‹ Inspector'}
           </button>
         </div>
@@ -655,15 +818,28 @@ export function PlaybookEditor() {
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* ── Canvas ── */}
         <div className="flex-1 overflow-auto">
-          {activeTab === 'document' && <DocumentTab onChipClick={handleChipClick} />}
-          {activeTab === 'flow' && <FlowTab />}
+          {activeTab === 'document' && (
+            <DocumentTab
+              onChipClick={handleChipClick}
+              highlightedLines={highlightedLines}
+              selectedChipKey={selectedChipKey}
+              lineRefs={lineRefs}
+            />
+          )}
+          {activeTab === 'flow' && (
+            <FlowGraph
+              selectedNodeId={selectedNodeId}
+              hoveredNodeId={hoveredNodeId}
+              onNodeClick={handleNodeClick}
+              onNodeHover={setHoveredNodeId}
+              onNodeLeave={() => setHoveredNodeId(null)}
+              onGoToSource={handleGoToSource}
+            />
+          )}
           {activeTab === 'notebook' && (
             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-              <Link to="/notebook" className="text-[var(--color-accent)] hover:underline">
-                Open full Notebook view →
-              </Link>
+              <Link to="/notebook" className="text-[var(--color-accent)] hover:underline">Open full Notebook view →</Link>
             </div>
           )}
         </div>
@@ -673,15 +849,12 @@ export function PlaybookEditor() {
           <div className="w-72 border-l border-[var(--color-border)] bg-white shrink-0 overflow-auto">
             <div className="flex border-b border-gray-100">
               {(['details', 'space'] as InspectorTab[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setInspectorTab(tab)}
+                <button key={tab} onClick={() => setInspectorTab(tab)}
                   className={`flex-1 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                     inspectorTab === tab
                       ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
                       : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
+                  }`}>
                   {tab === 'details' ? '📋 Details' : '🎯 Space'}
                 </button>
               ))}
@@ -689,10 +862,16 @@ export function PlaybookEditor() {
 
             {inspectorTab === 'details' && (
               selectedChip ? (
-                <InspectorDetails chip={selectedChip.chip} chipType={selectedChip.type} chipName={selectedChip.name} />
+                <InspectorDetails
+                  chip={selectedChip.chip}
+                  chipType={selectedChip.type}
+                  chipName={selectedChip.name}
+                  sourceLine={inspectorSourceLine}
+                  onGoToSource={handleInspectorGoToSource}
+                />
               ) : (
                 <div className="p-4 text-xs text-gray-400 text-center mt-8">
-                  Click any @chip in the document to inspect it.
+                  Click any @chip in the document or node in the flow to inspect it.
                 </div>
               )
             )}
