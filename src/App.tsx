@@ -10,16 +10,32 @@ import { SheetsSchema } from './components/workspace/SheetsSchema';
 import { SharingModal } from './components/permissions/SharingModal';
 import { lazy, Suspense } from 'react';
 
-// Lazy-loaded screens (may not exist yet during dev)
+// Lazy-loaded screens
 const NotebookView = lazy(() =>
   import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView }))
 );
 const SkillEditor = lazy(() =>
   import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor }))
 );
+const LiveSplitView = lazy(() =>
+  import('./components/editor/LiveSplitView').then(m => ({ default: m.LiveSplitView }))
+);
+const AgentPortfolio = lazy(() =>
+  import('./components/dashboard/AgentPortfolio').then(m => ({ default: m.AgentPortfolio }))
+);
+const AdminConsole = lazy(() =>
+  import('./components/admin/AdminConsole').then(m => ({ default: m.AdminConsole }))
+);
+const CostCalculator = lazy(() =>
+  import('./components/shared/CostCalculator').then(m => ({ default: m.CostCalculator }))
+);
 
 const screens = [
   { path: '/editor', label: 'Playbook Editor', desc: 'Document | Flow | Notebook — three views of one agent', icon: '📝', ready: true },
+  { path: '/split-view', label: 'Live Split View', desc: 'Document + Flow side-by-side with real-time compilation', icon: '⚡', ready: true },
+  { path: '/portfolio', label: 'Agent Portfolio', desc: 'Enterprise fleet view — all agents, metrics, teams', icon: '📊', ready: true },
+  { path: '/admin', label: 'Admin Console', desc: 'Governance, teams, audit logs, policies', icon: '🛡️', ready: true },
+  { path: '/cost-calculator', label: 'Cost Calculator', desc: 'ROI estimator with FTE savings analysis', icon: '💰', ready: true },
   { path: '/parser-demo', label: 'Parser Demo', desc: 'Live playbook parsing + graph compilation', icon: '🔬', ready: true },
   { path: '/notebook', label: 'Notebook', desc: 'Colab-style cell-based development', icon: '📓', ready: true },
   { path: '/registry', label: 'Registry', desc: 'Searchable asset catalog for all @-references', icon: '📚', ready: true },
@@ -55,6 +71,8 @@ function Landing() {
             </h1>
             <p className="text-xs text-gray-500">UI Mockup Suite — powered by adk-fluent</p>
           </div>
+          <div className="flex-1" />
+          <span className="text-[10px] text-gray-400">{screens.length} screens</span>
         </div>
       </header>
 
@@ -155,6 +173,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/editor" element={<PlaybookEditor />} />
+          <Route path="/split-view" element={<LiveSplitView />} />
+          <Route path="/portfolio" element={<AgentPortfolio />} />
+          <Route path="/admin" element={<AdminConsole />} />
+          <Route path="/cost-calculator" element={<CostCalculator />} />
           <Route path="/parser-demo" element={<ParserDemo />} />
           <Route path="/notebook" element={<NotebookView />} />
           <Route path="/registry" element={<RegistryCatalog />} />
