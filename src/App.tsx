@@ -58,132 +58,79 @@ function Loading() {
 
 function Landing() {
   return (
-    <div className="min-h-screen bg-[var(--color-surface-0)]">
-      {/* Header */}
-      <header className="border-b border-[var(--color-border)] bg-[var(--color-surface-0)]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-[1120px] mx-auto px-8 py-4 flex items-center gap-5">
-          <div className="flex items-center gap-3">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="7" fill="#1A73E8"/>
-              <path d="M8 9h12M8 14h8M8 19h10" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            <div>
-              <h1 className="text-[15px] font-semibold tracking-[-0.02em]" style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>
-                Agent Playbook Editor
-              </h1>
-              <p className="text-[11px] tracking-wide" style={{ color: '#9B9590' }}>powered by adk-fluent</p>
+    <div className="min-h-screen" style={{ background: '#FAFBFC' }}>
+      {/* Nav */}
+      <nav className="sticky top-0 z-50 border-b" style={{ borderColor: '#E2E5E9', background: 'rgba(250,251,252,0.85)', backdropFilter: 'blur(12px)' }}>
+        <div className="max-w-[960px] mx-auto px-6 h-[52px] flex items-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: '#2563EB' }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 4h8M3 7h5M3 10h6" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
             </div>
+            <span className="text-[13px] font-semibold text-[#111827] tracking-[-0.01em]">Playbook Editor</span>
           </div>
           <div className="flex-1" />
-          <span className="text-[11px] font-medium tracking-wide" style={{ color: '#9B9590', fontFamily: 'var(--font-mono)' }}>
-            {screens.length} surfaces
-          </span>
+          <span className="text-[11px] text-[#9CA3AF] font-mono">{screens.length} screens</span>
         </div>
-      </header>
+      </nav>
 
-      {/* Hero */}
-      <div className="max-w-[1120px] mx-auto px-8">
-        <div className="pt-16 pb-12 animate-in">
-          <p className="text-[11px] font-medium uppercase tracking-[2px] mb-5"
-            style={{ fontFamily: 'var(--font-mono)', color: '#9B9590' }}>
-            Gemini Enterprise Concept
-          </p>
-          <h2 className="text-[38px] font-semibold tracking-[-0.03em] leading-[1.15] mb-5"
-            style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>
-            The agent builder is<br/>
-            <span style={{ fontFamily: 'var(--font-body)', fontWeight: 400, fontStyle: 'italic', color: '#4F46E5' }}>
-              a document editor.
-            </span>
-          </h2>
-          <p className="text-[17px] leading-[1.7] max-w-[600px]"
-            style={{ fontFamily: 'var(--font-body)', color: '#5C5550' }}>
+      <div className="max-w-[960px] mx-auto px-6">
+        {/* Hero */}
+        <div className="pt-12 pb-10 animate-in">
+          <div className="inline-block px-2.5 py-1 rounded-md text-[11px] font-medium mb-6"
+            style={{ background: '#EFF6FF', color: '#2563EB' }}>
+            Gemini Enterprise
+          </div>
+          <h1 className="text-[32px] font-semibold text-[#111827] tracking-[-0.025em] leading-[1.2] mb-4">
+            The agent builder is a document editor.
+          </h1>
+          <p className="text-[15px] text-[#6B7280] leading-[1.65] max-w-[540px]">
             Writing a playbook IS building an agent. Every{' '}
-            <code className="text-[13px] px-1.5 py-0.5 rounded font-mono"
-              style={{ background: 'rgba(79, 70, 229, 0.07)', color: '#4F46E5', fontFamily: 'var(--font-mono)' }}>
-              @reference
-            </code>{' '}
-            shapes the agent's action space. The document compiles into a graph.
-            The graph is derived, never authored.
+            <code className="text-[13px] px-1 py-0.5 rounded" style={{ background: '#F1F3F5', color: '#111827', fontFamily: 'var(--font-mono)' }}>@reference</code>{' '}
+            shapes the action space. The document compiles to a graph. The graph is derived, never authored.
           </p>
         </div>
 
-        {/* Screen Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 stagger">
+        {/* Screens */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 pb-8 stagger">
           {screens.map((screen) => (
-            <Link
-              key={screen.path}
-              to={screen.path}
-              className="group block rounded-xl p-5 bg-white border border-[var(--color-border)] transition-all duration-300"
-              style={{
-                boxShadow: 'var(--depth-resting)',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--depth-lifted)'; e.currentTarget.style.borderColor = 'var(--color-border-strong)'; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--depth-resting)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
-            >
-              <div className="flex items-center gap-2.5 mb-2.5">
-                <span className="text-[15px]">{screen.icon}</span>
-                <h3 className="text-[13px] font-semibold tracking-[-0.01em]"
-                  style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>{screen.label}</h3>
-                <span className="badge badge-live" style={{ fontSize: 9 }}>LIVE</span>
+            <Link key={screen.path} to={screen.path}
+              className="group flex items-start gap-3 rounded-lg p-4 border transition-all duration-200 hover:border-[#CED4DA]"
+              style={{ borderColor: '#E2E5E9', background: 'white', boxShadow: 'var(--shadow-xs)' }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}>
+              <span className="text-[14px] mt-0.5 shrink-0 w-5 text-center">{screen.icon}</span>
+              <div className="min-w-0">
+                <div className="text-[13px] font-medium text-[#111827] group-hover:text-[#2563EB] transition-colors">{screen.label}</div>
+                <div className="text-[12px] text-[#9CA3AF] leading-[1.5] mt-0.5">{screen.desc}</div>
               </div>
-              <p className="text-[12px] leading-[1.6]" style={{ color: '#9B9590', fontFamily: 'var(--font-body)' }}>
-                {screen.desc}
-              </p>
             </Link>
           ))}
         </div>
 
-        {/* Architecture */}
-        <div className="mt-14 rounded-xl bg-white border border-[var(--color-border)] p-7 animate-in"
-          style={{ boxShadow: 'var(--depth-resting)', animationDelay: '300ms' }}>
-          <h3 className="text-[13px] font-semibold tracking-[-0.01em] mb-4"
-            style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>
-            Architecture: Playbook → Parse → Compile → Graph
-          </h3>
-          <div className="flex items-center gap-3 flex-wrap">
-            {[
-              { label: 'Playbook', sub: 'Markdown + @chips', color: '#0D9488' },
-              { label: 'Parser', sub: 'refs + conditionals', color: '#4F46E5' },
-              { label: 'Compiler', sub: 'IR nodes + edges', color: '#7C3AED' },
-              { label: 'Flow Tab', sub: 'interactive DAG', color: '#D97706' },
-            ].map((step, i) => (
-              <div key={step.label} className="flex items-center gap-3">
-                {i > 0 && (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M4 8h8M9 5l3 3-3 3" stroke="#D6D2CC" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                )}
-                <div className="px-3.5 py-2 rounded-lg" style={{ background: `${step.color}08`, border: `1px solid ${step.color}18` }}>
-                  <div className="text-[11px] font-semibold" style={{ color: step.color, fontFamily: 'var(--font-ui)' }}>{step.label}</div>
-                  <div className="text-[10px]" style={{ color: '#9B9590', fontFamily: 'var(--font-mono)' }}>{step.sub}</div>
-                </div>
+        {/* Pipeline */}
+        <div className="rounded-lg border p-5 mb-6" style={{ borderColor: '#E2E5E9', background: 'white', boxShadow: 'var(--shadow-xs)' }}>
+          <div className="text-[12px] font-semibold text-[#111827] mb-3">Pipeline</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {['Playbook', 'Parser', 'Compiler', 'Flow'].map((s, i) => (
+              <div key={s} className="flex items-center gap-2">
+                {i > 0 && <span className="text-[#D1D5DB]">→</span>}
+                <div className="px-3 py-1.5 rounded-md text-[12px] font-medium"
+                  style={{ background: '#F1F3F5', color: '#374151' }}>{s}</div>
               </div>
             ))}
           </div>
-          <p className="text-[11px] mt-4 leading-relaxed" style={{ color: '#9B9590', fontFamily: 'var(--font-body)', fontStyle: 'italic' }}>
-            Mirrors adk-fluent's pipeline:{' '}
-            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5C5550' }}>parse_skill_file()</code> →{' '}
-            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5C5550' }}>Skill.build()</code> →{' '}
-            <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#5C5550' }}>viz.ir_to_mermaid()</code>
-          </p>
         </div>
 
-        {/* Thesis Cards */}
-        <div className="mt-8 mb-16 grid grid-cols-1 md:grid-cols-3 gap-3 stagger" style={{ animationDelay: '200ms' }}>
+        {/* Principles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pb-16">
           {[
-            { title: 'The Loop Is Simple', body: 'Every agent is the same loop: Observe → Reason → Act → Observe. No magic graph. The playbook constrains the space, not the sequence.', accent: '#0D9488' },
-            { title: 'Code Is Omnipotent', body: 'Tools, connectors, skills — they\'re all cached reductions of the code execution space. The enterprise governs the boundary.', accent: '#4F46E5' },
-            { title: '@ Shapes The Manifold', body: 'Each @reference is a dimension. Skills reduce. Connectors expand governedly. Guards constrain. The playbook IS the manifold definition.', accent: '#7C3AED' },
-          ].map(card => (
-            <div key={card.title} className="rounded-xl bg-white border border-[var(--color-border)] p-6"
-              style={{ boxShadow: 'var(--depth-resting)' }}>
-              <div className="w-1 h-5 rounded-full mb-4" style={{ background: card.accent }} />
-              <h4 className="text-[13px] font-semibold tracking-[-0.01em] mb-2"
-                style={{ fontFamily: 'var(--font-ui)', color: '#1A1816' }}>{card.title}</h4>
-              <p className="text-[12.5px] leading-[1.7]"
-                style={{ fontFamily: 'var(--font-body)', color: '#5C5550' }}>
-                {card.body}
-              </p>
+            { title: 'The Loop Is Simple', body: 'Every agent is Observe → Reason → Act → Observe. The playbook constrains the space, not the sequence.' },
+            { title: 'Code Is Omnipotent', body: 'Tools, connectors, skills are cached reductions of the code execution space. The enterprise governs the boundary.' },
+            { title: '@ Shapes The Space', body: 'Each @reference is a dimension. Skills reduce. Connectors expand governedly. Guards constrain.' },
+          ].map(c => (
+            <div key={c.title} className="rounded-lg border p-5" style={{ borderColor: '#E2E5E9', background: 'white' }}>
+              <div className="text-[13px] font-semibold text-[#111827] mb-2">{c.title}</div>
+              <div className="text-[12px] text-[#6B7280] leading-[1.6]">{c.body}</div>
             </div>
           ))}
         </div>
