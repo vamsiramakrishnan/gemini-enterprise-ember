@@ -103,8 +103,8 @@ function ReferenceTable({ refs }: { refs: ParsedReference[] }) {
           <div key={type}>
             <div className="flex items-center gap-2 mb-1.5">
               <span
-                className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded"
-                style={{ background: CHIP_COLORS[type].bg }}
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                style={{ background: CHIP_COLORS[type].bg, color: CHIP_COLORS[type].text, border: `1px solid ${CHIP_COLORS[type].border}` }}
               >
                 @{type}
               </span>
