@@ -5,7 +5,7 @@ import { ConnectorHub } from './components/connectors/ConnectorHub';
 import { VersionHistory } from './components/versioning/VersionHistory';
 import { LiveAuthoring } from './components/live/LiveAuthoring';
 import { SharingModal } from './components/permissions/SharingModal';
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 
 const NotebookView = lazy(() => import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView })));
 const SkillEditor = lazy(() => import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor })));
@@ -14,9 +14,7 @@ const AgentPortfolio = lazy(() => import('./components/dashboard/AgentPortfolio'
 const AdminConsole = lazy(() => import('./components/admin/AdminConsole').then(m => ({ default: m.AdminConsole })));
 const CostCalculator = lazy(() => import('./components/shared/CostCalculator').then(m => ({ default: m.CostCalculator })));
 
-// ─── SVG Icon Components (16×16 viewBox) ──────────────────────────────
-// Each icon is a clean, geometric shape — no emoji, no gradients.
-// Consistent 1.3px stroke, round caps, clean geometry.
+// ─── SVG Icon Components (16x16 viewBox) ──────────────────────────────
 
 function IconEditor() {
   return (
@@ -124,6 +122,22 @@ function IconPermissions() {
   );
 }
 
+function IconMenu() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+      <path d="M3 5h12M3 9h8M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function IconClose() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 const ICON_MAP: Record<string, React.FC> = {
   editor: IconEditor,
   splitView: IconSplitView,
@@ -163,166 +177,229 @@ const NAV: NavItem[] = [
   { path: '/permissions', label: 'Permissions', icon: 'permissions' },
 ];
 
-// ─── Shell ──────────────────────────────────────────────────────────
-function Shell({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
+// ─── useMediaQuery hook ────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
+// ─── Sidebar Content (shared between mobile drawer & desktop sidebar) ──
+function SidebarContent({
+  collapsed,
+  onToggle,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}) {
   const location = useLocation();
 
   return (
-    <div className="h-screen flex overflow-hidden bg-[#F8F9FA]">
-      {/* Sidebar */}
+    <>
+      {/* Logo area */}
+      <div
+        className="flex items-center shrink-0"
+        style={{
+          height: 56,
+          padding: collapsed ? '0 12px' : '0 16px',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+      >
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-2.5 hover:opacity-80 transition-opacity w-full"
+        >
+          <div
+            className="shrink-0 rounded-lg flex items-center justify-center"
+            style={{ width: 32, height: 32, background: 'var(--color-accent)' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3.5 4.5h9M3.5 8h5.5M3.5 11.5h7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: 'var(--color-text-primary)' }}>
+                Playbook
+              </span>
+              <span className="text-[10px] leading-tight" style={{ color: 'var(--color-text-tertiary)' }}>
+                Agent Builder
+              </span>
+            </div>
+          )}
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        {NAV.map((item, i) => {
+          const isActive = location.pathname === item.path;
+          const showSection = item.section && !collapsed;
+          const IconComponent = ICON_MAP[item.icon];
+
+          return (
+            <div key={item.path}>
+              {showSection && (
+                <div
+                  className="text-section-label px-2"
+                  style={{
+                    marginTop: i === 0 ? 0 : 20,
+                    marginBottom: 6,
+                  }}
+                >
+                  {item.section}
+                </div>
+              )}
+              {item.section && collapsed && i > 0 && (
+                <div className="mx-2 my-3" style={{ borderTop: '1px solid var(--color-surface-2)' }} />
+              )}
+              <NavLink
+                to={item.path}
+                onClick={onNavigate}
+                className="flex items-center rounded-lg transition-all duration-150 group relative"
+                style={{
+                  padding: collapsed ? '8px 10px' : '7px 10px',
+                  gap: 10,
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
+                  background: isActive ? 'var(--color-accent-light)' : 'transparent',
+                  fontWeight: isActive ? 500 : 400,
+                }}
+                title={collapsed ? item.label : undefined}
+              >
+                {isActive && (
+                  <div
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full"
+                    style={{ height: 20, background: 'var(--color-accent)' }}
+                  />
+                )}
+                {IconComponent && <IconComponent />}
+                {!collapsed && (
+                  <span className="text-[13px] truncate">{item.label}</span>
+                )}
+                {!collapsed && item.badge && (
+                  <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: 'var(--color-accent-light)', color: 'var(--color-accent)' }}>
+                    {item.badge}
+                  </span>
+                )}
+              </NavLink>
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Footer: Agent Status */}
+      <div className="shrink-0 px-3 py-3" style={{ borderTop: '1px solid var(--color-border)' }}>
+        {!collapsed ? (
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)' }}>
+                CA
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white" style={{ background: 'var(--color-success)' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-medium truncate" style={{ color: 'var(--color-text-primary)' }}>Claims Agent</div>
+              <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>v2.1 · Running</div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)' }}>
+                CA
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white" style={{ background: 'var(--color-success)' }} />
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Shell ──────────────────────────────────────────────────────────
+function Shell({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--color-surface-1)' }}>
+        {/* Mobile top bar */}
+        <div className="shell-mobile-header" style={{ display: 'flex' }}>
+          <button onClick={() => setMobileOpen(true)} className="p-1 -ml-1" style={{ color: 'var(--color-text-secondary)' }}>
+            <IconMenu />
+          </button>
+          <span className="ml-3 text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            Playbook
+          </span>
+          <span className="ml-1.5 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
+            Agent Builder
+          </span>
+        </div>
+
+        {/* Overlay */}
+        {mobileOpen && (
+          <div className="shell-overlay" onClick={closeMobile} style={{ display: 'block' }} />
+        )}
+
+        {/* Drawer */}
+        <aside
+          className="shell-sidebar h-full flex flex-col bg-white"
+          style={{
+            width: 260,
+            borderRight: '1px solid var(--color-border)',
+            transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+          }}
+        >
+          <div className="flex items-center justify-between px-4 h-[48px] shrink-0" style={{ borderBottom: '1px solid var(--color-border)' }}>
+            <span className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>Navigation</span>
+            <button onClick={closeMobile} className="p-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              <IconClose />
+            </button>
+          </div>
+          <SidebarContent collapsed={false} onToggle={closeMobile} onNavigate={closeMobile} />
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
+  // Desktop layout
+  return (
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--color-surface-1)' }}>
       <aside
         className="h-full flex flex-col shrink-0 transition-[width] duration-200 ease-out bg-white"
         style={{
           width: collapsed ? 56 : 220,
-          borderRight: '1px solid #E5E7EB',
+          borderRight: '1px solid var(--color-border)',
         }}
       >
-        {/* Logo area */}
-        <div
-          className="flex items-center shrink-0"
-          style={{
-            height: 56,
-            padding: collapsed ? '0 12px' : '0 16px',
-            borderBottom: '1px solid #E5E7EB',
-          }}
-        >
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity w-full"
-          >
-            <div
-              className="shrink-0 rounded-lg flex items-center justify-center"
-              style={{
-                width: 32,
-                height: 32,
-                background: '#2563EB',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M3.5 4.5h9M3.5 8h5.5M3.5 11.5h7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            {!collapsed && (
-              <div className="flex flex-col">
-                <span
-                  className="text-[13px] font-semibold text-[#111827] leading-tight tracking-[-0.01em]"
-                  style={{ fontFamily: 'var(--font-ui)' }}
-                >
-                  Playbook
-                </span>
-                <span className="text-[10px] text-[#9CA3AF] leading-tight">
-                  Agent Builder
-                </span>
-              </div>
-            )}
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {NAV.map((item, i) => {
-            const isActive = location.pathname === item.path;
-            const showSection = item.section && !collapsed;
-            const IconComponent = ICON_MAP[item.icon];
-
-            return (
-              <div key={item.path}>
-                {showSection && (
-                  <div
-                    className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9CA3AF] px-2"
-                    style={{
-                      marginTop: i === 0 ? 0 : 20,
-                      marginBottom: 6,
-                    }}
-                  >
-                    {item.section}
-                  </div>
-                )}
-                {item.section && collapsed && i > 0 && (
-                  <div className="mx-2 my-3 border-t border-[#F1F3F5]" />
-                )}
-                <NavLink
-                  to={item.path}
-                  className="flex items-center rounded-lg transition-all duration-150 group relative"
-                  style={{
-                    padding: collapsed ? '8px 10px' : '7px 10px',
-                    gap: 10,
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    color: isActive ? '#2563EB' : '#6B7280',
-                    background: isActive ? '#EFF6FF' : 'transparent',
-                    fontWeight: isActive ? 500 : 400,
-                  }}
-                  title={collapsed ? item.label : undefined}
-                >
-                  {/* Active indicator bar */}
-                  {isActive && (
-                    <div
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full"
-                      style={{
-                        height: 20,
-                        background: '#2563EB',
-                      }}
-                    />
-                  )}
-                  {IconComponent && <IconComponent />}
-                  {!collapsed && (
-                    <span className="text-[13px] truncate" style={{ fontFamily: 'var(--font-ui)' }}>
-                      {item.label}
-                    </span>
-                  )}
-                  {!collapsed && item.badge && (
-                    <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">
-                      {item.badge}
-                    </span>
-                  )}
-                </NavLink>
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Footer: Agent Status */}
-        <div
-          className="shrink-0 px-3 py-3"
-          style={{ borderTop: '1px solid #E5E7EB' }}
-        >
-          {!collapsed ? (
-            <div className="flex items-center gap-2.5">
-              <div className="relative">
-                <div
-                  className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[10px] font-semibold text-[#6B7280]"
-                  style={{ fontFamily: 'var(--font-ui)' }}
-                >
-                  CA
-                </div>
-                <div
-                  className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
-                  style={{ background: '#22C55E' }}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-medium text-[#374151] truncate">Claims Agent</div>
-                <div className="text-[10px] text-[#9CA3AF]">v2.1 · Running</div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="w-7 h-7 rounded-full bg-[#F3F4F6] flex items-center justify-center text-[9px] font-semibold text-[#6B7280]">
-                  CA
-                </div>
-                <div
-                  className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
-                  style={{ background: '#22C55E' }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       </aside>
-
-      {/* Main content area */}
       <main className="flex-1 overflow-auto">
         {children}
       </main>
@@ -334,8 +411,8 @@ function Loading() {
   return (
     <div className="h-full flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-5 h-5 border-2 border-[#E5E7EB] border-t-[#2563EB] rounded-full animate-spin" />
-        <span className="text-[11px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-ui)' }}>Loading...</span>
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--color-border)', borderTopColor: 'var(--color-accent)' }} />
+        <span className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>Loading...</span>
       </div>
     </div>
   );

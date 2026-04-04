@@ -41,16 +41,16 @@ export function SharingModal() {
   const [addEmail, setAddEmail] = useState('');
 
   return (
-    <div className="h-full bg-gray-100/80 flex items-center justify-center p-4">
+    <div className="h-full bg-gray-100/80 flex items-center justify-center p-2 sm:p-4">
       {/* Background context */}
       <div className="fixed inset-0 bg-[var(--color-surface-0)] -z-10 opacity-50" />
 
       <div className="w-full max-w-lg">
 
         {/* Modal */}
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border overflow-hidden max-h-[90vh] overflow-y-auto" style={{ borderColor: 'var(--color-border)' }}>
           {/* Header */}
-          <div className="px-6 pt-5 pb-3">
+          <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
                 Share "Claims Processing Agent"

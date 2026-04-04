@@ -8,13 +8,28 @@
  * - Inspector sidebar with Details + Space tabs
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CLAIMS_PLAYBOOK_CONTENT } from '../../data/playbook';
 import { REGISTRY, findChip } from '../../data/registry';
 import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types';
+
+// ─── Responsive hook ────────────────────────────────────────────────────
+function useBreakpoint() {
+  const [bp, setBp] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  useEffect(() => {
+    const check = () => {
+      const w = window.innerWidth;
+      setBp(w < 768 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop');
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return bp;
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
@@ -153,7 +168,7 @@ function DocumentTab({
   const lines = CLAIMS_PLAYBOOK_CONTENT.split('\n');
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4" style={{ fontFamily: 'var(--font-body)' }}>
+    <div className="max-w-3xl mx-auto py-4 px-3 sm:py-6 sm:px-4 md:py-8 md:px-4" style={{ fontFamily: 'var(--font-body)' }}>
       {lines.map((line, idx) => {
         const trimmed = line.trimStart();
         const isHighlighted = highlightedLines.includes(idx);
@@ -607,7 +622,7 @@ function FlowGraph({
       </svg>
 
       {/* Legend */}
-      <div className="absolute bottom-3 left-3 flex flex-wrap gap-2 text-[10px] text-gray-500 bg-white/80 backdrop-blur rounded-lg px-3 py-2 border border-gray-100">
+      <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] bg-white/80 backdrop-blur rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border max-w-[calc(100%-24px)]" style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-surface-2)' }}>
         {Object.entries(NODE_COLORS).map(([type, color]) => (
           <span key={type} className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
@@ -1024,20 +1039,20 @@ function StatusBar({
 }) {
   return (
     <div
-      className="shrink-0 flex items-center justify-between px-4 py-1 text-[10px] text-gray-400 select-none"
-      style={{ borderTop: '1px solid #F3F4F6', background: '#FAFBFC', fontFamily: 'var(--font-ui)' }}
+      className="shrink-0 flex items-center justify-between px-3 sm:px-4 py-1 text-[10px] select-none"
+      style={{ borderTop: '1px solid var(--color-surface-2)', background: 'var(--color-surface-1)', color: 'var(--color-text-tertiary)' }}
     >
-      <div className="flex items-center gap-4">
-        <span>{chipCount} references</span>
-        <span>{nodeCount} nodes</span>
-        <span>{edgeCount} edges</span>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <span>{chipCount} refs</span>
+        <span className="hidden sm:inline">{nodeCount} nodes</span>
+        <span className="hidden sm:inline">{edgeCount} edges</span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          Auto-compiling
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-success)' }} />
+          <span className="hidden sm:inline">Auto-compiling</span>
         </span>
-        <span>
+        <span className="hidden md:inline">
           {activeTab === 'document' && 'Editing document'}
           {activeTab === 'flow' && 'Viewing compiled graph'}
           {activeTab === 'notebook' && 'Development mode'}
@@ -1080,9 +1095,11 @@ type EditorTab = 'document' | 'flow' | 'notebook';
 type InspectorTab = 'details' | 'space';
 
 export function PlaybookEditor() {
+  const bp = useBreakpoint();
+  const isMobile = bp === 'mobile';
   const [activeTab, setActiveTab] = useState<EditorTab>('document');
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>('space');
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(!isMobile);
   const [selectedChip, setSelectedChip] = useState<{ chip: SmartChip | null; type: ChipType; name: string } | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -1196,14 +1213,14 @@ export function PlaybookEditor() {
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
 
       {/* ── Top Bar — Google Docs-inspired chrome ── */}
-      <header className="shrink-0 z-40 bg-white" style={{ borderBottom: '1px solid #E5E7EB' }}>
+      <header className="shrink-0 z-40 bg-white" style={{ borderBottom: '1px solid var(--color-border)' }}>
         {/* Primary toolbar */}
-        <div className="px-5 py-2.5 flex items-center gap-3">
+        <div className="px-3 py-2 sm:px-5 sm:py-2.5 flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Document identity */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <h1
-              className="text-[15px] font-semibold text-[#111827] truncate cursor-text"
-              style={{ fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}
+              className="text-[14px] sm:text-[15px] font-semibold truncate cursor-text"
+              style={{ fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-text-primary)' }}
             >
               Claims Processing Agent
             </h1>
@@ -1211,54 +1228,63 @@ export function PlaybookEditor() {
               <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#DCFCE7] text-[#166534]">
                 v2.1
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
-                Published
-              </span>
+              {!isMobile && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
+                  Published
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Command palette trigger */}
-          <button
-            onClick={() => setCommandPaletteOpen(true)}
-            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-            </svg>
-            <span>Search</span>
-            <kbd className="text-[10px] bg-gray-100 px-1 py-0.5 rounded text-gray-400 font-mono ml-2">
-              {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}K
-            </kbd>
-          </button>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Link
-              to="/history"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#6B7280] rounded-lg hover:bg-[#F9FAFB] transition-colors"
-              style={{ fontFamily: 'var(--font-ui)' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.2"/>
-                <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-              History
-            </Link>
-            <Link
-              to="/permissions"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#6B7280] rounded-lg hover:bg-[#F9FAFB] transition-colors"
-              style={{ fontFamily: 'var(--font-ui)' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M5 7V5.5a3 3 0 016 0V7" stroke="currentColor" strokeWidth="1.2"/>
-                <rect x="3.5" y="7" width="9" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-              </svg>
-              Share
-            </Link>
+          {/* Command palette trigger — hidden on mobile */}
+          {!isMobile && (
             <button
-              className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-medium text-white rounded-lg transition-colors"
-              style={{ background: '#2563EB', fontFamily: 'var(--font-ui)' }}
+              onClick={() => setCommandPaletteOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs hover:border-gray-300 transition-colors"
+              style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-tertiary)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              <span>Search</span>
+              <kbd className="text-[10px] px-1 py-0.5 rounded font-mono ml-2" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-tertiary)' }}>
+                {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}K
+              </kbd>
+            </button>
+          )}
+
+          {/* Actions — condensed on mobile */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {!isMobile && (
+              <>
+                <Link
+                  to="/history"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-lg hover:bg-[var(--color-surface-1)] transition-colors"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.2"/>
+                    <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
+                  History
+                </Link>
+                <Link
+                  to="/permissions"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-lg hover:bg-[var(--color-surface-1)] transition-colors"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <path d="M5 7V5.5a3 3 0 016 0V7" stroke="currentColor" strokeWidth="1.2"/>
+                    <rect x="3.5" y="7" width="9" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                  </svg>
+                  Share
+                </Link>
+              </>
+            )}
+            <button
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 text-[12px] font-medium text-white rounded-lg transition-colors"
+              style={{ background: 'var(--color-accent)' }}
             >
               Publish
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -1269,46 +1295,48 @@ export function PlaybookEditor() {
         </div>
 
         {/* Tab bar — the three lenses */}
-        <div className="px-5 flex items-center gap-0" style={{ marginTop: -1 }}>
+        <div className="px-3 sm:px-5 flex items-center gap-0 overflow-x-auto" style={{ marginTop: -1 }}>
           {(['document', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className="relative flex items-center gap-2 px-4 py-2.5 transition-colors group"
-                style={{ fontFamily: 'var(--font-ui)' }}
+                className="relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 transition-colors group shrink-0"
               >
                 <TabIcon tab={tab} active={isActive} />
-                <span className={`text-[12px] font-medium ${isActive ? 'text-[#2563EB]' : 'text-[#9CA3AF] group-hover:text-[#6B7280]'}`}>
+                <span className={`text-[12px] font-medium ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-secondary)]'}`}>
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </span>
-                {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[#2563EB]" />
+                  <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: 'var(--color-accent)' }} />
                 )}
               </button>
             );
           })}
 
-          {/* Tab hint — subtle context for what this view does */}
-          <div className="flex-1 flex justify-center">
-            <span className="text-[11px] text-[#D1D5DB] italic" style={{ fontFamily: 'var(--font-ui)' }}>
-              {tabHints[activeTab]}
-            </span>
-          </div>
+          {/* Tab hint — hidden on mobile */}
+          {!isMobile && (
+            <div className="flex-1 flex justify-center">
+              <span className="text-[11px] italic" style={{ color: 'var(--color-border-strong)' }}>
+                {tabHints[activeTab]}
+              </span>
+            </div>
+          )}
+
+          <div className="flex-1" />
 
           {/* Inspector toggle */}
           <button
             onClick={() => setInspectorOpen(!inspectorOpen)}
-            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
-            style={{ fontFamily: 'var(--font-ui)' }}
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-[12px] transition-colors shrink-0"
+            style={{ color: 'var(--color-text-tertiary)' }}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
               <path d="M10.5 2v12" stroke="currentColor" strokeWidth="1.2"/>
             </svg>
-            {inspectorOpen ? 'Inspector' : 'Inspector'}
+            {!isMobile && 'Inspector'}
           </button>
         </div>
       </header>
@@ -1363,12 +1391,24 @@ export function PlaybookEditor() {
           )}
         </div>
 
-        {/* ── Inspector Sidebar ── */}
+        {/* ── Inspector Sidebar — overlay on mobile, panel on desktop ── */}
         {inspectorOpen && (
-          <div
-            className="shrink-0 overflow-auto bg-white"
-            style={{ width: 300, borderLeft: '1px solid #E5E7EB' }}
-          >
+          <>
+            {/* Mobile overlay backdrop */}
+            {isMobile && (
+              <div
+                className="fixed inset-0 bg-black/20 z-30"
+                onClick={() => setInspectorOpen(false)}
+              />
+            )}
+            <div
+              className={`${
+                isMobile
+                  ? 'fixed right-0 top-0 bottom-0 z-40 w-[min(300px,85vw)]'
+                  : 'shrink-0 w-[280px] lg:w-[300px]'
+              } overflow-auto bg-white`}
+              style={{ borderLeft: '1px solid var(--color-border)', boxShadow: isMobile ? 'var(--shadow-xl)' : 'none' }}
+            >
             {/* Inspector tab bar */}
             <div className="flex" style={{ borderBottom: '1px solid #F3F4F6' }}>
               {([
@@ -1418,6 +1458,7 @@ export function PlaybookEditor() {
 
             {inspectorTab === 'space' && <ProblemSpaceVisualizer />}
           </div>
+          </>
         )}
       </div>
 
