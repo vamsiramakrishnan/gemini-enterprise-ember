@@ -162,11 +162,12 @@ const PLAYBOOK_LINES: PlaybookLine[] = [
 function VoiceWaveform() {
   const barCount = 32;
   return (
-    <div className="flex items-center justify-center px-6">
+    <div className="flex items-center justify-center px-4 md:px-6">
       <svg
-        width="280"
+        className="w-full max-w-[280px]"
         height="40"
         viewBox="0 0 280 40"
+        preserveAspectRatio="xMidYMid meet"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -183,7 +184,7 @@ function VoiceWaveform() {
               width="3"
               height={baseHeight}
               rx="1.5"
-              fill="#2563EB"
+              fill="var(--color-accent)"
               opacity={0.4 + Math.sin(i * 0.5) * 0.3}
               style={{
                 transformOrigin: `${x + 1.5}px 20px`,
@@ -223,30 +224,30 @@ function SendIcon({ className = 'w-4 h-4' }: { className?: string }) {
 function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
   return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div className={`flex gap-2 md:gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Avatar */}
       <div
-        className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 ${
-          isUser ? 'bg-[#6B7280]' : 'bg-[#2563EB]'
+        className={`w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-white text-[9px] md:text-[10px] font-bold flex-shrink-0 ${
+          isUser ? 'bg-[var(--color-text-secondary)]' : 'bg-[var(--color-accent)]'
         }`}
       >
         {isUser ? 'U' : 'G'}
       </div>
 
       {/* Bubble */}
-      <div className={`max-w-[85%] ${isUser ? 'text-right' : 'text-left'}`}>
+      <div className={`max-w-[85%] md:max-w-[85%] ${isUser ? 'text-right' : 'text-left'}`}>
         <div
-          className={`rounded-lg px-4 py-3 text-[13px] leading-relaxed ${
+          className={`rounded-lg px-3 py-2 md:px-4 md:py-3 text-[13px] leading-relaxed ${
             isUser
-              ? 'bg-[#F3F4F6] text-[#1F2937]'
-              : 'bg-white text-[#1F2937] border border-[#E5E7EB]'
+              ? 'bg-[var(--color-surface-2)] text-[var(--color-text-primary)]'
+              : 'bg-white text-[var(--color-text-primary)] border border-[var(--color-border)]'
           }`}
           style={{ fontFamily: 'var(--font-body)' }}
         >
           {parseChipText(message.text)}
         </div>
         <div
-          className="text-[10px] text-[#D1D5DB] mt-1 px-1"
+          className="text-[10px] text-[var(--color-border-strong)] mt-1 px-1"
           style={{ fontFamily: 'var(--font-ui)' }}
         >
           {isUser ? 'You' : 'Gemini'} · {message.timestamp}
@@ -260,10 +261,10 @@ function MessageBubble({ message }: { message: Message }) {
 
 function InputArea() {
   return (
-    <div className="border-t border-[#E5E7EB] bg-white px-4 py-3">
+    <div className="border-t border-[var(--color-border)] bg-white px-3 py-2 md:px-4 md:py-3">
       <div className="flex items-center gap-2">
         <button
-          className="w-9 h-9 rounded-lg bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8] transition-colors cursor-pointer flex-shrink-0"
+          className="w-9 h-9 rounded-lg bg-[var(--color-accent)] text-white flex items-center justify-center hover:bg-[var(--color-accent-hover)] transition-colors cursor-pointer flex-shrink-0"
           title="Microphone"
         >
           <MicrophoneIcon className="w-4 h-4" />
@@ -272,12 +273,12 @@ function InputArea() {
           <input
             type="text"
             placeholder="Type a message or use voice..."
-            className="w-full px-3 py-2 text-[13px] text-[#374151] bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/20 transition-colors"
+            className="w-full px-3 py-2 text-[13px] text-[var(--color-text-primary)] bg-[var(--color-surface-1)] border border-[var(--color-border)] rounded-lg outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]/20 transition-colors"
             style={{ fontFamily: 'var(--font-body)' }}
           />
         </div>
         <button
-          className="w-9 h-9 rounded-lg border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center hover:text-[#6B7280] hover:border-[#D1D5DB] transition-colors cursor-pointer flex-shrink-0"
+          className="w-9 h-9 rounded-lg border border-[var(--color-border)] text-[var(--color-text-tertiary)] flex items-center justify-center hover:text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)] transition-colors cursor-pointer flex-shrink-0"
           title="Send"
         >
           <SendIcon />
@@ -293,7 +294,7 @@ function PlaybookDocument() {
   const draftChips = ['tool:warehouse-return-check'];
 
   return (
-    <div className="px-8 py-6">
+    <div className="px-4 py-4 md:px-8 md:py-6">
       {PLAYBOOK_LINES.map((line, i) => {
         if (line.type === 'blank') {
           return <div key={i} className="h-3" />;
@@ -302,7 +303,7 @@ function PlaybookDocument() {
           return (
             <h1
               key={i}
-              className="text-xl font-bold text-[#111827] mb-1"
+              className="text-xl font-bold text-[var(--color-text-primary)] mb-1"
               style={{ fontFamily: 'var(--font-ui)' }}
             >
               {line.content}
@@ -313,7 +314,7 @@ function PlaybookDocument() {
           return (
             <h2
               key={i}
-              className="text-[11px] font-semibold text-[#6B7280] uppercase tracking-wider mt-3 mb-1"
+              className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mt-3 mb-1"
               style={{ fontFamily: 'var(--font-ui)' }}
             >
               {line.content}
@@ -324,13 +325,13 @@ function PlaybookDocument() {
         return (
           <div
             key={i}
-            className={`text-[13px] leading-relaxed text-[#374151] ${
+            className={`text-[13px] leading-relaxed text-[var(--color-text-primary)] ${
               line.type === 'list' ? (isNumberedList ? 'ml-2 mb-0.5' : 'ml-1 mb-0.5') : 'mb-1'
             } ${line.isDraftLine ? 'opacity-80' : ''}`}
             style={{ fontFamily: 'var(--font-body)' }}
           >
             {line.type === 'list' && !isNumberedList && (
-              <span className="text-[#9CA3AF] mr-1.5">&bull;</span>
+              <span className="text-[var(--color-text-tertiary)] mr-1.5">&bull;</span>
             )}
             {parseChipText(line.content, draftChips)}
           </div>
@@ -369,11 +370,11 @@ function MetaDrawer() {
   ];
 
   return (
-    <div className="border-t border-[#E5E7EB]">
+    <div className="border-t border-[var(--color-border)]">
       {/* Toggle */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 px-6 py-2.5 text-[11px] text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2 px-4 py-2 md:px-6 md:py-2.5 text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-1)] transition-colors cursor-pointer"
         style={{ fontFamily: 'var(--font-ui)' }}
       >
         <svg
@@ -390,9 +391,9 @@ function MetaDrawer() {
 
       {/* Expandable Content */}
       {open && (
-        <div className="px-6 pb-4 animate-in">
-          <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-            <p className="text-[11px] text-[#9CA3AF] mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
+        <div className="px-3 pb-3 md:px-6 md:pb-4 animate-in">
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-1)] p-3 md:p-4">
+            <p className="text-[11px] text-[var(--color-text-tertiary)] mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
               The authoring agent itself uses the same loop:
             </p>
 
@@ -419,17 +420,17 @@ function MetaDrawer() {
                     >
                       {i + 1}
                     </div>
-                    {i < loopSteps.length - 1 && <div className="w-px flex-1 bg-[#E5E7EB] my-0.5" />}
+                    {i < loopSteps.length - 1 && <div className="w-px flex-1 bg-[var(--color-border)] my-0.5" />}
                   </div>
                   <div className="flex-1 pb-1">
                     <div
-                      className="text-[11px] font-semibold text-[#374151]"
+                      className="text-[11px] font-semibold text-[var(--color-text-primary)]"
                       style={{ fontFamily: 'var(--font-ui)' }}
                     >
                       {step.phase}
                     </div>
                     <div
-                      className="text-[11px] text-[#6B7280] leading-relaxed"
+                      className="text-[11px] text-[var(--color-text-secondary)] leading-relaxed"
                       style={{ fontFamily: 'var(--font-body)' }}
                     >
                       {parseChipText(step.detail)}
@@ -450,7 +451,7 @@ function MetaDrawer() {
 export function LiveAuthoring() {
   return (
     <div className="h-full bg-white flex flex-col">
-      {/* CSS Keyframes */}
+      {/* CSS Keyframes + Responsive layout */}
       <style>{`
         @keyframes waveformPulse {
           0% { transform: scaleY(0.5); }
@@ -467,35 +468,40 @@ export function LiveAuthoring() {
           0% { background-color: #FFFBEB; }
           100% { background-color: transparent; }
         }
+        /* Responsive split panels */
+        @media (min-width: 768px) {
+          .live-panel-conversation { width: 55%; flex: none; }
+          .live-panel-playbook { width: 45%; flex: none; }
+        }
       `}</style>
 
       {/* Header */}
       <header
-        className="flex items-center gap-3 px-6 py-3 bg-white"
-        style={{ borderBottom: '1px solid #E5E7EB', fontFamily: 'var(--font-ui)' }}
+        className="flex flex-wrap items-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-white"
+        style={{ borderBottom: '1px solid var(--color-border)', fontFamily: 'var(--font-ui)' }}
       >
-        <h1 className="text-[13px] font-semibold text-[#111827]">
+        <h1 className="text-[13px] font-semibold text-[var(--color-text-primary)]">
           Gemini Live Authoring
         </h1>
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
         <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#DCFCE7] text-[#166534] font-semibold">
           SESSION ACTIVE
         </span>
       </header>
 
       {/* Main Split View */}
-      <div className="flex-1 flex min-h-0">
-        {/* Left Panel — Conversation (55%) */}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        {/* Left Panel — Conversation (full width on mobile, 55% on md+) */}
         <div
-          className="flex flex-col bg-white"
-          style={{ width: '55%', borderRight: '1px solid #E5E7EB' }}
+          className="live-panel-conversation flex flex-col bg-white min-h-0 flex-1 md:flex-none md:border-r"
+          style={{ borderColor: 'var(--color-border)' }}
         >
           {/* Waveform Header */}
-          <div className="bg-[#F9FAFB] py-3" style={{ borderBottom: '1px solid #E5E7EB' }}>
+          <div className="bg-[var(--color-surface-1)] py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <div className="flex items-center justify-center gap-2 mb-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse" />
               <span
-                className="text-[10px] text-[#9CA3AF] uppercase tracking-wider font-medium"
+                className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wider font-medium"
                 style={{ fontFamily: 'var(--font-ui)' }}
               >
                 Gemini Live — Listening
@@ -505,7 +511,7 @@ export function LiveAuthoring() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-3 py-3 md:px-5 md:py-4 space-y-3 md:space-y-4">
             {CONVERSATION.map((msg, i) => (
               <MessageBubble key={i} message={msg} />
             ))}
@@ -515,21 +521,21 @@ export function LiveAuthoring() {
           <InputArea />
         </div>
 
-        {/* Right Panel — Live Playbook (45%) */}
-        <div className="flex flex-col bg-white" style={{ width: '45%' }}>
+        {/* Right Panel — Live Playbook (full width on mobile, 45% on md+) */}
+        <div className="live-panel-playbook flex flex-col bg-white min-h-0 flex-1 md:flex-none border-t md:border-t-0" style={{ borderColor: 'var(--color-border)' }}>
           {/* Panel Header */}
           <div
-            className="px-6 py-3 flex items-center justify-between bg-white"
-            style={{ borderBottom: '1px solid #E5E7EB' }}
+            className="px-4 py-2.5 md:px-6 md:py-3 flex items-center justify-between bg-white"
+            style={{ borderBottom: '1px solid var(--color-border)' }}
           >
             <div className="flex items-center gap-2">
               <span
-                className="text-[13px] font-semibold text-[#374151]"
+                className="text-[13px] font-semibold text-[var(--color-text-primary)]"
                 style={{ fontFamily: 'var(--font-ui)' }}
               >
                 Generated Playbook
               </span>
-              <span className="inline-block w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+              <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse" />
             </div>
             <span
               className="text-[10px] px-2 py-0.5 rounded-md bg-[#FEF3C7] text-[#92400E] font-medium"
@@ -546,17 +552,17 @@ export function LiveAuthoring() {
 
           {/* Action Buttons */}
           <div
-            className="px-6 py-3 flex items-center justify-end gap-3 bg-white"
-            style={{ borderTop: '1px solid #E5E7EB' }}
+            className="px-4 py-2.5 md:px-6 md:py-3 flex items-center justify-end gap-2 md:gap-3 bg-white"
+            style={{ borderTop: '1px solid var(--color-border)' }}
           >
             <button
-              className="px-4 py-2 text-[12px] font-medium text-[#6B7280] border border-[#E5E7EB] rounded-lg hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+              className="px-4 py-2 text-[12px] font-medium text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-1)] transition-colors cursor-pointer"
               style={{ fontFamily: 'var(--font-ui)' }}
             >
               Keep Editing
             </button>
             <button
-              className="px-5 py-2 text-[12px] font-semibold text-white bg-[#2563EB] rounded-lg hover:bg-[#1D4ED8] transition-colors cursor-pointer"
+              className="px-5 py-2 text-[12px] font-semibold text-white bg-[var(--color-accent)] rounded-lg hover:bg-[var(--color-accent-hover)] transition-colors cursor-pointer"
               style={{ fontFamily: 'var(--font-ui)' }}
             >
               Accept Draft
