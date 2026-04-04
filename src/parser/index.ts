@@ -23,5 +23,5 @@ export {
   topologyToIR,
   buildIRFromPlaybook,
 } from './playbook-parser';
-export { compilePlaybookToGraph, diffGraphs, graphToMermaid } from './graph-compiler';
+export { compilePlaybookToGraph, diffGraphs, graphToMermaid, detectPatterns, irToTopologyExpression, computeEdgeRoutes } from './graph-compiler';
 export type * from './types';

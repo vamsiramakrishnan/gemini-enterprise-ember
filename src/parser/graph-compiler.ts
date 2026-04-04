@@ -26,6 +26,7 @@ import type {
   CompiledGraphNode,
   EdgeType,
   GraphNodeType,
+  IRNode,
   ParsedPlaybook,
   ParsedReference,
   SkillRegion,
@@ -628,4 +629,288 @@ export function graphToMermaid(graph: CompiledGraph): string {
   }
 
   return lines.join('\n');
+}
+
+// ─── Pattern Detection ────────────────────────────────────────────────
+
+export interface DetectedPattern {
+  type: 'sequential' | 'fan-out' | 'fan-in' | 'supervised' | 'review-loop' | 'cascade' | 'gated' | 'map-reduce';
+  nodeIds: string[];
+  label: string;
+  description: string;
+  adkFluentCode: string;
+  position: { x: number; y: number };
+}
+
+/**
+ * Detect adk-fluent composition patterns in a compiled graph.
+ * Returns pattern annotations that the Flow tab renders as badges.
+ */
+export function detectPatterns(graph: CompiledGraph): DetectedPattern[] {
+  const patterns: DetectedPattern[] = [];
+
+  // Build adjacency maps
+  const outEdges = new Map<string, CompiledGraphEdge[]>();
+  const inEdges = new Map<string, CompiledGraphEdge[]>();
+  for (const e of graph.edges) {
+    if (!outEdges.has(e.from)) outEdges.set(e.from, []);
+    outEdges.get(e.from)!.push(e);
+    if (!inEdges.has(e.to)) inEdges.set(e.to, []);
+    inEdges.get(e.to)!.push(e);
+  }
+
+  const nodeById = new Map(graph.nodes.map(n => [n.id, n]));
+
+  // Sequential: 3+ nodes in a chain with single in/out flow edges
+  const visited = new Set<string>();
+  for (const node of graph.nodes) {
+    if (visited.has(node.id)) continue;
+    const chain: CompiledGraphNode[] = [node];
+    visited.add(node.id);
+    let current = node;
+    while (true) {
+      const outs = (outEdges.get(current.id) || []).filter(e => e.type === 'flow');
+      if (outs.length !== 1) break;
+      const next = nodeById.get(outs[0].to);
+      if (!next || visited.has(next.id)) break;
+      const ins = (inEdges.get(next.id) || []).filter(e => e.type === 'flow');
+      if (ins.length !== 1) break;
+      chain.push(next);
+      visited.add(next.id);
+      current = next;
+    }
+    if (chain.length >= 3) {
+      const names = chain.map(n => n.label).join(' >> ');
+      patterns.push({
+        type: 'sequential',
+        nodeIds: chain.map(n => n.id),
+        label: 'Sequential Pipeline',
+        description: `${chain.length} steps executed in order`,
+        adkFluentCode: names,
+        position: centroid(chain),
+      });
+    }
+  }
+
+  // Fan-Out: 1 source → 2+ targets via flow edges
+  for (const node of graph.nodes) {
+    const outs = (outEdges.get(node.id) || []).filter(e => e.type === 'flow');
+    if (outs.length >= 2) {
+      const targets = outs.map(e => nodeById.get(e.to)).filter(Boolean) as CompiledGraphNode[];
+      const names = targets.map(n => n.label).join(' | ');
+      patterns.push({
+        type: 'fan-out',
+        nodeIds: [node.id, ...targets.map(n => n.id)],
+        label: 'Parallel Lookup',
+        description: `Fan-out from ${node.label} to ${targets.length} parallel branches`,
+        adkFluentCode: `${node.label} >> (${names})`,
+        position: centroidOffset([node, ...targets], -30),
+      });
+    }
+  }
+
+  // Fan-In: 2+ sources → 1 target via flow edges
+  for (const node of graph.nodes) {
+    const ins = (inEdges.get(node.id) || []).filter(e => e.type === 'flow');
+    if (ins.length >= 2) {
+      const sources = ins.map(e => nodeById.get(e.from)).filter(Boolean) as CompiledGraphNode[];
+      patterns.push({
+        type: 'fan-in',
+        nodeIds: [...sources.map(n => n.id), node.id],
+        label: 'Merge Point',
+        description: `${sources.length} branches converge to ${node.label}`,
+        adkFluentCode: `fan_out_merge(${sources.map(n => n.label).join(', ')}, merge_key="result")`,
+        position: centroidOffset([...sources, node], -30),
+      });
+    }
+  }
+
+  // Supervised: decision → agent delegation
+  for (const node of graph.nodes) {
+    if (node.type !== 'decision') continue;
+    const outs = outEdges.get(node.id) || [];
+    const agentTargets = outs
+      .map(e => nodeById.get(e.to))
+      .filter(n => n && n.type === 'agent') as CompiledGraphNode[];
+    if (agentTargets.length > 0) {
+      patterns.push({
+        type: 'supervised',
+        nodeIds: [node.id, ...agentTargets.map(n => n.id)],
+        label: 'Supervised Escalation',
+        description: `Conditional routing to specialist agent(s)`,
+        adkFluentCode: `supervised(worker=auto, gate_condition=lambda s: ${node.label})`,
+        position: centroidOffset([node, ...agentTargets], -30),
+      });
+    }
+  }
+
+  // Gated: gate node with pass and block edges
+  for (const node of graph.nodes) {
+    if (node.type !== 'gate') continue;
+    const outs = outEdges.get(node.id) || [];
+    const hasPass = outs.some(e => e.type === 'guard-pass');
+    const hasBlock = outs.some(e => e.type === 'guard-block');
+    if (hasPass || hasBlock) {
+      patterns.push({
+        type: 'gated',
+        nodeIds: [node.id],
+        label: 'Guard Gate',
+        description: `${node.label} — ${hasPass && hasBlock ? 'pass/block' : hasPass ? 'pass-through' : 'blocking'} guard`,
+        adkFluentCode: `G.${node.label.replace(/-/g, '_')}()`,
+        position: centroidOffset([node], -30),
+      });
+    }
+  }
+
+  // Deduplicate patterns with overlapping node sets
+  return deduplicatePatterns(patterns);
+}
+
+function centroid(nodes: CompiledGraphNode[]): { x: number; y: number } {
+  const x = nodes.reduce((s, n) => s + (n.position?.x ?? 0), 0) / nodes.length + 110;
+  const y = nodes.reduce((s, n) => s + (n.position?.y ?? 0), 0) / nodes.length;
+  return { x, y };
+}
+
+function centroidOffset(nodes: CompiledGraphNode[], yOffset: number): { x: number; y: number } {
+  const c = centroid(nodes);
+  return { x: c.x, y: c.y + yOffset };
+}
+
+function deduplicatePatterns(patterns: DetectedPattern[]): DetectedPattern[] {
+  const seen = new Set<string>();
+  return patterns.filter(p => {
+    const key = `${p.type}-${p.nodeIds.sort().join(',')}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// ─── IR → Topology Expression ──────────────────────────────────────────
+
+/**
+ * Convert an IR tree back to a human-readable adk-fluent topology expression.
+ * Used for:
+ *   - Displaying inferred topology in the Flow tab
+ *   - "Pin topology" action (writes expression into playbook)
+ *   - Export to Python/YAML
+ */
+export function irToTopologyExpression(ir: IRNode, depth: number = 0): string {
+  switch (ir.kind) {
+    case 'sequence': {
+      const parts = (ir.children || []).map(c => irToTopologyExpression(c, depth + 1));
+      const expr = parts.join(' >> ');
+      return depth > 0 && parts.length > 1 ? `(${expr})` : expr;
+    }
+    case 'parallel': {
+      const parts = (ir.children || []).map(c => irToTopologyExpression(c, depth + 1));
+      const expr = parts.join(' | ');
+      return depth > 0 ? `(${expr})` : expr;
+    }
+    case 'loop': {
+      const child = ir.children?.[0];
+      const inner = child ? irToTopologyExpression(child, depth + 1) : ir.name;
+      if (ir.untilCondition) return `${inner} * until("${ir.untilCondition}")`;
+      if (ir.maxIterations) return `${inner} * ${ir.maxIterations}`;
+      return `${inner} * 3`;
+    }
+    case 'route': {
+      const branches = ir.branches || {};
+      const parts = Object.entries(branches).map(([key, handler]) =>
+        `.eq("${key}", ${irToTopologyExpression(handler, depth + 1)})`
+      );
+      return `Route("${ir.routeKey || 'key'}")${parts.join('')}`;
+    }
+    case 'gate': {
+      const guardName = ir.guards?.[0] || ir.name;
+      return `@guard(${guardName})`;
+    }
+    case 'fallback': {
+      const parts = (ir.children || []).map(c => irToTopologyExpression(c, depth + 1));
+      return parts.join(' // ');
+    }
+    case 'transform': {
+      return `S.${ir.name}()`;
+    }
+    case 'tap': {
+      return `tap(${ir.name})`;
+    }
+    case 'agent': {
+      // Use chip refs if available, otherwise construct from name
+      if (ir.chipRefs && ir.chipRefs.length > 0) return ir.chipRefs[0];
+      if (ir.tools && ir.tools.length > 0) return `@tool(${ir.tools[0]})`;
+      return ir.name;
+    }
+    case 'race': {
+      const parts = (ir.children || []).map(c => irToTopologyExpression(c, depth + 1));
+      return `race(${parts.join(', ')})`;
+    }
+    default:
+      return ir.name || 'unknown';
+  }
+}
+
+// ─── Edge Route Computation ───────────────────────────────────────────
+
+export interface EdgeRoute {
+  edgeId: string;
+  path: string;
+  labelPosition: { x: number; y: number };
+  isBackEdge: boolean;
+}
+
+/**
+ * Compute SVG bezier paths for all edges in the graph.
+ * Handles forward edges, back-edges (loops), and cross-column edges.
+ */
+export function computeEdgeRoutes(
+  graph: CompiledGraph,
+  nodeWidth: number = 220,
+  nodeHeight: number = 72,
+): EdgeRoute[] {
+  return graph.edges.map(edge => {
+    const fromNode = graph.nodes.find(n => n.id === edge.from);
+    const toNode = graph.nodes.find(n => n.id === edge.to);
+    if (!fromNode?.position || !toNode?.position) {
+      return { edgeId: edge.id, path: '', labelPosition: { x: 0, y: 0 }, isBackEdge: false };
+    }
+
+    const x1 = fromNode.position.x + nodeWidth;
+    const y1 = fromNode.position.y + nodeHeight / 2;
+    const x2 = toNode.position.x;
+    const y2 = toNode.position.y + nodeHeight / 2;
+
+    const isBackEdge = x2 < x1; // Target is to the left = loop back-edge
+
+    let path: string;
+    if (isBackEdge) {
+      // Route below all nodes in a smooth arc
+      const lowestY = Math.max(y1, y2) + nodeHeight + 60;
+      path = `M${x1},${y1} C${x1 + 60},${lowestY} ${x2 - 60},${lowestY} ${x2},${y2}`;
+    } else if (Math.abs(fromNode.position.x - toNode.position.x) < nodeWidth * 0.5) {
+      // Same column — S-curve
+      const midY = (y1 + y2) / 2;
+      const offset = 80;
+      path = `M${x1},${y1} C${x1 + offset},${y1} ${x2 - offset},${y2} ${x2},${y2}`;
+      // If very close vertically, use straight
+      if (Math.abs(y1 - y2) < 20) {
+        path = `M${x1},${y1} C${x1 + offset},${midY - 30} ${x2 - offset},${midY + 30} ${x2},${y2}`;
+      }
+    } else {
+      // Normal forward edge — cubic bezier
+      const dx = x2 - x1;
+      const cx1 = x1 + dx * 0.4;
+      const cx2 = x2 - dx * 0.4;
+      path = `M${x1},${y1} C${cx1},${y1} ${cx2},${y2} ${x2},${y2}`;
+    }
+
+    // Label at midpoint
+    const labelPosition = {
+      x: (x1 + x2) / 2,
+      y: isBackEdge ? Math.max(y1, y2) + nodeHeight + 60 : (y1 + y2) / 2 - 8,
+    };
+
+    return { edgeId: edge.id, path, labelPosition, isBackEdge };
+  });
 }

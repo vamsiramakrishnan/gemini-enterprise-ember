@@ -49,6 +49,27 @@ export interface IAdkFluentService {
 
   /** Search the registry with a free-text query */
   searchRegistry(query: string): Promise<SmartChip[]>;
+
+  /** Deploy a tool to Cloud Run (mock: returns endpoint URL) */
+  deployTool(toolName: string): Promise<{ endpoint: string; status: string }>;
+
+  /** Publish an asset to the registry with a version */
+  publishToRegistry(type: string, name: string, version: string): Promise<{ registryId: string }>;
+
+  /** Fork a playbook from a specific version */
+  forkPlaybook(fromVersion: string): Promise<{ newVersion: string; documentId: string }>;
+
+  /** Test whether a skill would activate for a given prompt */
+  activateSkill(skillName: string, prompt: string): Promise<{ activated: boolean; confidence: number; response?: string }>;
+
+  /** Convert raw code into a Tool Definition */
+  convertCodeToTool(code: string, language: string): Promise<{ toolName: string; schema: Record<string, unknown> }>;
+
+  /** Convert raw code into a SKILL.md bundle */
+  convertCodeToSkill(code: string, language: string): Promise<{ skillName: string; skillMd: string }>;
+
+  /** Run a natural-language query against a connector */
+  queryConnector(connectorName: string, query: string): Promise<{ results: Record<string, unknown>[]; timing: number }>;
 }
 
 // ─── Result Types ──────────────────────────────────────────────────────
@@ -548,6 +569,84 @@ All interactions are subject to @guard(pii-redaction) and
         chip.description.toLowerCase().includes(lower) ||
         chip.type.toLowerCase().includes(lower),
     );
+  }
+
+  async deployTool(toolName: string): Promise<{ endpoint: string; status: string }> {
+    await delay(800);
+    return {
+      endpoint: `https://${toolName}-prod-us-central1.run.app`,
+      status: 'deployed',
+    };
+  }
+
+  async publishToRegistry(type: string, name: string, version: string): Promise<{ registryId: string }> {
+    await delay(300);
+    return {
+      registryId: `projects/acme-prod/locations/global/${type}s/${name}@${version}`,
+    };
+  }
+
+  async forkPlaybook(fromVersion: string): Promise<{ newVersion: string; documentId: string }> {
+    await delay(200);
+    const parts = fromVersion.split('.');
+    const major = parseInt(parts[0] || '1', 10);
+    return {
+      newVersion: `${major + 1}.0.0-draft`,
+      documentId: `fork-${Date.now().toString(36)}`,
+    };
+  }
+
+  async activateSkill(skillName: string, prompt: string): Promise<{ activated: boolean; confidence: number; response?: string }> {
+    await delay(600);
+    const confidence = 0.7 + Math.random() * 0.25;
+    const activated = confidence > 0.75;
+    return {
+      activated,
+      confidence: Math.round(confidence * 100) / 100,
+      response: activated
+        ? `Skill "${skillName}" activated for: "${prompt.slice(0, 60)}..." — applied domain expertise.`
+        : undefined,
+    };
+  }
+
+  async convertCodeToTool(code: string, language: string): Promise<{ toolName: string; schema: Record<string, unknown> }> {
+    await delay(400);
+    const fnMatch = language === 'python'
+      ? code.match(/def\s+(\w+)/)
+      : code.match(/(?:function|const|export)\s+(\w+)/);
+    const name = fnMatch?.[1] || 'new-tool';
+    return {
+      toolName: name.replace(/_/g, '-'),
+      schema: {
+        name: name.replace(/_/g, '-'),
+        description: `Auto-generated from ${language} code`,
+        parameters: { type: 'object', properties: {} },
+      },
+    };
+  }
+
+  async convertCodeToSkill(code: string, language: string): Promise<{ skillName: string; skillMd: string }> {
+    await delay(500);
+    const fnMatch = language === 'python'
+      ? code.match(/def\s+(\w+)/)
+      : code.match(/(?:function|const|export)\s+(\w+)/);
+    const name = fnMatch?.[1] || 'new-skill';
+    const skillName = name.replace(/_/g, '-');
+    return {
+      skillName,
+      skillMd: `---\nname: ${skillName}\ndescription: Auto-generated from ${language} code\nversion: "0.1.0"\n---\n\n# ${skillName}\n\nGenerated skill with bundled script.\n`,
+    };
+  }
+
+  async queryConnector(connectorName: string, query: string): Promise<{ results: Record<string, unknown>[]; timing: number }> {
+    await delay(300 + Math.random() * 500);
+    return {
+      results: [
+        { id: 'REC-001', summary: `Result for "${query}" from ${connectorName}`, status: 'active' },
+        { id: 'REC-002', summary: `Related record in ${connectorName}`, status: 'closed' },
+      ],
+      timing: Math.round(300 + Math.random() * 500),
+    };
   }
 }
 

@@ -11,7 +11,8 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { REGISTRY, findChip } from '../../data/registry';
-import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
+import { parsePlaybook, compilePlaybookToGraph, detectPatterns, irToTopologyExpression } from '../../parser';
+import type { DetectedPattern } from '../../parser/graph-compiler';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types';
 import { usePlaybook, useNotifications, useRegistry } from '../../contexts/AppContext';
@@ -495,20 +496,89 @@ function EditableDocumentTab({
 // ─── Interactive Flow Graph ──────────────────────────────────────────────
 
 function FlowGraph({
-  content, selectedNodeId, hoveredNodeId,
+  content, setContent, selectedNodeId, hoveredNodeId,
   onNodeClick, onNodeHover, onNodeLeave,
-  onGoToSource,
+  onGoToSource, onSwitchToDocument,
 }: {
   content: string;
+  setContent: (c: string) => void;
   selectedNodeId: string | null;
   hoveredNodeId: string | null;
   onNodeClick: (nodeId: string) => void;
   onNodeHover: (nodeId: string) => void;
   onNodeLeave: () => void;
   onGoToSource: (nodeId: string) => void;
+  onSwitchToDocument?: () => void;
 }) {
   const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
+  const patterns: DetectedPattern[] = useMemo(() => detectPatterns(graph), [graph]);
+
+  // Topology mode: inferred (no explicit ```topology``` block) vs declared
+  const isTopologyDeclared = !!parsed.topologyRaw;
+  const inferredExpression = useMemo(() => {
+    if (parsed.ir) return irToTopologyExpression(parsed.ir);
+    return '';
+  }, [parsed.ir]);
+  const displayExpression = parsed.topologyRaw || inferredExpression;
+
+  // IR tree viewer state
+  const [irTreeOpen, setIrTreeOpen] = useState(false);
+
+  // Pin topology: insert ```topology``` block into playbook
+  const pinTopology = useCallback(() => {
+    if (!inferredExpression || !content) return;
+    const block = `\n\`\`\`topology\n# Pinned topology expression (adk-fluent)\npipeline = ${inferredExpression}\n\`\`\`\n`;
+    // Insert after ## Connected Systems or before ## Process
+    const processIdx = content.indexOf('## Process');
+    const connectedIdx = content.indexOf('## Connected Systems');
+    let insertPos: number;
+    if (connectedIdx >= 0) {
+      // After Connected Systems section — find next ## heading
+      const nextHeading = content.indexOf('\n## ', connectedIdx + 1);
+      insertPos = nextHeading >= 0 ? nextHeading : content.length;
+    } else if (processIdx >= 0) {
+      insertPos = processIdx;
+    } else {
+      insertPos = content.length;
+    }
+    const newContent = content.slice(0, insertPos) + block + content.slice(insertPos);
+    setContent(newContent);
+  }, [inferredExpression, content, setContent]);
+
+  // Unpin topology: remove ```topology...``` block from playbook
+  const unpinTopology = useCallback(() => {
+    const regex = /\n?```topology\n[\s\S]*?\n```\n?/g;
+    setContent(content.replace(regex, '\n'));
+  }, [content, setContent]);
+
+  // Render IR tree as indented text
+  const renderIRTree = useCallback((node: { kind: string; name: string; children?: any[]; routeKey?: string; branches?: Record<string, any>; guards?: string[] }, indent: string = '', isLast: boolean = true): React.ReactNode[] => {
+    const prefix = indent + (isLast ? '└─ ' : '├─ ');
+    const connector = indent + (isLast ? '   ' : '│  ');
+    const kindColors: Record<string, string> = {
+      sequence: '#4F46E5', parallel: '#EA580C', loop: '#7C3AED',
+      route: '#D97706', gate: '#E11D48', agent: '#0D9488',
+      transform: '#059669', fallback: '#DC2626', tap: '#6B7280',
+    };
+    const color = kindColors[node.kind] || '#6B7280';
+    const extra = node.routeKey ? ` [key: ${node.routeKey}]` : node.guards?.length ? ` [${node.guards.join(', ')}]` : '';
+    const lines: React.ReactNode[] = [
+      <div key={`${indent}-${node.name}`} className="whitespace-pre" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, lineHeight: '20px' }}>
+        <span style={{ color: '#64748B' }}>{indent ? prefix : ''}</span>
+        <span style={{ color, fontWeight: 600 }}>{node.kind}</span>
+        <span style={{ color: '#E2E8F0' }}> "{node.name}"</span>
+        <span style={{ color: '#64748B' }}>{extra}</span>
+      </div>,
+    ];
+    const children = node.children || [];
+    const branchEntries = node.branches ? Object.entries(node.branches) : [];
+    const allChildren = [...children, ...branchEntries.map(([k, v]) => ({ ...v, name: `${k} → ${v.name}` }))];
+    allChildren.forEach((child, i) => {
+      lines.push(...renderIRTree(child, indent ? connector : '  ', i === allChildren.length - 1));
+    });
+    return lines;
+  }, []);
 
   // Compute graph bounds for centering
   const graphBounds = useMemo(() => {
@@ -691,32 +761,70 @@ function FlowGraph({
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
       </svg>
 
-      {/* Topology expression bar */}
-      {parsed.topologyRaw && (
-        <div className="absolute top-0 left-0 right-0 z-20 px-4 py-2 border-b flex items-center gap-2" style={{ background: '#1E293B', borderColor: '#334155' }}>
-          <span className="text-[9px] uppercase tracking-wider font-semibold shrink-0" style={{ color: '#64748B' }}>topology</span>
-          <code className="text-[11px] leading-relaxed overflow-x-auto whitespace-nowrap" style={{ fontFamily: 'var(--font-mono)', color: '#E2E8F0' }}>
-            {parsed.topologyRaw.split(/(>>|\/\/|\||\*)/).map((part, i) => {
-              const t = part.trim();
-              if (t === '>>') return <span key={i} style={{ color: '#60A5FA', fontWeight: 600 }}> {'>>'} </span>;
-              if (t === '|') return <span key={i} style={{ color: '#FB923C', fontWeight: 600 }}> | </span>;
-              if (t === '*') return <span key={i} style={{ color: '#A78BFA', fontWeight: 600 }}> * </span>;
-              if (t === '//') return <span key={i} style={{ color: '#FB7185', fontWeight: 600 }}> // </span>;
-              if (t.startsWith('@')) return <span key={i} style={{ color: '#93C5FD' }}>{t}</span>;
-              return <span key={i}>{part}</span>;
-            })}
-          </code>
-          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded" style={{ background: '#334155', color: '#94A3B8' }}>read-only</span>
+      {/* Topology expression bar — shows for both inferred and declared */}
+      {displayExpression && (
+        <div className="absolute top-0 left-0 right-0 z-20 border-b flex items-center" style={{ background: '#1E293B', borderColor: '#334155' }}>
+          <div className="px-3 py-2 flex items-center gap-2 flex-1 overflow-hidden">
+            {/* Mode indicator */}
+            {isTopologyDeclared ? (
+              <span className="shrink-0 text-[9px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1" style={{ background: '#166534', color: '#BBF7D0' }}>
+                <span>&#10003;</span> Declared
+              </span>
+            ) : (
+              <span className="shrink-0 text-[9px] px-2 py-0.5 rounded-full font-semibold" style={{ background: '#92400E', color: '#FDE68A', border: '1px dashed #D97706' }}>
+                Inferred
+              </span>
+            )}
+            {/* Expression */}
+            <code className="text-[11px] leading-relaxed overflow-x-auto whitespace-nowrap flex-1" style={{ fontFamily: 'var(--font-mono)', color: '#E2E8F0' }}>
+              {displayExpression.split(/(>>|\/\/|\||\*|@\w+\([^)]+\))/).map((part, i) => {
+                const t = part.trim();
+                if (t === '>>') return <span key={i} style={{ color: '#60A5FA', fontWeight: 600 }}> {'>>'} </span>;
+                if (t === '|') return <span key={i} style={{ color: '#FB923C', fontWeight: 600 }}> | </span>;
+                if (t === '*') return <span key={i} style={{ color: '#A78BFA', fontWeight: 600 }}> * </span>;
+                if (t === '//') return <span key={i} style={{ color: '#FB7185', fontWeight: 600 }}> // </span>;
+                if (t.startsWith('@')) return <span key={i} style={{ color: '#93C5FD' }}>{t}</span>;
+                return <span key={i}>{part}</span>;
+              })}
+            </code>
+          </div>
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 px-3 shrink-0">
+            {isTopologyDeclared ? (
+              <>
+                <button onClick={() => onSwitchToDocument?.()} className="text-[9px] px-2 py-1 rounded hover:bg-white/10 transition-colors" style={{ color: '#94A3B8' }}>
+                  Edit in Document
+                </button>
+                <button onClick={unpinTopology} className="text-[9px] px-2 py-1 rounded hover:bg-white/10 transition-colors" style={{ color: '#F87171' }}>
+                  Unpin
+                </button>
+              </>
+            ) : (
+              <button onClick={pinTopology} className="text-[9px] px-2 py-1 rounded flex items-center gap-1 hover:bg-white/10 transition-colors" style={{ color: '#FDE68A' }}>
+                <span style={{ fontSize: 11 }}>&#x1F4CC;</span> Pin topology
+              </button>
+            )}
+            <button
+              onClick={() => { navigator.clipboard.writeText(displayExpression); }}
+              className="text-[9px] px-2 py-1 rounded hover:bg-white/10 transition-colors" style={{ color: '#94A3B8' }}
+            >
+              Copy
+            </button>
+          </div>
         </div>
       )}
 
       {/* Controls */}
-      <div className={`absolute left-3 z-10 flex gap-1.5 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
+      <div className={`absolute left-3 z-10 flex gap-1.5 ${displayExpression ? 'top-12' : 'top-3'}`}>
         <div className="px-2.5 py-1.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg text-[11px] text-gray-500 flex items-center gap-1.5 shadow-sm">
-          Auto-compiled from playbook · {graph.nodes.length} nodes · {graph.edges.length} edges
+          Auto-compiled · {graph.nodes.length} nodes · {graph.edges.length} edges
+          {patterns.length > 0 && <span> · {patterns.length} pattern{patterns.length > 1 ? 's' : ''}</span>}
         </div>
       </div>
-      <div className={`absolute right-3 z-10 flex gap-1.5 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
+      <div className={`absolute right-3 z-10 flex gap-1.5 ${displayExpression ? 'top-12' : 'top-3'}`}>
+        <button onClick={() => setIrTreeOpen(v => !v)} className={`px-2.5 py-1.5 border rounded-lg text-[11px] shadow-sm transition-colors ${irTreeOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+          IR
+        </button>
         <button onClick={fitToScreen} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-600 hover:bg-gray-50 shadow-sm">
           Fit
         </button>
@@ -724,6 +832,19 @@ function FlowGraph({
         <button onClick={() => setZoom(z => Math.max(0.3, z - 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">-</button>
         <span className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] text-gray-400 font-mono">{(zoom * 100).toFixed(0)}%</span>
       </div>
+
+      {/* IR Tree Viewer */}
+      {irTreeOpen && parsed.ir && (
+        <div className="absolute bottom-14 right-3 z-20 rounded-lg border shadow-lg overflow-hidden" style={{ background: '#1E293B', borderColor: '#334155', maxWidth: 380, maxHeight: 320 }}>
+          <div className="flex items-center justify-between px-3 py-1.5 border-b" style={{ borderColor: '#334155' }}>
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#94A3B8' }}>IR Tree</span>
+            <button onClick={() => setIrTreeOpen(false)} className="text-[10px] hover:bg-white/10 rounded px-1" style={{ color: '#64748B' }}>Close</button>
+          </div>
+          <div className="px-3 py-2 overflow-auto" style={{ maxHeight: 280 }}>
+            {renderIRTree(parsed.ir)}
+          </div>
+        </div>
+      )}
 
       {/* SVG Canvas */}
       <svg
@@ -946,14 +1067,25 @@ function FlowGraph({
         </g>
       </svg>
 
-      {/* Legend */}
-      <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] bg-white/80 backdrop-blur rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border max-w-[calc(100%-24px)]" style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-surface-2)' }}>
-        {Object.entries(NODE_COLORS).map(([type, color]) => (
-          <span key={type} className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
-            {type.replace(/-/g, ' ')}
-          </span>
-        ))}
+      {/* Legend + Patterns */}
+      <div className="absolute bottom-3 left-3 z-10 bg-white/90 backdrop-blur rounded-lg border shadow-sm max-w-[calc(100%-24px)]" style={{ borderColor: 'var(--color-surface-2)' }}>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] px-2 sm:px-3 py-1.5" style={{ color: 'var(--color-text-secondary)' }}>
+          {Object.entries(NODE_COLORS).map(([type, color]) => (
+            <span key={type} className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
+              {type.replace(/-/g, ' ')}
+            </span>
+          ))}
+        </div>
+        {patterns.length > 0 && (
+          <div className="border-t px-2 sm:px-3 py-1 flex flex-wrap gap-1.5" style={{ borderColor: '#E5E7EB' }}>
+            {patterns.map((p, i) => (
+              <span key={i} className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: '#EDE9FE', color: '#6D28D9' }} title={p.description + '\n' + p.adkFluentCode}>
+                {p.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1898,12 +2030,14 @@ export function PlaybookEditor() {
             <div key="tab-flow" className="tab-content-enter h-full">
             <FlowGraph
               content={content}
+              setContent={setContent}
               selectedNodeId={selectedNodeId}
               hoveredNodeId={hoveredNodeId}
               onNodeClick={handleNodeClick}
               onNodeHover={setHoveredNodeId}
               onNodeLeave={() => setHoveredNodeId(null)}
               onGoToSource={handleGoToSource}
+              onSwitchToDocument={() => setActiveTab('document')}
             />
             </div>
           )}

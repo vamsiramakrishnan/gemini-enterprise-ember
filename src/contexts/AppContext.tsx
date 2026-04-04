@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useEffect,
   useRef,
+  useMemo,
   type ReactNode,
 } from 'react';
 
@@ -801,4 +802,164 @@ export function AppProvider({ children }: AppProviderProps) {
       </AuthProvider>
     </NotificationProvider>
   );
+}
+
+// ─── adk-fluent Service Hook ──────────────────────────────────────────
+//
+// Wraps the service layer with notification feedback and error handling.
+// This is the seam where the real backend plugs in — swap the service
+// implementation and everything flows through.
+
+import { getAdkFluentService } from '../services/adk-fluent';
+import type { IAdkFluentService, CompileResult, ValidationResult, AgentEvent } from '../services/adk-fluent';
+import type { TestResult as ServiceTestResult } from '../services/adk-fluent';
+
+export function useAdkFluent() {
+  const service = useMemo<IAdkFluentService>(() => getAdkFluentService(), []);
+  const { addNotification } = useNotifications();
+
+  const compilePlaybook = useCallback(async (content: string): Promise<CompileResult | null> => {
+    try {
+      return await service.compilePlaybook(content);
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Compilation failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const runTest = useCallback(async (content: string, prompt: string): Promise<ServiceTestResult | null> => {
+    try {
+      return await service.runTest(content, prompt);
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Test failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const validate = useCallback(async (content: string): Promise<ValidationResult | null> => {
+    try {
+      return await service.validate(content);
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Validation failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const toMermaid = useCallback(async (content: string): Promise<string | null> => {
+    try {
+      const result = await service.toMermaid(content);
+      addNotification({ type: 'success', title: 'Mermaid exported', message: 'Copied to clipboard' });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Export failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const toPython = useCallback(async (content: string): Promise<string | null> => {
+    try {
+      const result = await service.toPython(content);
+      addNotification({ type: 'success', title: 'Python code generated', message: 'adk-fluent code copied to clipboard' });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Export failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const toYAML = useCallback(async (content: string): Promise<string | null> => {
+    try {
+      const result = await service.toYAML(content);
+      addNotification({ type: 'success', title: 'SKILL.md generated', message: 'YAML format copied to clipboard' });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Export failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const deployTool = useCallback(async (toolName: string) => {
+    try {
+      const result = await service.deployTool(toolName);
+      addNotification({ type: 'success', title: 'Tool deployed', message: `${toolName} → ${result.endpoint}` });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Deploy failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const publishToRegistry = useCallback(async (type: string, name: string, version: string) => {
+    try {
+      const result = await service.publishToRegistry(type, name, version);
+      addNotification({ type: 'success', title: 'Published', message: `${name} v${version} → ${result.registryId}` });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Publish failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const forkPlaybook = useCallback(async (fromVersion: string) => {
+    try {
+      const result = await service.forkPlaybook(fromVersion);
+      addNotification({ type: 'success', title: 'Fork created', message: `Forked from v${fromVersion} → v${result.newVersion}` });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Fork failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const activateSkill = useCallback(async (skillName: string, prompt: string) => {
+    try {
+      return await service.activateSkill(skillName, prompt);
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Activation failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const convertCodeToTool = useCallback(async (code: string, language: string) => {
+    try {
+      const result = await service.convertCodeToTool(code, language);
+      addNotification({ type: 'success', title: 'Converted to Tool', message: `Created @tool(${result.toolName}) with schema` });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Conversion failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const convertCodeToSkill = useCallback(async (code: string, language: string) => {
+    try {
+      const result = await service.convertCodeToSkill(code, language);
+      addNotification({ type: 'success', title: 'Converted to Skill', message: `Created SKILL.md for ${result.skillName}` });
+      return result;
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Conversion failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const queryConnector = useCallback(async (connectorName: string, query: string) => {
+    try {
+      return await service.queryConnector(connectorName, query);
+    } catch (e) {
+      addNotification({ type: 'error', title: 'Query failed', message: String(e) });
+      return null;
+    }
+  }, [service, addNotification]);
+
+  const streamTest = useCallback((content: string, prompt: string): AsyncGenerator<AgentEvent> => {
+    return service.streamTest(content, prompt);
+  }, [service]);
+
+  return {
+    compilePlaybook, runTest, validate,
+    toMermaid, toPython, toYAML,
+    deployTool, publishToRegistry, forkPlaybook,
+    activateSkill, convertCodeToTool, convertCodeToSkill,
+    queryConnector, streamTest,
+  };
 }
