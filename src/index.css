@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens (from CLAUDE.md spec) ─────────────────────────── */
+
+@theme {
+  /* Surface colors — M3 tonal elevation */
+  --color-surface-0: #FAFAF9;
+  --color-surface-1: #F5F5F4;
+  --color-surface-2: #F0EFEE;
+  --color-surface-3: #E8E7E6;
+
+  /* Chrome */
+  --color-sidebar: #F3F4F6;
+  --color-border: #E5E7EB;
+  --color-border-strong: #D1D5DB;
+
+  /* Accent */
+  --color-accent: #1A73E8;
+  --color-accent-hover: #1557B0;
+
+  /* Chip colors */
+  --color-chip-doc: #0D9488;
+  --color-chip-tool: #4F46E5;
+  --color-chip-agent: #D97706;
+  --color-chip-guard: #E11D48;
+  --color-chip-data: #059669;
+  --color-chip-schema: #475569;
+  --color-chip-connector: #2563EB;
+  --color-chip-skill: #7C3AED;
+  --color-chip-trigger: #EA580C;
+
+  /* Status */
+  --color-unresolved: #DC2626;
+  --color-draft: #EAB308;
+  --color-deprecated: #9CA3AF;
+
+  /* Typography */
+  --font-ui: 'Google Sans', 'Product Sans', 'Inter', system-ui, sans-serif;
+  --font-body: 'Source Serif 4', 'Literata', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+/* ─── Base Styles ─────────────────────────────────────────────────── */
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  background: var(--color-surface-0);
+  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Paper texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='0.5' fill='%23000'/%3E%3C/svg%3E");
+  z-index: 9999;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ─── Playbook Body Text ──────────────────────────────────────────── */
+
+.playbook-body {
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: #374151;
+}
+
+.playbook-body h1 { font-family: var(--font-ui); font-size: 1.75rem; font-weight: 600; color: #111827; margin: 0 0 1rem; }
+.playbook-body h2 { font-family: var(--font-ui); font-size: 1.25rem; font-weight: 600; color: #1f2937; margin: 1.5rem 0 0.75rem; }
+.playbook-body h3 { font-family: var(--font-ui); font-size: 1.0625rem; font-weight: 600; color: #374151; margin: 1.25rem 0 0.5rem; }
+
+/* ─── Code Cells ──────────────────────────────────────────────────── */
+
+.code-cell {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}

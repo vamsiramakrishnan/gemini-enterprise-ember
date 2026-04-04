@@ -94,6 +94,295 @@ This enables a complete agent lifecycle through text operations:
 
 -----
 
+## Backend: adk-fluent — The Engine Behind The Editor
+
+The UI mockup suite visualizes what **adk-fluent** (`pip install adk-fluent`) computes. adk-fluent is a fluent builder API for Google's Agent Development Kit (ADK) that reduces agent creation from 22+ lines to 1-3 lines while producing identical native ADK objects. **The playbook editor IS the visual surface of adk-fluent's expression language.**
+
+Repository: `github.com/vamsiramakrishnan/adk-fluent`
+
+### How adk-fluent Maps To The UI
+
+Every `@` chip type in the editor corresponds to a real adk-fluent construct:
+
+| UI `@` Chip | adk-fluent Construct | What It Does |
+|---|---|---|
+| `@agent(name)` | `Agent("name", "model").instruct(...)` | LLM agent with instructions, tools, callbacks. `.build()` returns native ADK `LlmAgent`. |
+| `@tool(name)` | `FunctionTool(fn)` / `MCPToolset(...)` / `ToolRegistry.search(...)` | Function tools, MCP server tools, OpenAPI tools. BM25-indexed discovery via `T.search("query")`. |
+| `@guard(name)` | `G.pii("redact") \| G.budget(5000) \| G.json()` | Composable guards via the `G` namespace. PII detection (regex + Cloud DLP), toxicity (LLM judge), budget, schema validation, topic blocking, hallucination detection. Guards compile to `before_model_callback` / `after_model_callback`. |
+| `@skill(name)` | `Skill("path/to/SKILL.md")` | SKILL.md-backed capability bundles. Parsed from YAML frontmatter + markdown body. Contains `agents:` block (multi-agent topology), `topology:` expression, `input:`/`output:` schemas, `eval:` cases. Skills compose with `>>`, `\|`, `*` operators like any builder. |
+| `@connector(name)` | `ApplicationIntegrationToolset(...)` / `BigQueryToolset(...)` / `GoogleApiToolset(...)` | ADK's native connector toolsets — Salesforce, Jira, Slack via Application Integration; BigQuery, Bigtable, Spanner, PubSub via dedicated toolsets; Gmail, Calendar, Docs, Sheets, Slides, YouTube via Google API toolsets. |
+| `@data(name)` | `S.capture("key")` / `S.pick(...)` / `S.rename(...)` | State transforms via the `S` namespace. Capture user input, project/rename keys, merge data — all zero-cost (no LLM call). |
+| `@schema(name)` | `agent @ OutputSchema` | The `@` operator constrains output to a Pydantic `BaseModel`. The agent's response must conform to the schema. |
+| `@doc(name)` | `VertexAiSearchTool(...)` / `DiscoveryEngineSearchTool(...)` | Grounding via Vertex AI Search data stores. Documents are indexed and retrieved at reasoning time. |
+| `@trigger(type)` | `StreamRunner` / `PubSubToolset` / Cloud Scheduler / Eventarc | Entry points: chat (streaming), inbox (Pub/Sub queue), event (Eventarc webhook from connectors), schedule (Cloud Scheduler cron). |
+
+### The Expression Language IS The Flow Tab
+
+adk-fluent's 9 operators compile to the exact DAG shown in the Flow tab:
+
+```
+Operator    │ Meaning              │ ADK Type          │ Flow Tab Node
+────────────┼──────────────────────┼───────────────────┼──────────────────
+a >> b      │ Sequential           │ SequentialAgent   │ Directed edge
+a | b       │ Parallel             │ ParallelAgent     │ Fork/join
+a * 3       │ Loop (fixed)         │ LoopAgent         │ Loop back-edge
+a * until() │ Loop (conditional)   │ LoopAgent + check │ Loop with predicate
+a @ Schema  │ Typed output         │ output_schema     │ Output node (slate)
+a // b      │ Fallback             │ First-success     │ Fallback branch
+Route("k")  │ Deterministic branch │ RoutingAgent      │ Decision diamond
+tap(fn)     │ Observe (no mutate)  │ Custom BaseAgent  │ Tap node
+gate(pred)  │ Human approval       │ EventActions      │ Gate node (rose)
+```
+
+**The Flow tab is `viz.ir_to_mermaid()` rendered as interactive SVG.** adk-fluent already has an IR (intermediate representation) with node types that map 1:1 to Flow tab nodes:
+
+- `AgentNode` → Process node (indigo for tools, blue for connectors, amber for delegation)
+- `SequenceNode` → Directed edges between children
+- `ParallelNode` → Fork/join with concurrent branches
+- `LoopNode` → Loop back-edge with max iteration badge
+- `RouteNode` → Decision diamond with conditional edges
+- `GateNode` → Gate node with pass/fail branches (rose)
+- `TransformNode` → Zero-cost state transform (no LLM icon)
+- `FallbackNode` → Try children in order, first success wins
+- `UINode` → A2UI surface render (declarative UI output)
+
+### The Guard System — `G` Namespace
+
+Guards are the `@guard` chips. adk-fluent's `G` namespace provides composable, chainable guard specs:
+
+```python
+# These compile to before_model / after_model callbacks
+agent.guard(
+    G.pii("redact", detector=G.dlp("my-project"))  # Cloud DLP PII detection
+    | G.toxicity(0.8, judge=G.llm_judge())          # LLM-based toxicity check
+    | G.budget(5000)                                  # Token budget limit
+    | G.json()                                        # JSON schema validation
+    | G.length(min=10, max=500)                       # Output length bounds
+    | G.grounded("sources")                           # Hallucination check
+    | G.topic(deny=["politics", "religion"])           # Topic blocking
+    | G.output(ClaimsResponse)                        # Pydantic schema validation
+)
+```
+
+Guard types and their UI representation:
+- **Structural**: `G.json()`, `G.length()`, `G.output(Schema)` → validate response shape
+- **Policy**: `G.budget()`, `G.rate_limit()`, `G.max_turns()` → enforce operational limits
+- **Content Safety**: `G.pii()`, `G.toxicity()`, `G.topic()`, `G.grounded()`, `G.hallucination()` → content filtering
+- **Conditional**: `G.when(predicate, guard)` → apply guards conditionally based on state
+
+Guards appear as **gate nodes** in the compiled Flow view with pass/fail branches. In the Test Cell's Loop Iteration Visualizer, guard checks appear as interstitial bars: "✓ @guard(pii-redaction) passed" or "✗ @guard(fraud-detection) BLOCKED."
+
+### The Skill System — SKILL.md Format
+
+Skills are the `@skill` chips. The SKILL.md format parsed by adk-fluent:
+
+```yaml
+---
+name: apac-compliance
+description: >
+  Use when handling regulatory compliance in APAC markets.
+  Covers MAS, APRA, RBI, OJK, and FSC regulations.
+version: "1.2.0"
+tags: [compliance, apac, regulatory]
+agents:
+  jurisdiction_check:
+    model: gemini-2.5-flash
+    instruct: "Identify customer jurisdiction from context."
+    tools: [regtech_api]
+    writes: jurisdiction
+  compliance_advisor:
+    model: gemini-2.5-pro
+    instruct: "Advise on {jurisdiction} regulatory requirements."
+    reads: [jurisdiction]
+    writes: advice
+topology: jurisdiction_check >> compliance_advisor
+input:
+  query: string
+output:
+  advice: string
+  jurisdiction: string
+eval:
+  - prompt: "KYC requirements for Singapore clients?"
+    expect_contains: "MAS"
+---
+
+# APAC Compliance Skill
+
+## Regional Rules
+When handling Singapore customers, reference @doc(mas-guidelines-2024)
+and apply @guard(pdpa-compliance)...
+```
+
+Key skill concepts reflected in the UI:
+- **`agents:` block** → defines the multi-agent topology within the skill (visible in Skill Cell)
+- **`topology:` expression** → uses the same `>>`, `|`, `*` operators to wire agents (shown in Skill Cell's mini-flow)
+- **`input:`/`output:` schemas** → the skill's contract (shown in Skill Cell footer)
+- **`eval:` cases** → built-in test cases (used by "Test Activation" button)
+- **Skill body** (markdown below frontmatter) → instructions with `@` chip references, same as a playbook
+- **`SkillRegistry("skills/")`** → directory scanner that indexes all SKILL.md files for discovery in autocomplete
+
+### The Tool System — `T` Namespace & Registry
+
+Tools are the `@tool` chips. adk-fluent supports multiple tool types that the UI should represent:
+
+- **`FunctionTool(fn)`** → Python function wrapped as a tool. The most common type. Schema auto-inferred from type hints.
+- **`MCPToolset(server_params)`** → MCP (Model Context Protocol) server tools. External tool servers.
+- **`OpenAPIToolset(spec)`** → Tools from OpenAPI/Swagger specs. Auto-generated from endpoint definitions.
+- **`ToolboxToolset(url)`** → ADK Toolbox — managed tool hosting.
+- **`GoogleSearchTool()`** → Built-in Google Search grounding.
+- **`VertexAiSearchTool(data_store_id)`** → Enterprise search via Vertex AI data stores.
+- **`ToolRegistry`** → BM25-indexed catalog for tool discovery. `T.search("lookup customer")` returns ranked matches. Powers the `@tool` autocomplete in the editor.
+
+### Connector Toolsets — The `@connector` Chips
+
+Connectors are ADK toolsets that wrap enterprise system integrations:
+
+**Google-native (via dedicated toolsets):**
+- `BigQueryToolset(project, dataset)` → SQL queries, schema inspection
+- `BigtableToolset(project, instance)` → NoSQL row operations
+- `SpannerToolset(project, instance, database)` → Distributed SQL
+- `PubSubToolset(project, topic)` → Message publish/subscribe
+- `CalendarToolset()` → Google Calendar CRUD
+- `GmailToolset()` → Email search, send, labels
+- `DocsToolset()` → Google Docs read/write
+- `SheetsToolset()` → Google Sheets read/write
+- `SlidesToolset()` → Google Slides CRUD
+- `YouTubeToolset()` → YouTube data API
+
+**Third-party (via Application Integration):**
+- `ApplicationIntegrationToolset(project, location, integration, triggers)` → Jira, Salesforce, Slack, ServiceNow, SharePoint, Confluence, GitHub, Box, etc. via Google Cloud Application Integration connectors.
+
+**Enterprise search (via data stores):**
+- `VertexAiSearchTool(data_store_specs)` → Vertex AI Search over ingested/federated data
+- `DiscoveryEngineSearchTool(data_store_id)` → Discovery Engine full-text search
+
+### Context Engineering — The `C` Namespace
+
+Context engineering controls what each agent sees. Not directly a chip type, but critical to how the playbook's instructions are delivered to the LLM:
+
+```python
+# What history does this agent see?
+agent.context(
+    C.window(n=3)           # Last 3 conversation turns
+    + C.from_state("topic") # Inject state["topic"] as context
+    + C.user_only()         # Only user messages, no agent messages
+    + C.relevant("query")   # Semantic relevance filtering
+    + C.summarize()         # LLM-summarized history
+)
+```
+
+This is relevant to the **Inspector sidebar's Details tab** — when a playbook section is selected, the inspector can show what context strategy is active for that agent.
+
+### Agent-to-Agent (A2A) Protocol
+
+The `@agent` chips for delegation use adk-fluent's A2A support:
+
+```python
+# Local sub-agent (same process)
+senior = Agent("senior-adjuster", "gemini-2.5-pro").instruct("...")
+
+# Remote agent (A2A protocol over HTTP)
+remote = RemoteAgent("fraud-specialist", "http://fraud-agent:8001")
+# or discover via well-known URL
+remote = RemoteAgent.discover("fraud", "fraud.agents.acme.com")
+
+# Both compose identically
+pipeline = classifier >> senior   # local delegation
+pipeline = classifier >> remote   # remote A2A delegation
+```
+
+`A2AServer(agent).port(8001).health_check().build()` publishes any agent as an A2A-discoverable service. `AgentRegistry` provides centralized discovery — this powers the `@agent` section in the autocomplete dropdown.
+
+### Agent-to-UI (A2UI) — Declarative UI Composition
+
+adk-fluent's `UI` namespace enables agents to generate structured UI output — not just text:
+
+```python
+from adk_fluent import UI
+
+surface = UI.surface("claims-form",
+    UI.column(
+        UI.text("Submit Your Claim", variant="h1"),
+        UI.text_field("policy_id", label="Policy Number", bind="/form/policy"),
+        UI.select("claim_type", label="Claim Type",
+            options=["auto", "home", "health"], bind="/form/type"),
+        UI.button("submit", label="Submit Claim", action="submit_claim"),
+    ),
+)
+
+# Compile to A2UI protocol messages
+messages = surface.compile()
+```
+
+This connects to the **Schema Cell** in the Notebook — when an agent uses `@schema(claims-form-v2)`, the schema isn't just JSON validation, it can be a full A2UI surface definition that renders as an interactive form in the chat interface.
+
+### Composition Patterns — Pre-built Workflows
+
+adk-fluent's `patterns` module provides higher-order constructors that map to common playbook patterns:
+
+```python
+from adk_fluent.patterns import review_loop, fan_out_merge, cascade, conditional
+
+# Review loop: writer → reviewer → repeat until quality
+review_loop(worker=writer, reviewer=critic, target="good", max_rounds=3)
+
+# Fan-out research + merge results
+fan_out_merge(web_agent, papers_agent, news_agent, merge_key="research")
+
+# Cascading fallback models (try fast, fall back to smart)
+cascade(Agent("fast").model("gemini-2.0-flash"), Agent("smart").model("gemini-2.5-pro"))
+
+# Supervised agent with human approval gate
+supervised(worker=claims_agent, gate_condition=lambda s: s["amount"] > 50000)
+```
+
+These patterns are what the compiled Flow tab visualizes. The playbook prose ("If claim amount exceeds $50,000, route to @agent(senior-adjuster)") compiles to these patterns behind the scenes.
+
+### The Playbook Parser — Compiling Prose to Graph
+
+The critical bridge between the playbook document and the compiled Flow tab is the **playbook parser**. This is the system that:
+
+1. **Extracts `@` references** from the playbook markdown — finding every `@type(name)` token
+2. **Resolves references** against the registry — checking that each `@tool(policy-lookup)` exists and is accessible
+3. **Infers topology** from prose structure — "When a customer submits a claim: 1. Use @tool(policy-lookup)... 2. Search @connector(salesforce)..." implies a sequential pipeline
+4. **Identifies conditional logic** — "If claim amount exceeds $50,000, route to @agent(senior-adjuster)" becomes a decision diamond
+5. **Compiles to IR** — produces the same `AgentNode`, `SequenceNode`, `RouteNode`, `GateNode` IR nodes that adk-fluent uses internally
+6. **Generates the DAG** — the IR is laid out as a left-to-right directed acyclic graph for the Flow tab
+
+The parser uses the same `_skill_parser.py` tokenizer and topology expression parser (`>>`, `|`, `*`) that SKILL.md files use. The playbook is essentially a rich SKILL.md with prose wrapping the topology.
+
+### Presets — Reusable Configuration Bundles
+
+`Preset` in adk-fluent is a reusable bundle of builder configuration:
+
+```python
+enterprise = Preset(
+    model="gemini-2.5-pro",
+    before_model=audit_callback,
+    after_model=compliance_check,
+)
+
+# Apply to any agent
+agent = Agent("claims").use(enterprise).instruct("Process claims.")
+```
+
+Presets map to **workspace-level configuration** in the UI — an org can define standard presets that all playbooks inherit, ensuring consistent model selection, compliance callbacks, and guard policies.
+
+### How The Backend Powers Each Screen
+
+| Screen | adk-fluent Backend |
+|---|---|
+| **Screen 1: Playbook Editor** | Playbook parser extracts `@` refs → resolves against `ToolRegistry` + `SkillRegistry` → compiles to IR → `viz.ir_to_mermaid()` renders Flow tab |
+| **Screen 2: Notebook** | Each cell type maps to a builder: Tool Cell → `FunctionTool`, Skill Cell → `Skill("SKILL.md")`, Test Cell → `.ask()` with event streaming, Code Cell → raw `BuiltInCodeExecutor` |
+| **Screen 3: Registry** | `ToolRegistry` (BM25-indexed tools) + `SkillRegistry` (SKILL.md scanner) + connector catalog from `ApplicationIntegrationToolset` |
+| **Screen 4: Permissions** | ADK's `AuthCredential` + `ServiceAccount` + IAM bindings per tool/connector |
+| **Screen 5: Live Authoring** | Meta-circular: the authoring agent itself uses `Agent("author").tool(registry_search).instruct("Build playbooks from user descriptions")` |
+| **Screen 8: Skill Editor** | Direct visual editor for SKILL.md format — `parse_skill_file()` + `SkillDefinition` data model |
+| **Screen 9: Connector Hub** | Inventory of all ADK toolset types — `BigQueryToolset`, `ApplicationIntegrationToolset`, `GoogleApiToolset`, etc. |
+| **Screen 10: Version History** | Playbook text diff + chip-aware annotations from parsed `@` references + IR graph diff between versions |
+
+-----
+
 ## Design Direction
 
 **Aesthetic**: Google Material Design 3 evolved — clean, professional, warm neutrals with sharp accent colors for chip types. NOT generic SaaS. NOT dashboard-heavy. The feel should be *editorial* — like writing in a beautifully typeset document that happens to be executable. Think Notion’s calm density meets Google Docs’ collaborative DNA meets Colab’s computational cells.
