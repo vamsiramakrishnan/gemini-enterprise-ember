@@ -9,7 +9,101 @@ import { useState, useMemo } from 'react';
 import { GOOGLE_CONNECTORS, THIRD_PARTY_CONNECTORS, ALL_CONNECTORS } from '../../data/connectors';
 import type { ConnectorEntry } from '../../data/connectors';
 
-// ─── Action Counter ───────────────────────────────────────────────────
+// ─── SVG Icons ───────────────────────────────────────────────────────
+
+function LightningIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8.5 1L3 9.5h4.5L6.5 15 13 6.5H8.5L9.5 1H8.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function RefreshIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="10" height="10" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M13.65 2.35A7.96 7.96 0 0 0 8 0C3.58 0 .01 3.58.01 8S3.58 16 8 16c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 8 14 6 6 0 1 1 8 2c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85-.017.016ZM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ expanded, className }: { expanded: boolean; className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+        transition: 'transform 150ms ease',
+      }}
+    >
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="8" height="8" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ─── Letter Abbreviation Map ─────────────────────────────────────────
+
+const CONNECTOR_ABBREVS: Record<string, { abbr: string; bg: string; fg: string }> = {
+  'google-drive': { abbr: 'GD', bg: '#E8F0FE', fg: '#1A73E8' },
+  'gmail': { abbr: 'GM', bg: '#FCE8E6', fg: '#D93025' },
+  'google-calendar': { abbr: 'GC', bg: '#E6F4EA', fg: '#1E8E3E' },
+  'bigquery': { abbr: 'BQ', bg: '#E8F0FE', fg: '#1A73E8' },
+  'cloud-storage': { abbr: 'CS', bg: '#E8F0FE', fg: '#4285F4' },
+  'spanner': { abbr: 'SP', bg: '#FEF7E0', fg: '#F9AB00' },
+  'firestore': { abbr: 'FS', bg: '#FEF7E0', fg: '#F9AB00' },
+  'bigtable': { abbr: 'BT', bg: '#E8F0FE', fg: '#4285F4' },
+  'alloydb': { abbr: 'AD', bg: '#E8EAF6', fg: '#3F51B5' },
+  'cloud-sql': { abbr: 'SQ', bg: '#E8F0FE', fg: '#4285F4' },
+  'google-sites': { abbr: 'GS', bg: '#E8F0FE', fg: '#4285F4' },
+  'google-groups': { abbr: 'GG', bg: '#E8F0FE', fg: '#4285F4' },
+  'jira': { abbr: 'J', bg: '#E3F2FD', fg: '#0052CC' },
+  'salesforce': { abbr: 'SF', bg: '#E3F2FD', fg: '#00A1E0' },
+  'slack': { abbr: 'SL', bg: '#F3E5F5', fg: '#611F69' },
+  'confluence': { abbr: 'CF', bg: '#E3F2FD', fg: '#0052CC' },
+  'servicenow': { abbr: 'SN', bg: '#E8F5E9', fg: '#2E7D32' },
+  'sharepoint': { abbr: 'SP', bg: '#E3F2FD', fg: '#036C70' },
+  'onedrive': { abbr: 'OD', bg: '#E3F2FD', fg: '#0078D4' },
+  'outlook': { abbr: 'OL', bg: '#E3F2FD', fg: '#0078D4' },
+  'box': { abbr: 'BX', bg: '#E3F2FD', fg: '#0061D5' },
+  'dropbox': { abbr: 'DB', bg: '#E8F0FE', fg: '#0061FF' },
+  'github': { abbr: 'GH', bg: '#F3F4F6', fg: '#24292F' },
+  'hubspot': { abbr: 'HS', bg: '#FFF3E0', fg: '#FF7A59' },
+  'monday': { abbr: 'MN', bg: '#FFF3E0', fg: '#FF3D57' },
+};
+
+function getConnectorVisual(id: string, product: string) {
+  const mapped = CONNECTOR_ABBREVS[id];
+  if (mapped) return mapped;
+  // Fallback: first two uppercase letters
+  const words = product.split(/\s+/);
+  const abbr = words.length > 1
+    ? (words[0][0] + words[1][0]).toUpperCase()
+    : product.substring(0, 2).toUpperCase();
+  return { abbr, bg: '#F3F4F6', fg: '#6B7280' };
+}
+
+// ─── Action Summary Bar ──────────────────────────────────────────────
 
 function ActionSummary() {
   const activeConnectors = ALL_CONNECTORS.filter((c) => c.status === 'active');
@@ -17,120 +111,182 @@ function ActionSummary() {
   const totalSystems = activeConnectors.length;
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-blue-700">{totalActions}</div>
-        <div className="text-[10px] text-blue-500 uppercase tracking-wider">Actions</div>
-      </div>
-      <div className="w-px h-8 bg-blue-200" />
-      <div className="text-center">
-        <div className="text-2xl font-bold text-indigo-700">{totalSystems}</div>
-        <div className="text-[10px] text-indigo-500 uppercase tracking-wider">Systems</div>
-      </div>
-      <div className="flex-1 text-xs text-blue-600 ml-2">
-        Agent can perform <strong>{totalActions} actions</strong> across{' '}
-        <strong>{totalSystems} connected systems</strong>
-      </div>
+    <div
+      className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#E5E7EB]"
+      style={{ background: '#F9FAFB', fontFamily: 'var(--font-ui)' }}
+    >
+      <span style={{ fontSize: 12, color: '#6B7280' }}>
+        Agent can perform{' '}
+        <span style={{ fontWeight: 600, color: '#2563EB' }}>{totalActions} actions</span>
+        {' '}across{' '}
+        <span style={{ fontWeight: 600, color: '#2563EB' }}>{totalSystems} connected systems</span>
+      </span>
     </div>
   );
 }
 
-// ─── Connector Card ───────────────────────────────────────────────────
+// ─── Status Badge ────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: ConnectorEntry['status'] }) {
+  const configs: Record<string, { dotColor: string; textColor: string; bgColor: string; label: string }> = {
+    active: { dotColor: '#059669', textColor: '#059669', bgColor: '#ECFDF5', label: 'Active' },
+    available: { dotColor: '#9CA3AF', textColor: '#6B7280', bgColor: '#F3F4F6', label: 'Available' },
+    draft: { dotColor: '#D97706', textColor: '#D97706', bgColor: '#FFFBEB', label: 'Configuring' },
+    error: { dotColor: '#DC2626', textColor: '#DC2626', bgColor: '#FEF2F2', label: 'Error' },
+  };
+
+  const config = configs[status];
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+      style={{ fontSize: 10, fontWeight: 500, color: config.textColor, background: config.bgColor }}
+    >
+      <span
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: '50%',
+          background: config.dotColor,
+          display: 'inline-block',
+          flexShrink: 0,
+        }}
+      />
+      {config.label}
+    </span>
+  );
+}
+
+// ─── Sync Mode Badge ─────────────────────────────────────────────────
+
+function SyncModeBadge({ mode }: { mode?: 'federated' | 'ingested' }) {
+  if (!mode) return null;
+
+  if (mode === 'federated') {
+    return (
+      <span className="inline-flex items-center gap-1" style={{ fontSize: 10, color: '#2563EB' }}>
+        <LightningIcon className="text-[#2563EB]" />
+        Real-time
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1" style={{ fontSize: 10, color: '#9CA3AF' }}>
+      <RefreshIcon className="text-[#9CA3AF]" />
+      Periodic sync
+    </span>
+  );
+}
+
+// ─── Connector Card ──────────────────────────────────────────────────
 
 function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
   const [expanded, setExpanded] = useState(false);
+  const visual = getConnectorVisual(connector.id, connector.product);
 
-  const statusConfig: Record<string, { color: string; bg: string; label: string }> = {
-    active: { color: '#059669', bg: '#DCFCE7', label: '● Active' },
-    available: { color: '#6B7280', bg: '#F3F4F6', label: 'Available — Connect →' },
-    draft: { color: '#D97706', bg: '#FEF9C3', label: '◐ Configuring' },
-    error: { color: '#DC2626', bg: '#FEE2E2', label: '● Error' },
-  };
-
-  const status = statusConfig[connector.status];
-  const totalEntities = connector.entities.reduce((sum, e) => sum + e.count, 0);
+  const enabledEntities = connector.entities.filter((e) => e.enabled).length;
+  const enabledActions = connector.actions.filter((a) => a.enabled).length;
 
   const timeSinceSync = useMemo(() => {
     if (!connector.lastSync) return null;
     const mins = Math.floor((Date.now() - new Date(connector.lastSync).getTime()) / 60000);
     if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins} min ago`;
+    if (mins < 60) return `${mins}m ago`;
     if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
     return `${Math.floor(mins / 1440)}d ago`;
   }, [connector.lastSync]);
 
   return (
     <div
-      className={`rounded-xl border bg-white transition-all cursor-pointer hover:shadow-md ${
-        connector.status === 'available' ? 'opacity-70 hover:opacity-100' : ''
-      }`}
+      className="rounded-lg border bg-white transition-all cursor-pointer"
       style={{
-        borderColor: expanded ? '#2563EB60' : '#E5E7EB',
+        borderColor: expanded ? '#2563EB' : '#E5E7EB',
+        boxShadow: expanded
+          ? '0 1px 3px 0 rgba(37, 99, 235, 0.08)'
+          : '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+        opacity: connector.status === 'available' ? 0.72 : 1,
+        fontFamily: 'var(--font-ui)',
+      }}
+      onMouseEnter={(e) => {
+        if (!expanded) {
+          e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.08)';
+        }
+        if (connector.status === 'available') {
+          e.currentTarget.style.opacity = '1';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!expanded) {
+          e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.03)';
+        }
+        if (connector.status === 'available') {
+          e.currentTarget.style.opacity = '0.72';
+        }
       }}
       onClick={() => setExpanded(!expanded)}
     >
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{connector.icon}</span>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">{connector.product}</h3>
-              <span className="text-[10px] text-gray-400">
-                {connector.provider === 'google' ? 'Google' : 'Third-party'}
-              </span>
-            </div>
-          </div>
-          <span
-            className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-            style={{ background: status.bg, color: status.color }}
+      <div className="p-3">
+        {/* Header row */}
+        <div className="flex items-center gap-2.5">
+          {/* Letter circle */}
+          <div
+            className="flex items-center justify-center rounded-full flex-shrink-0"
+            style={{
+              width: 32,
+              height: 32,
+              background: visual.bg,
+              color: visual.fg,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+            }}
           >
-            {status.label}
-          </span>
+            {visual.abbr}
+          </div>
+
+          {/* Name + status */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, lineHeight: 1.3 }}>
+                {connector.product}
+              </h3>
+              <StatusBadge status={connector.status} />
+            </div>
+            {/* Meta line: sync mode + entity/action counts */}
+            {connector.status === 'active' && (
+              <div className="flex items-center gap-2 mt-0.5">
+                <SyncModeBadge mode={connector.syncMode} />
+                {(enabledEntities > 0 || enabledActions > 0) && (
+                  <span style={{ fontSize: 10, color: '#9CA3AF' }}>
+                    {enabledEntities > 0 && `${enabledEntities} entities`}
+                    {enabledEntities > 0 && enabledActions > 0 && ' / '}
+                    {enabledActions > 0 && `${enabledActions} actions`}
+                  </span>
+                )}
+                {timeSinceSync && (
+                  <span style={{ fontSize: 10, color: '#9CA3AF' }}>
+                    Synced {timeSinceSync}
+                  </span>
+                )}
+              </div>
+            )}
+            {connector.status === 'available' && (
+              <span style={{ fontSize: 10, color: '#2563EB', fontWeight: 500 }}>
+                Connect to get started
+              </span>
+            )}
+          </div>
+
+          {/* Expand indicator */}
+          {connector.status === 'active' && (
+            <ChevronIcon expanded={expanded} className="text-[#9CA3AF] flex-shrink-0" />
+          )}
         </div>
 
-        {/* Description */}
-        <p className="text-xs text-gray-500 mb-3">{connector.description}</p>
-
-        {/* Quick stats */}
-        {connector.status === 'active' && (
-          <div className="flex flex-wrap gap-1.5">
-            {connector.entities.filter((e) => e.enabled).length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                {connector.entities.filter((e) => e.enabled).length} entities
-              </span>
-            )}
-            {connector.actions.filter((a) => a.enabled).length > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">
-                {connector.actions.filter((a) => a.enabled).length} actions
-              </span>
-            )}
-            {totalEntities > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                {totalEntities.toLocaleString()} docs
-              </span>
-            )}
-            {connector.syncMode === 'federated' && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
-                ⚡ Real-time
-              </span>
-            )}
-            {connector.syncMode === 'ingested' && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
-                🔄 Periodic sync
-              </span>
-            )}
-            {timeSinceSync && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600">
-                synced {timeSinceSync}
-              </span>
-            )}
-          </div>
-        )}
-
         {/* Referenced count */}
-        {connector.referencedInPlaybooks > 0 && (
-          <div className="mt-2 text-[10px] text-gray-400">
+        {connector.referencedInPlaybooks > 0 && connector.status !== 'available' && (
+          <div className="mt-2 ml-[42px]" style={{ fontSize: 10, color: '#9CA3AF' }}>
             Referenced in {connector.referencedInPlaybooks} playbook{connector.referencedInPlaybooks > 1 ? 's' : ''}
           </div>
         )}
@@ -138,24 +294,36 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
 
       {/* Expanded detail */}
       {expanded && connector.status === 'active' && (
-        <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+        <div className="px-3 pb-3 border-t border-[#F3F4F6] pt-3 space-y-3 ml-[42px]">
           {/* Entities */}
           {connector.entities.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <h4
+                className="mb-1.5"
+                style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              >
                 Entities
               </h4>
               <div className="space-y-1">
                 {connector.entities.map((e) => (
-                  <div key={e.name} className="flex items-center justify-between text-xs">
+                  <div key={e.name} className="flex items-center justify-between" style={{ fontSize: 12 }}>
                     <div className="flex items-center gap-2">
-                      <span className={`w-3 h-3 rounded border ${e.enabled ? 'bg-blue-500 border-blue-500 text-white text-[8px] flex items-center justify-center' : 'border-gray-300'}`}>
-                        {e.enabled ? '✓' : ''}
+                      <span
+                        className="flex items-center justify-center rounded"
+                        style={{
+                          width: 14,
+                          height: 14,
+                          border: e.enabled ? '1px solid #2563EB' : '1px solid #D1D5DB',
+                          background: e.enabled ? '#2563EB' : 'transparent',
+                          color: '#fff',
+                        }}
+                      >
+                        {e.enabled && <CheckIcon />}
                       </span>
-                      <span className="text-gray-700">{e.name}</span>
+                      <span style={{ color: '#374151' }}>{e.name}</span>
                     </div>
                     {e.count > 0 && (
-                      <span className="text-gray-400">{e.count.toLocaleString()}</span>
+                      <span style={{ color: '#9CA3AF', fontSize: 10 }}>{e.count.toLocaleString()}</span>
                     )}
                   </div>
                 ))}
@@ -166,18 +334,24 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
           {/* Actions */}
           {connector.actions.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+              <h4
+                className="mb-1.5"
+                style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              >
                 Actions
               </h4>
               <div className="flex flex-wrap gap-1.5">
                 {connector.actions.map((a) => (
                   <span
                     key={a.name}
-                    className={`text-[10px] px-2 py-0.5 rounded-full ${
-                      a.enabled
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'bg-gray-100 text-gray-400 line-through'
-                    }`}
+                    className="rounded-full"
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 8px',
+                      background: a.enabled ? '#EFF6FF' : '#F9FAFB',
+                      color: a.enabled ? '#2563EB' : '#9CA3AF',
+                      textDecoration: a.enabled ? 'none' : 'line-through',
+                    }}
                   >
                     {a.name}
                   </span>
@@ -187,14 +361,18 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
           )}
 
           {/* Auth & region */}
-          <div className="flex flex-wrap gap-3 text-[10px] text-gray-400">
+          <div className="flex flex-wrap gap-3" style={{ fontSize: 10, color: '#9CA3AF' }}>
             <span>Auth: {connector.authMethod}</span>
             {connector.authUser && <span>User: {connector.authUser}</span>}
             {connector.region && <span>Region: {connector.region}</span>}
           </div>
 
-          <button className="text-[10px] text-blue-600 hover:underline">
-            Open in Gemini Enterprise Console →
+          <button
+            className="hover:underline"
+            style={{ fontSize: 10, color: '#2563EB', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            Open in Gemini Enterprise Console
           </button>
         </div>
       )}
@@ -202,7 +380,29 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
   );
 }
 
-// ─── Main Hub ─────────────────────────────────────────────────────────
+// ─── Section Header ──────────────────────────────────────────────────
+
+function SectionHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <h2
+      className="mb-3"
+      style={{
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#9CA3AF',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        fontFamily: 'var(--font-ui)',
+        margin: 0,
+        marginBottom: 12,
+      }}
+    >
+      {label} ({count})
+    </h2>
+  );
+}
+
+// ─── Main Hub ────────────────────────────────────────────────────────
 
 export function ConnectorHub() {
   const [search, setSearch] = useState('');
@@ -220,46 +420,80 @@ export function ConnectorHub() {
 
   const googleFiltered = useMemo(() => filterBySearch(GOOGLE_CONNECTORS), [search]);
   const thirdPartyFiltered = useMemo(() => filterBySearch(THIRD_PARTY_CONNECTORS), [search]);
+  const activeCount = ALL_CONNECTORS.filter((c) => c.status === 'active').length;
 
   return (
-    <div className="h-full bg-[var(--color-surface-0)]">
+    <div className="h-full overflow-auto" style={{ background: '#F9FAFB' }}>
       {/* Header */}
-      <header className="border-b border-[var(--color-border)] bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
-          <div>
-            <h1 className="text-sm font-semibold text-gray-900">Connector Hub</h1>
-            <p className="text-[10px] text-gray-500">
-              Gemini Enterprise data sources — {ALL_CONNECTORS.filter((c) => c.status === 'active').length} active connections
+      <header
+        className="sticky top-0 z-50 bg-white"
+        style={{ borderBottom: '1px solid #E5E7EB' }}
+      >
+        <div className="px-6 py-3 flex items-center justify-between">
+          <div style={{ fontFamily: 'var(--font-ui)' }}>
+            <h1 style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, lineHeight: 1.3 }}>
+              Connected Systems
+            </h1>
+            <p style={{ fontSize: 10, color: '#9CA3AF', margin: 0, marginTop: 1 }}>
+              {activeCount} active connection{activeCount !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="ml-auto">
-            <button className="px-3 py-1.5 rounded-lg bg-[var(--color-accent)] text-white text-xs font-medium hover:opacity-90">
-              + Add Connector
-            </button>
-          </div>
+          <button
+            className="rounded-lg"
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              padding: '6px 14px',
+              background: '#2563EB',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-ui)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#1D4ED8'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#2563EB'; }}
+          >
+            Add Connector
+          </button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Action summary */}
+      <div className="px-6 py-5 space-y-5">
+        {/* Action summary bar */}
         <ActionSummary />
 
         {/* Search */}
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search connectors by name, description, or action…"
-          className="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-white text-sm focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)]"
-        />
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search connectors by name, description, or action..."
+            className="w-full rounded-lg border focus:outline-none"
+            style={{
+              padding: '8px 12px 8px 34px',
+              fontSize: 12,
+              border: '1px solid #E5E7EB',
+              background: '#fff',
+              color: '#111827',
+              fontFamily: 'var(--font-ui)',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#2563EB';
+              e.currentTarget.style.boxShadow = '0 0 0 1px #2563EB';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#E5E7EB';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          />
+        </div>
 
         {/* Google Sources */}
         <div>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span className="w-4 h-4 rounded bg-blue-100 flex items-center justify-center text-[10px]">G</span>
-            Google Sources ({googleFiltered.length})
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SectionHeader label="Google" count={googleFiltered.length} />
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
             {googleFiltered.map((c) => (
               <ConnectorCard key={c.id} connector={c} />
             ))}
@@ -268,11 +502,8 @@ export function ConnectorHub() {
 
         {/* Third-party */}
         <div>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span className="w-4 h-4 rounded bg-gray-200 flex items-center justify-center text-[10px]">3P</span>
-            Third-Party Sources ({thirdPartyFiltered.length})
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <SectionHeader label="Third-Party" count={thirdPartyFiltered.length} />
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
             {thirdPartyFiltered.map((c) => (
               <ConnectorCard key={c.id} connector={c} />
             ))}
@@ -280,8 +511,19 @@ export function ConnectorHub() {
         </div>
 
         {/* Code execution contrast note */}
-        <div className="p-4 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-500">
-          <strong className="text-gray-700">Without connectors</strong>, the agent could write raw code to call these APIs.
+        <div
+          className="rounded-lg"
+          style={{
+            padding: '12px 16px',
+            border: '1px dashed #D1D5DB',
+            background: '#F9FAFB',
+            fontSize: 12,
+            color: '#6B7280',
+            fontFamily: 'var(--font-ui)',
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: '#374151' }}>Without connectors</strong>, the agent could write raw code to call these APIs.
           Connectors provide the same capabilities with governance, authentication, sync, and audit built in.
           They are <em>cached, governed expansions</em> of the omnipotent code execution space.
         </div>
