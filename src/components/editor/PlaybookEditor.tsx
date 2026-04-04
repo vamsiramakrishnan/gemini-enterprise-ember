@@ -928,6 +928,152 @@ function ProblemSpaceVisualizer() {
   );
 }
 
+// ─── Command Palette ────────────────────────────────────────────────────
+
+function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [query, setQuery] = useState('');
+
+  const commands = useMemo(() => [
+    { section: 'Navigate', items: [
+      { label: 'Switch to Document tab', shortcut: '1', action: 'tab:document' },
+      { label: 'Switch to Flow tab', shortcut: '2', action: 'tab:flow' },
+      { label: 'Switch to Notebook tab', shortcut: '3', action: 'tab:notebook' },
+    ]},
+    { section: 'Actions', items: [
+      { label: 'Publish new version...', shortcut: 'P', action: 'publish' },
+      { label: 'Share with team...', shortcut: 'S', action: 'share' },
+      { label: 'View version history', shortcut: 'H', action: 'history' },
+      { label: 'Run test...', shortcut: 'T', action: 'test' },
+    ]},
+    { section: 'Insert', items: [
+      { label: 'Insert @tool reference', shortcut: '@t', action: 'insert:tool' },
+      { label: 'Insert @connector reference', shortcut: '@c', action: 'insert:connector' },
+      { label: 'Insert @guard reference', shortcut: '@g', action: 'insert:guard' },
+      { label: 'Insert @skill reference', shortcut: '@s', action: 'insert:skill' },
+    ]},
+  ], []);
+
+  const filtered = useMemo(() => {
+    if (!query) return commands;
+    const q = query.toLowerCase();
+    return commands.map(section => ({
+      ...section,
+      items: section.items.filter(item => item.label.toLowerCase().includes(q)),
+    })).filter(section => section.items.length > 0);
+  }, [query, commands]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
+      <div
+        className="relative w-full max-w-lg bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+      >
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-gray-400 shrink-0">
+            <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search commands, references, actions..."
+            className="flex-1 text-sm text-gray-900 placeholder:text-gray-400 outline-none bg-transparent"
+            style={{ fontFamily: 'var(--font-ui)' }}
+          />
+          <kbd className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono">ESC</kbd>
+        </div>
+        <div className="max-h-72 overflow-auto py-2">
+          {filtered.map((section) => (
+            <div key={section.section}>
+              <div className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-gray-400">
+                {section.section}
+              </div>
+              {section.items.map((item) => (
+                <button
+                  key={item.label}
+                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors text-left"
+                  onClick={onClose}
+                >
+                  <span className="text-[13px] text-gray-700 flex-1">{item.label}</span>
+                  {item.shortcut && (
+                    <kbd className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono">
+                      {item.shortcut}
+                    </kbd>
+                  )}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Status Bar (bottom) ────────────────────────────────────────────────
+
+function StatusBar({
+  chipCount, nodeCount, edgeCount, activeTab,
+}: {
+  chipCount: number; nodeCount: number; edgeCount: number; activeTab: string;
+}) {
+  return (
+    <div
+      className="shrink-0 flex items-center justify-between px-4 py-1 text-[10px] text-gray-400 select-none"
+      style={{ borderTop: '1px solid #F3F4F6', background: '#FAFBFC', fontFamily: 'var(--font-ui)' }}
+    >
+      <div className="flex items-center gap-4">
+        <span>{chipCount} references</span>
+        <span>{nodeCount} nodes</span>
+        <span>{edgeCount} edges</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Auto-compiling
+        </span>
+        <span>
+          {activeTab === 'document' && 'Editing document'}
+          {activeTab === 'flow' && 'Viewing compiled graph'}
+          {activeTab === 'notebook' && 'Development mode'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab Icons ──────────────────────────────────────────────────────────
+
+function TabIcon({ tab, active }: { tab: string; active: boolean }) {
+  const color = active ? '#2563EB' : '#9CA3AF';
+  if (tab === 'document') return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="2" width="10" height="12" rx="1.5" stroke={color} strokeWidth="1.2"/>
+      <path d="M5.5 5.5h5M5.5 8h3.5M5.5 10.5h4" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+  if (tab === 'flow') return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <circle cx="4" cy="8" r="2" stroke={color} strokeWidth="1.2"/>
+      <circle cx="12" cy="5" r="2" stroke={color} strokeWidth="1.2"/>
+      <circle cx="12" cy="11" r="2" stroke={color} strokeWidth="1.2"/>
+      <path d="M6 7.2L10 5.5M6 8.8L10 10.5" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="2" width="10" height="4" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="3" y="8" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="3" y="13" width="6" height="1.5" rx="0.75" fill={color} fillOpacity="0.3"/>
+    </svg>
+  );
+}
+
 // ─── Main Editor Component ──────────────────────────────────────────────
 
 type EditorTab = 'document' | 'flow' | 'notebook';
@@ -941,12 +1087,20 @@ export function PlaybookEditor() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const lineRefs = useRef<Map<number, HTMLElement>>(new Map());
 
   // Parse + compile once
   const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
+
+  // Stats
+  const chipCount = useMemo(() => {
+    let count = 0;
+    for (const refs of Object.values(parsed.referencesByType)) count += refs.length;
+    return count;
+  }, [parsed]);
 
   // Derive selected chip key for glowing
   const selectedChipKey = useMemo(() => {
@@ -998,7 +1152,6 @@ export function PlaybookEditor() {
     if (!node || !node.sourceLines.length) return;
     setHighlightedLines(node.sourceLines);
     setActiveTab('document');
-    // Defer scroll so DOM is ready
     setTimeout(() => scrollToLine(node.sourceLines[0]), 100);
   }, [graph.nodes, scrollToLine]);
 
@@ -1015,45 +1168,147 @@ export function PlaybookEditor() {
     return node?.sourceLines[0];
   }, [selectedNodeId, graph.nodes]);
 
+  // Keyboard shortcut for command palette
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      }
+      if (e.key === 'Escape') {
+        setCommandPaletteOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Tab descriptions for the subtle hint
+  const tabHints: Record<EditorTab, string> = {
+    document: 'Write your agent as a document',
+    flow: 'See the compiled topology',
+    notebook: 'Test and prototype',
+  };
+
   return (
     <div className="h-full flex flex-col bg-[var(--color-surface-0)]">
       <style>{STYLE_TAG}</style>
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
 
-      {/* ── Top Bar ── */}
-      <header className="border-b border-[var(--color-border)] bg-white/90 backdrop-blur-sm shrink-0 z-40">
-        <div className="px-4 py-2.5 flex items-center gap-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Claims Processing Agent</h1>
-              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-100 text-green-700">v2.1</span>
-              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-green-50 text-green-600">PUBLISHED</span>
+      {/* ── Top Bar — Google Docs-inspired chrome ── */}
+      <header className="shrink-0 z-40 bg-white" style={{ borderBottom: '1px solid #E5E7EB' }}>
+        {/* Primary toolbar */}
+        <div className="px-5 py-2.5 flex items-center gap-3">
+          {/* Document identity */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <h1
+              className="text-[15px] font-semibold text-[#111827] truncate cursor-text"
+              style={{ fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}
+            >
+              Claims Processing Agent
+            </h1>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#DCFCE7] text-[#166534]">
+                v2.1
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
+                Published
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link to="/history" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1">History</Link>
-            <Link to="/permissions" className="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Share</Link>
-            <button className="px-3 py-1.5 text-xs text-white bg-[var(--color-accent)] rounded-lg hover:opacity-90">Publish ▾</button>
+
+          {/* Command palette trigger */}
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <span>Search</span>
+            <kbd className="text-[10px] bg-gray-100 px-1 py-0.5 rounded text-gray-400 font-mono ml-2">
+              {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}K
+            </kbd>
+          </button>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Link
+              to="/history"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#6B7280] rounded-lg hover:bg-[#F9FAFB] transition-colors"
+              style={{ fontFamily: 'var(--font-ui)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.2"/>
+                <path d="M8 5v3.5l2 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              History
+            </Link>
+            <Link
+              to="/permissions"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] text-[#6B7280] rounded-lg hover:bg-[#F9FAFB] transition-colors"
+              style={{ fontFamily: 'var(--font-ui)' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M5 7V5.5a3 3 0 016 0V7" stroke="currentColor" strokeWidth="1.2"/>
+                <rect x="3.5" y="7" width="9" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+              </svg>
+              Share
+            </Link>
+            <button
+              className="flex items-center gap-1.5 px-4 py-1.5 text-[12px] font-medium text-white rounded-lg transition-colors"
+              style={{ background: '#2563EB', fontFamily: 'var(--font-ui)' }}
+            >
+              Publish
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2.5 4L5 6.5 7.5 4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* ── Tab Bar ── */}
-        <div className="px-4 flex gap-0 border-t border-gray-100">
-          {(['document', 'flow', 'notebook'] as EditorTab[]).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-                activeTab === tab
-                  ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`} style={{ fontFamily: 'var(--font-ui)' }}>
-              {tab === 'document' && 'Document'}
-              {tab === 'flow' && 'Flow'}
-              {tab === 'notebook' && 'Notebook'}
-            </button>
-          ))}
-          <div className="flex-1" />
-          <button onClick={() => setInspectorOpen(!inspectorOpen)}
-            className="px-3 py-2 text-xs text-gray-500 hover:text-gray-700">
-            {inspectorOpen ? 'Hide Inspector ›' : '‹ Inspector'}
+        {/* Tab bar — the three lenses */}
+        <div className="px-5 flex items-center gap-0" style={{ marginTop: -1 }}>
+          {(['document', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="relative flex items-center gap-2 px-4 py-2.5 transition-colors group"
+                style={{ fontFamily: 'var(--font-ui)' }}
+              >
+                <TabIcon tab={tab} active={isActive} />
+                <span className={`text-[12px] font-medium ${isActive ? 'text-[#2563EB]' : 'text-[#9CA3AF] group-hover:text-[#6B7280]'}`}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </span>
+                {/* Active indicator */}
+                {isActive && (
+                  <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-[#2563EB]" />
+                )}
+              </button>
+            );
+          })}
+
+          {/* Tab hint — subtle context for what this view does */}
+          <div className="flex-1 flex justify-center">
+            <span className="text-[11px] text-[#D1D5DB] italic" style={{ fontFamily: 'var(--font-ui)' }}>
+              {tabHints[activeTab]}
+            </span>
+          </div>
+
+          {/* Inspector toggle */}
+          <button
+            onClick={() => setInspectorOpen(!inspectorOpen)}
+            className="flex items-center gap-1.5 px-3 py-2 text-[12px] text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+            style={{ fontFamily: 'var(--font-ui)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+              <path d="M10.5 2v12" stroke="currentColor" strokeWidth="1.2"/>
+            </svg>
+            {inspectorOpen ? 'Inspector' : 'Inspector'}
           </button>
         </div>
       </header>
@@ -1080,24 +1335,60 @@ export function PlaybookEditor() {
             />
           )}
           {activeTab === 'notebook' && (
-            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-              <Link to="/notebook" className="text-[var(--color-accent)] hover:underline">Open full Notebook view →</Link>
+            <div className="h-full flex flex-col items-center justify-center text-center px-8">
+              <div className="w-12 h-12 rounded-xl bg-[#F3F4F6] flex items-center justify-center mb-4">
+                <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+                  <rect x="3" y="2" width="10" height="4" rx="1" stroke="#9CA3AF" strokeWidth="1.2"/>
+                  <rect x="3" y="8" width="10" height="3" rx="1" stroke="#9CA3AF" strokeWidth="1.2"/>
+                  <rect x="3" y="13" width="6" height="1.5" rx="0.75" fill="#D1D5DB"/>
+                </svg>
+              </div>
+              <div className="text-[13px] text-[#6B7280] mb-1" style={{ fontFamily: 'var(--font-ui)' }}>
+                Notebook is the development surface
+              </div>
+              <div className="text-[12px] text-[#9CA3AF] mb-4 max-w-sm">
+                Prototype with code cells, test the agent loop, define tool schemas — all from the same playbook.
+              </div>
+              <Link
+                to="/notebook"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors"
+                style={{ background: '#2563EB', fontFamily: 'var(--font-ui)' }}
+              >
+                Open Notebook
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M4.5 2.5L8 6 4.5 9.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </Link>
             </div>
           )}
         </div>
 
         {/* ── Inspector Sidebar ── */}
         {inspectorOpen && (
-          <div className="w-72 border-l border-[var(--color-border)] bg-white shrink-0 overflow-auto">
-            <div className="flex border-b border-gray-100">
-              {(['details', 'space'] as InspectorTab[]).map((tab) => (
-                <button key={tab} onClick={() => setInspectorTab(tab)}
-                  className={`flex-1 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
-                    inspectorTab === tab
-                      ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}>
-                  {tab === 'details' ? '📋 Details' : '🎯 Space'}
+          <div
+            className="shrink-0 overflow-auto bg-white"
+            style={{ width: 300, borderLeft: '1px solid #E5E7EB' }}
+          >
+            {/* Inspector tab bar */}
+            <div className="flex" style={{ borderBottom: '1px solid #F3F4F6' }}>
+              {([
+                { id: 'details' as InspectorTab, label: 'Details' },
+                { id: 'space' as InspectorTab, label: 'Problem Space' },
+              ]).map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setInspectorTab(id)}
+                  className={`flex-1 px-3 py-2.5 text-[11px] font-medium transition-colors relative ${
+                    inspectorTab === id
+                      ? 'text-[#2563EB]'
+                      : 'text-[#9CA3AF] hover:text-[#6B7280]'
+                  }`}
+                  style={{ fontFamily: 'var(--font-ui)' }}
+                >
+                  {label}
+                  {inspectorTab === id && (
+                    <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#2563EB]" />
+                  )}
                 </button>
               ))}
             </div>
@@ -1112,8 +1403,15 @@ export function PlaybookEditor() {
                   onGoToSource={handleInspectorGoToSource}
                 />
               ) : (
-                <div className="p-4 text-xs text-gray-400 text-center mt-8">
-                  Click any @chip in the document or node in the flow to inspect it.
+                <div className="flex flex-col items-center justify-center h-64 text-center px-8">
+                  <div className="w-10 h-10 rounded-lg bg-[#F9FAFB] flex items-center justify-center mb-3">
+                    <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 3v10M4 8l4-4 4 4" stroke="#D1D5DB" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div className="text-[12px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-ui)' }}>
+                    Select any <span className="font-medium text-[#6B7280]">@reference</span> in the document or node in the flow graph to inspect it
+                  </div>
                 </div>
               )
             )}
@@ -1122,6 +1420,14 @@ export function PlaybookEditor() {
           </div>
         )}
       </div>
+
+      {/* ── Status Bar ── */}
+      <StatusBar
+        chipCount={chipCount}
+        nodeCount={graph.nodes.length}
+        edgeCount={graph.edges.length}
+        activeTab={activeTab}
+      />
     </div>
   );
 }
