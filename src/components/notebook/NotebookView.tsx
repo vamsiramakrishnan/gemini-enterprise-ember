@@ -7,10 +7,74 @@
  * and Code Execution (the escape hatch).
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTest, useNotifications, useConnectors } from '../../contexts/AppContext';
 import type { SkillActivationResult } from '../../contexts/AppContext';
+
+// ---------------------------------------------------------------------------
+// Add Cell Divider — shown between cells on hover
+// ---------------------------------------------------------------------------
+
+const CELL_TYPES = [
+  { label: 'Playbook', icon: '\u{1F4C4}' },
+  { label: 'Tool', icon: '\u{1F527}' },
+  { label: 'Test', icon: '\u25B6' },
+  { label: 'Skill', icon: '\u2728' },
+  { label: 'Connector', icon: '\u{1F517}' },
+  { label: 'Schema', icon: '\u{1F4CB}' },
+  { label: 'Code', icon: '\u26A0\uFE0F' },
+];
+
+function AddCellDivider() {
+  const { addNotification } = useNotifications();
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showMenu]);
+
+  return (
+    <div className="relative flex items-center justify-center h-2 group">
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-transparent group-hover:bg-gray-300 transition-colors" />
+      <button
+        onClick={() => setShowMenu((v) => !v)}
+        className="relative z-10 w-6 h-6 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-all shadow-sm flex items-center justify-center"
+        title="Add cell"
+      >
+        +
+      </button>
+      {showMenu && (
+        <div
+          ref={menuRef}
+          className="absolute top-7 z-50 bg-white rounded-lg border border-gray-200 shadow-lg py-1 min-w-[160px]"
+        >
+          <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Add cell</div>
+          {CELL_TYPES.map((ct) => (
+            <button
+              key={ct.label}
+              onClick={() => {
+                setShowMenu(false);
+                addNotification({ type: 'info', title: 'Add cell', message: `${ct.label} cell would be inserted here` });
+              }}
+              className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <span>{ct.icon}</span> {ct.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Chip helper
@@ -52,14 +116,18 @@ function Cell({
   borderColor,
   children,
   warningStripe,
+  headerLabel,
 }: {
   borderColor: string;
   children: React.ReactNode;
   warningStripe?: boolean;
+  headerLabel?: string;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+
   return (
     <div
-      className="rounded-xl bg-white shadow-sm overflow-hidden transition-all hover:shadow-md"
+      className="rounded-xl bg-white shadow-sm overflow-hidden transition-all hover:shadow-md group/cell relative"
       style={{
         borderLeft: warningStripe
           ? undefined
@@ -78,8 +146,50 @@ function Cell({
           }}
         />
       )}
+      {/* Drag handle — visual only */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-6 flex items-start pt-5 justify-center opacity-0 group-hover/cell:opacity-40 transition-opacity cursor-grab z-10"
+        title="Drag to reorder"
+        style={{ marginLeft: warningStripe ? 0 : -2 }}
+      >
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+          <circle cx="2.5" cy="2" r="1.2" fill="#9CA3AF" />
+          <circle cx="7.5" cy="2" r="1.2" fill="#9CA3AF" />
+          <circle cx="2.5" cy="6" r="1.2" fill="#9CA3AF" />
+          <circle cx="7.5" cy="6" r="1.2" fill="#9CA3AF" />
+          <circle cx="2.5" cy="10" r="1.2" fill="#9CA3AF" />
+          <circle cx="7.5" cy="10" r="1.2" fill="#9CA3AF" />
+          <circle cx="2.5" cy="14" r="1.2" fill="#9CA3AF" />
+          <circle cx="7.5" cy="14" r="1.2" fill="#9CA3AF" />
+        </svg>
+      </div>
+      {/* Collapse/expand toggle */}
+      <button
+        onClick={() => setCollapsed((v) => !v)}
+        className="absolute right-3 top-3.5 z-10 w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all opacity-0 group-hover/cell:opacity-100"
+        title={collapsed ? 'Expand cell' : 'Collapse cell'}
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          className="transition-transform"
+          style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+        >
+          <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
       <div className={warningStripe ? 'border-l-4' : ''} style={warningStripe ? { borderColor } : {}}>
-        {children}
+        {collapsed ? (
+          <div className="px-5 py-3 flex items-center gap-2 cursor-pointer select-none" onClick={() => setCollapsed(false)}>
+            <span className="text-xs font-medium text-gray-400" style={{ fontFamily: 'var(--font-ui)' }}>
+              {headerLabel || 'Cell'} <span className="text-[10px]">(collapsed)</span>
+            </span>
+          </div>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
@@ -101,7 +211,7 @@ function TriggerCell() {
   const { addNotification } = useNotifications();
 
   return (
-    <Cell borderColor="#EA580C">
+    <Cell borderColor="#EA580C" headerLabel="Triggers">
       <div className="px-5 py-4">
         <h3
           className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"
@@ -156,87 +266,198 @@ function TriggerCell() {
 // 2. Playbook Cell
 // ---------------------------------------------------------------------------
 
+// Renders inline text with @type(name) chip references resolved to Chip components
+function renderChipText(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const regex = /@(\w+)\(([^)]+)\)/g;
+  let lastIdx = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(<span key={key++}>{text.slice(lastIdx, match.index)}</span>);
+    }
+    const kind = match[1] as ChipKind;
+    if (CHIP_SOFT[kind]) {
+      parts.push(<Chip key={key++} kind={kind} label={match[2]} />);
+    } else {
+      parts.push(<span key={key++}>{match[0]}</span>);
+    }
+    lastIdx = regex.lastIndex;
+  }
+  if (lastIdx < text.length) {
+    parts.push(<span key={key++}>{text.slice(lastIdx)}</span>);
+  }
+  return parts;
+}
+
+const PLAYBOOK_INITIAL_LINES = [
+  '## Role',
+  'You are an insurance claims processing assistant for ACME Insurance, serving customers across APAC markets.',
+  '',
+  '## Skills',
+  'This agent uses @skill(customer-empathy) for tone and de-escalation patterns, and @skill(apac-compliance) for regional regulatory awareness.',
+  '',
+  '## Knowledge Sources',
+  'Use @doc(claims-policy-2024) as the primary policy reference. For regional variations, consult @doc(apac-regulatory-matrix).',
+  '',
+  '## Connected Systems',
+  '- @connector(salesforce) for customer account and policy data',
+  '- @connector(jira) to create and track claims tickets',
+  '- @connector(google-drive) for supporting document retrieval',
+  '- @connector(slack) to notify the claims team channel',
+  '',
+  '## Process',
+  'When a customer submits a claim:',
+  '1. Greet the customer and collect their policy number',
+  '2. Use @tool(policy-lookup) to retrieve their policy details',
+  '3. Search @connector(salesforce) for the customer\'s account history',
+  '4. Use @tool(claims-history) to check for prior claims in the last 12 months',
+  '5. Validate the claim against @doc(claims-policy-2024) coverage rules',
+  '',
+  '### Escalation Rules',
+  '- If claim amount exceeds $50,000, route to @agent(senior-adjuster)',
+  '- If the policy is flagged, apply @guard(fraud-detection) before proceeding',
+  '- For claims involving @data(high-risk-categories), require manager approval',
+  '- Create a tracking ticket in @connector(jira) for all escalations',
+  '- Notify @connector(slack) #claims-escalations channel',
+  '',
+  '### Response Format',
+  'All responses must conform to @schema(claims-response-v2) and include the claim reference number and estimated processing time.',
+  '',
+  '## Compliance',
+  'All interactions are subject to @guard(pii-redaction) and @guard(apac-compliance-rules). Never disclose internal policy thresholds.',
+];
+
 function PlaybookCell() {
+  const [lines, setLines] = useState<string[]>(PLAYBOOK_INITIAL_LINES);
+  const [editingLine, setEditingLine] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const startEdit = useCallback((idx: number) => {
+    setEditingLine(idx);
+    setEditValue(lines[idx]);
+  }, [lines]);
+
+  const commitEdit = useCallback(() => {
+    if (editingLine === null) return;
+    setLines((prev) => {
+      const next = [...prev];
+      next[editingLine] = editValue;
+      return next;
+    });
+    setEditingLine(null);
+  }, [editingLine, editValue]);
+
+  useEffect(() => {
+    if (editingLine !== null && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.selectionStart = textareaRef.current.value.length;
+    }
+  }, [editingLine]);
+
+  const renderLine = (text: string, idx: number) => {
+    if (text === '') return <div key={idx} className="h-2" />;
+
+    const isEditing = editingLine === idx;
+
+    // Detect heading levels
+    const h2Match = text.match(/^## (.+)/);
+    const h3Match = text.match(/^### (.+)/);
+    const isListItem = text.match(/^[-*] /);
+    const isOrderedItem = text.match(/^\d+\. /);
+
+    if (isEditing) {
+      return (
+        <div key={idx} className="relative">
+          <textarea
+            ref={textareaRef}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); }
+              if (e.key === 'Escape') { setEditingLine(null); }
+            }}
+            rows={Math.max(1, Math.ceil(editValue.length / 80))}
+            className="w-full text-xs px-3 py-1.5 rounded-md border-2 border-blue-400 bg-blue-50/30 text-gray-800 resize-none focus:outline-none"
+            style={{ fontFamily: 'var(--font-mono)', lineHeight: '1.6' }}
+          />
+          <span className="absolute right-2 bottom-1 text-[9px] text-gray-400">
+            Type @ for references &middot; Enter to save &middot; Esc to cancel
+          </span>
+        </div>
+      );
+    }
+
+    const hoverClass = 'cursor-text hover:bg-teal-50/40 hover:outline hover:outline-1 hover:outline-teal-200 rounded px-1 -mx-1 transition-colors';
+
+    if (h2Match) {
+      return (
+        <h2
+          key={idx}
+          onClick={() => startEdit(idx)}
+          className={hoverClass}
+          style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: idx === 0 ? '0 0 0.5rem' : '1rem 0 0.5rem' }}
+        >
+          {h2Match[1]}
+        </h2>
+      );
+    }
+    if (h3Match) {
+      return (
+        <h3
+          key={idx}
+          onClick={() => startEdit(idx)}
+          className={hoverClass}
+          style={{ fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: '#374151', margin: '1rem 0 0.5rem' }}
+        >
+          {h3Match[1]}
+        </h3>
+      );
+    }
+    if (isListItem) {
+      return (
+        <li
+          key={idx}
+          onClick={() => startEdit(idx)}
+          className={`list-disc list-inside ${hoverClass}`}
+        >
+          {renderChipText(text.replace(/^[-*] /, ''))}
+        </li>
+      );
+    }
+    if (isOrderedItem) {
+      return (
+        <li
+          key={idx}
+          onClick={() => startEdit(idx)}
+          className={`list-decimal list-inside ${hoverClass}`}
+        >
+          {renderChipText(text.replace(/^\d+\. /, ''))}
+        </li>
+      );
+    }
+    return (
+      <p key={idx} onClick={() => startEdit(idx)} className={hoverClass}>
+        {renderChipText(text)}
+      </p>
+    );
+  };
+
   return (
-    <Cell borderColor="#0D9488">
+    <Cell borderColor="#0D9488" headerLabel="Playbook">
       <div className="px-5 py-4">
         <h3
           className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"
           style={{ fontFamily: 'var(--font-ui)' }}
         >
           <span className="text-base">&#x1F4C4;</span> Playbook &mdash; Claims Processing Agent
+          <span className="text-[10px] text-gray-400 font-normal ml-2">Click any line to edit</span>
         </h3>
-        <div className="playbook-body text-sm leading-relaxed text-gray-700 space-y-3" style={{ fontFamily: 'var(--font-body)' }}>
-          <h2 style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '0 0 0.5rem' }}>
-            Role
-          </h2>
-          <p>
-            You are an insurance claims processing assistant for ACME Insurance, serving customers across APAC markets.
-          </p>
-
-          <h2 style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '1rem 0 0.5rem' }}>
-            Skills
-          </h2>
-          <p>
-            This agent uses <Chip kind="skill" label="customer-empathy" /> for tone and de-escalation patterns, and{' '}
-            <Chip kind="skill" label="apac-compliance" /> for regional regulatory awareness.
-          </p>
-
-          <h2 style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '1rem 0 0.5rem' }}>
-            Knowledge Sources
-          </h2>
-          <p>
-            Use <Chip kind="doc" label="claims-policy-2024" /> as the primary policy reference.
-            For regional variations, consult <Chip kind="doc" label="apac-regulatory-matrix" />.
-          </p>
-
-          <h2 style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '1rem 0 0.5rem' }}>
-            Connected Systems
-          </h2>
-          <ul className="list-disc list-inside space-y-1">
-            <li><Chip kind="connector" label="salesforce" /> for customer account and policy data</li>
-            <li><Chip kind="connector" label="jira" /> to create and track claims tickets</li>
-            <li><Chip kind="connector" label="google-drive" /> for supporting document retrieval</li>
-            <li><Chip kind="connector" label="slack" /> to notify the claims team channel</li>
-          </ul>
-
-          <h2 style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '1rem 0 0.5rem' }}>
-            Process
-          </h2>
-          <p>When a customer submits a claim:</p>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Greet the customer and collect their policy number</li>
-            <li>Use <Chip kind="tool" label="policy-lookup" /> to retrieve their policy details</li>
-            <li>Search <Chip kind="connector" label="salesforce" /> for the customer&apos;s account history</li>
-            <li>Use <Chip kind="tool" label="claims-history" /> to check for prior claims in the last 12 months</li>
-            <li>Validate the claim against <Chip kind="doc" label="claims-policy-2024" /> coverage rules</li>
-          </ol>
-
-          <h3 style={{ fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: '#374151', margin: '1rem 0 0.5rem' }}>
-            Escalation Rules
-          </h3>
-          <ul className="list-disc list-inside space-y-1">
-            <li>If claim amount exceeds $50,000, route to <Chip kind="agent" label="senior-adjuster" /></li>
-            <li>If the policy is flagged, apply <Chip kind="guard" label="fraud-detection" /> before proceeding</li>
-            <li>For claims involving <Chip kind="data" label="high-risk-categories" />, require manager approval</li>
-            <li>Create a tracking ticket in <Chip kind="connector" label="jira" /> for all escalations</li>
-            <li>Notify <Chip kind="connector" label="slack" /> #claims-escalations channel</li>
-          </ul>
-
-          <h3 style={{ fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: '#374151', margin: '1rem 0 0.5rem' }}>
-            Response Format
-          </h3>
-          <p>
-            All responses must conform to <Chip kind="schema" label="claims-response-v2" /> and include the claim reference number and estimated processing time.
-          </p>
-
-          <h2 style={{ fontFamily: 'var(--font-ui)', fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '1rem 0 0.5rem' }}>
-            Compliance
-          </h2>
-          <p>
-            All interactions are subject to <Chip kind="guard" label="pii-redaction" /> and{' '}
-            <Chip kind="guard" label="apac-compliance-rules" />. Never disclose internal policy thresholds.
-          </p>
+        <div className="playbook-body text-sm leading-relaxed text-gray-700 space-y-1" style={{ fontFamily: 'var(--font-body)' }}>
+          {lines.map((line, idx) => renderLine(line, idx))}
         </div>
       </div>
     </Cell>
@@ -247,23 +468,78 @@ function PlaybookCell() {
 // 3. Tool Cell
 // ---------------------------------------------------------------------------
 
-const TOOL_PARAMS = [
+interface ToolParam {
+  name: string;
+  type: string;
+  required: boolean;
+  desc: string;
+  validation: string;
+  example: string;
+}
+
+const TOOL_PARAMS_INITIAL: ToolParam[] = [
   { name: 'policy_id', type: 'string', required: true, desc: "The customer's policy ID", validation: 'regex: POL-[A-Z]{2}-[0-9]{6}', example: 'POL-SG-001234' },
   { name: 'include_riders', type: 'boolean', required: false, desc: 'Include policy riders/addons', validation: '\u2014', example: 'true' },
   { name: 'effective_date', type: 'date', required: false, desc: 'Check policy as of this date', validation: 'must be \u2264 today', example: '2024-01-15' },
   { name: 'format', type: 'enum', required: false, desc: 'Response format', validation: 'oneOf: summary, full, minimal', example: 'summary' },
 ];
 
+// Inline editable text field used inside ToolCell
+function InlineEdit({ value, onChange, mono, className }: { value: string; onChange: (v: string) => void; mono?: boolean; className?: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { onChange(draft); setEditing(false); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { onChange(draft); setEditing(false); }
+          if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+        }}
+        className={`border-2 border-blue-400 bg-blue-50/30 rounded px-1 py-0.5 text-gray-800 focus:outline-none ${className || ''}`}
+        style={{ fontFamily: mono ? 'var(--font-mono)' : undefined, fontSize: 'inherit' }}
+      />
+    );
+  }
+
+  return (
+    <span
+      onClick={() => { setDraft(value); setEditing(true); }}
+      className={`cursor-text hover:bg-indigo-50 hover:outline hover:outline-1 hover:outline-indigo-200 rounded px-1 -mx-1 transition-colors ${className || ''}`}
+      style={{ fontFamily: mono ? 'var(--font-mono)' : undefined }}
+    >
+      {value}
+    </span>
+  );
+}
+
 function ToolCell() {
   const { runToolTest, running } = useTest();
   const { addNotification } = useNotifications();
   const [toolTestResult, setToolTestResult] = useState<string | null>(null);
   const [deploying, setDeploying] = useState(false);
+  const [toolDesc] = useState('Retrieve customer policy details from the ACME policy management system');
+  const [params, setParams] = useState<ToolParam[]>(TOOL_PARAMS_INITIAL);
+  const [endpoint, setEndpoint] = useState('https://us-central1-acme-agents.cloudfunctions.net/policy-lookup');
+
+  const updateParam = (idx: number, field: keyof ToolParam, value: string) => {
+    setParams((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
 
   const handleTestTool = () => {
     setToolTestResult(null);
     runToolTest('tool-policy-lookup', { policy_id: 'POL-SG-001234', include_riders: false, format: 'summary' });
-    // Show a quick preview from the mock iteration that will come through
     setTimeout(() => {
       setToolTestResult('{ "policy_id": "POL-SG-001234", "coverage": "auto-comprehensive", "status": "active", "holder": "Sarah Chen" }');
     }, 1200);
@@ -279,9 +555,9 @@ function ToolCell() {
   };
 
   return (
-    <Cell borderColor="#4F46E5">
+    <Cell borderColor="#4F46E5" headerLabel="Tool: policy-lookup">
       <div className="px-5 py-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-2">
           <h3
             className="text-sm font-semibold text-gray-900 flex items-center gap-2"
             style={{ fontFamily: 'var(--font-ui)' }}
@@ -297,7 +573,12 @@ function ToolCell() {
           </div>
         </div>
 
-        {/* Parameter table */}
+        {/* Editable description */}
+        <p className="text-xs text-gray-500 mb-4" style={{ fontFamily: 'var(--font-body)' }}>
+          <InlineEdit value={toolDesc} onChange={() => {}} />
+        </p>
+
+        {/* Parameter table — editable cells */}
         <div className="overflow-x-auto mb-4">
           <table className="w-full text-xs">
             <thead>
@@ -311,10 +592,14 @@ function ToolCell() {
               </tr>
             </thead>
             <tbody>
-              {TOOL_PARAMS.map((p) => (
+              {params.map((p, idx) => (
                 <tr key={p.name} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors">
-                  <td className="py-2 pr-3 font-mono text-indigo-700 font-medium">{p.name}</td>
-                  <td className="py-2 pr-3 text-gray-600">{p.type}</td>
+                  <td className="py-2 pr-3 font-mono text-indigo-700 font-medium">
+                    <InlineEdit value={p.name} onChange={(v) => updateParam(idx, 'name', v)} mono />
+                  </td>
+                  <td className="py-2 pr-3 text-gray-600">
+                    <InlineEdit value={p.type} onChange={(v) => updateParam(idx, 'type', v)} />
+                  </td>
                   <td className="py-2 pr-3">
                     {p.required ? (
                       <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700">required</span>
@@ -322,21 +607,29 @@ function ToolCell() {
                       <span className="text-gray-400">optional</span>
                     )}
                   </td>
-                  <td className="py-2 pr-3 text-gray-600">{p.desc}</td>
-                  <td className="py-2 pr-3 font-mono text-[10px] text-gray-500">{p.validation}</td>
-                  <td className="py-2 font-mono text-[10px] text-gray-500">{p.example}</td>
+                  <td className="py-2 pr-3 text-gray-600">
+                    <InlineEdit value={p.desc} onChange={(v) => updateParam(idx, 'desc', v)} />
+                  </td>
+                  <td className="py-2 pr-3 font-mono text-[10px] text-gray-500">
+                    <InlineEdit value={p.validation} onChange={(v) => updateParam(idx, 'validation', v)} mono />
+                  </td>
+                  <td className="py-2 font-mono text-[10px] text-gray-500">
+                    <InlineEdit value={p.example} onChange={(v) => updateParam(idx, 'example', v)} mono />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        {/* Endpoint */}
+        {/* Editable Endpoint */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Endpoint</span>
-          <code className="flex-1 text-[11px] px-3 py-1.5 rounded-md bg-gray-50 text-gray-700 border border-gray-200 font-mono">
-            https://us-central1-acme-agents.cloudfunctions.net/policy-lookup
-          </code>
+          <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider flex-shrink-0">Endpoint</span>
+          <input
+            value={endpoint}
+            onChange={(e) => setEndpoint(e.target.value)}
+            className="flex-1 text-[11px] px-3 py-1.5 rounded-md bg-gray-50 text-gray-700 border border-gray-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 hover:border-gray-300 transition-colors"
+          />
         </div>
 
         {/* Tool test result */}
@@ -459,7 +752,7 @@ function TestCell() {
   const displayFinalResponse = hasRun && currentResult?.status === 'complete' ? currentResult.finalResponse : null;
 
   return (
-    <Cell borderColor="#16A34A">
+    <Cell borderColor="#16A34A" headerLabel="Test Run">
       <div className="px-5 py-4">
         <div className="flex items-center justify-between mb-3">
           <h3
@@ -488,7 +781,7 @@ function TestCell() {
             value={testInput}
             onChange={(e) => setTestInput(e.target.value)}
             rows={2}
-            placeholder="Enter a test message..."
+            placeholder="Enter a test message to simulate the agent loop (e.g., 'I need to file a claim...')"
             className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-green-300 focus:border-green-400"
             style={{ fontFamily: 'var(--font-body)' }}
           />
@@ -637,6 +930,28 @@ function SkillCell() {
   const { addNotification } = useNotifications();
   const [activationResult, setActivationResult] = useState<SkillActivationResult | null>(null);
   const [testingSkill, setTestingSkill] = useState(false);
+  const [skillDescription, setSkillDescription] = useState(
+    'Use when handling regulatory compliance in APAC markets. Covers MAS, APRA, RBI, OJK, and FSC regulations.'
+  );
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(skillDescription);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+
+  const [skillInstructions, setSkillInstructions] = useState(
+    `**Regional Rules:** When handling queries involving Singapore customers, always reference @doc(mas-guidelines-2024) and apply @guard(pdpa-compliance).
+
+For Australian customers, consult @doc(apra-prudential-standards) and ensure responses conform to @schema(apra-disclosure-format).
+
+**Connected Data:** Search @connector(salesforce) for customer jurisdiction data. Verify regulatory status via @tool(regtech-api).
+
+**Escalation:** If a query involves cross-border transactions, route to @agent(compliance-officer) with full context attached.`
+  );
+  const [editingInstructions, setEditingInstructions] = useState(false);
+  const [instrDraft, setInstrDraft] = useState(skillInstructions);
+  const instrRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { if (editingDesc && descRef.current) descRef.current.focus(); }, [editingDesc]);
+  useEffect(() => { if (editingInstructions && instrRef.current) instrRef.current.focus(); }, [editingInstructions]);
 
   const handleTestActivation = async () => {
     setTestingSkill(true);
@@ -653,8 +968,29 @@ function SkillCell() {
     addNotification({ type: 'success', title: 'Skill published', message: 'apac-compliance v1.2.0 published to registry' });
   };
 
+  // Render skill instruction text — supports **bold** and @chip references
+  const renderInstructionText = (text: string) => {
+    const paragraphs = text.split('\n\n');
+    return paragraphs.map((para, pi) => {
+      // Bold rendering
+      const parts: React.ReactNode[] = [];
+      const boldRegex = /\*\*(.+?)\*\*/g;
+      let lastIdx = 0;
+      let match: RegExpExecArray | null;
+      let key = 0;
+      const withChips = (s: string) => renderChipText(s);
+      while ((match = boldRegex.exec(para)) !== null) {
+        if (match.index > lastIdx) parts.push(<span key={`t${pi}-${key++}`}>{withChips(para.slice(lastIdx, match.index))}</span>);
+        parts.push(<strong key={`b${pi}-${key++}`}>{withChips(match[1])}</strong>);
+        lastIdx = boldRegex.lastIndex;
+      }
+      if (lastIdx < para.length) parts.push(<span key={`e${pi}-${key++}`}>{withChips(para.slice(lastIdx))}</span>);
+      return <p key={pi}>{parts}</p>;
+    });
+  };
+
   return (
-    <Cell borderColor="#7C3AED">
+    <Cell borderColor="#7C3AED" headerLabel="Skill: apac-compliance">
       <div className="px-5 py-4">
         <div className="flex items-center justify-between mb-4">
           <h3
@@ -672,7 +1008,7 @@ function SkillCell() {
           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">v1.2.0</span>
         </div>
 
-        {/* Frontmatter */}
+        {/* Frontmatter — editable description */}
         <div className="rounded-lg bg-violet-50/50 border border-violet-200 px-4 py-3 mb-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 mb-2">Frontmatter</div>
           <div className="space-y-1.5">
@@ -682,34 +1018,66 @@ function SkillCell() {
             </div>
             <div className="flex items-start gap-2">
               <span className="text-[10px] font-semibold text-gray-500 w-16 flex-shrink-0">description:</span>
-              <span className="text-xs text-gray-700" style={{ fontFamily: 'var(--font-body)' }}>
-                Use when handling regulatory compliance in APAC markets. Covers MAS, APRA, RBI, OJK, and FSC regulations.
-              </span>
+              {editingDesc ? (
+                <textarea
+                  ref={descRef}
+                  value={descDraft}
+                  onChange={(e) => setDescDraft(e.target.value)}
+                  onBlur={() => { setSkillDescription(descDraft); setEditingDesc(false); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setSkillDescription(descDraft); setEditingDesc(false); }
+                    if (e.key === 'Escape') { setDescDraft(skillDescription); setEditingDesc(false); }
+                  }}
+                  rows={2}
+                  className="flex-1 text-xs px-2 py-1 rounded border-2 border-blue-400 bg-blue-50/30 text-gray-800 resize-none focus:outline-none"
+                  style={{ fontFamily: 'var(--font-body)' }}
+                />
+              ) : (
+                <span
+                  onClick={() => { setDescDraft(skillDescription); setEditingDesc(true); }}
+                  className="text-xs text-gray-700 cursor-text hover:bg-violet-100/50 hover:outline hover:outline-1 hover:outline-violet-300 rounded px-1 -mx-1 transition-colors"
+                  style={{ fontFamily: 'var(--font-body)' }}
+                >
+                  {skillDescription}
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Body */}
+        {/* Body — editable instructions */}
         <div className="mb-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Instructions</div>
-          <div className="text-xs text-gray-700 space-y-2" style={{ fontFamily: 'var(--font-body)' }}>
-            <p>
-              <strong>Regional Rules:</strong> When handling queries involving Singapore customers, always reference{' '}
-              <Chip kind="doc" label="mas-guidelines-2024" /> and apply <Chip kind="guard" label="pdpa-compliance" />.
-            </p>
-            <p>
-              For Australian customers, consult <Chip kind="doc" label="apra-prudential-standards" /> and ensure responses conform to{' '}
-              <Chip kind="schema" label="apra-disclosure-format" />.
-            </p>
-            <p>
-              <strong>Connected Data:</strong> Search <Chip kind="connector" label="salesforce" /> for customer jurisdiction data.
-              Verify regulatory status via <Chip kind="tool" label="regtech-api" />.
-            </p>
-            <p>
-              <strong>Escalation:</strong> If a query involves cross-border transactions, route to{' '}
-              <Chip kind="agent" label="compliance-officer" /> with full context attached.
-            </p>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2 flex items-center gap-2">
+            Instructions
+            <span className="text-[9px] font-normal text-gray-400">Click to edit</span>
           </div>
+          {editingInstructions ? (
+            <div className="relative">
+              <textarea
+                ref={instrRef}
+                value={instrDraft}
+                onChange={(e) => setInstrDraft(e.target.value)}
+                onBlur={() => { setSkillInstructions(instrDraft); setEditingInstructions(false); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setInstrDraft(skillInstructions); setEditingInstructions(false); }
+                }}
+                rows={10}
+                className="w-full text-xs px-3 py-2 rounded-md border-2 border-blue-400 bg-blue-50/30 text-gray-800 resize-y focus:outline-none"
+                style={{ fontFamily: 'var(--font-mono)', lineHeight: '1.6' }}
+              />
+              <span className="absolute right-2 bottom-2 text-[9px] text-gray-400">
+                Type @ for references &middot; Click outside to save &middot; Esc to cancel
+              </span>
+            </div>
+          ) : (
+            <div
+              onClick={() => { setInstrDraft(skillInstructions); setEditingInstructions(true); }}
+              className="text-xs text-gray-700 space-y-2 cursor-text hover:bg-violet-50/30 rounded-md p-2 -m-2 transition-colors hover:outline hover:outline-1 hover:outline-violet-200"
+              style={{ fontFamily: 'var(--font-body)' }}
+            >
+              {renderInstructionText(skillInstructions)}
+            </div>
+          )}
         </div>
 
         {/* Resources */}
@@ -816,7 +1184,7 @@ function ConnectorCell() {
   };
 
   return (
-    <Cell borderColor="#2563EB">
+    <Cell borderColor="#2563EB" headerLabel="Connector: Jira Cloud">
       <div className="px-5 py-4">
         <div className="flex items-center justify-between mb-4">
           <h3
@@ -960,7 +1328,7 @@ function SchemaCell() {
   const [activeView, setActiveView] = useState<'json' | 'form'>('json');
 
   return (
-    <Cell borderColor="#475569">
+    <Cell borderColor="#475569" headerLabel="Schema: claims-response-v2">
       <div className="px-5 py-4">
         <div className="flex items-center justify-between mb-4">
           <h3
@@ -1123,6 +1491,20 @@ const SAMPLE_OUTPUT = `{
 
 function CodeExecutionCell() {
   const { addNotification } = useNotifications();
+  const [code, setCode] = useState(SAMPLE_CODE);
+  const [output, setOutput] = useState(SAMPLE_OUTPUT);
+  const [executionTime, setExecutionTime] = useState('142ms');
+  const [isRunning, setIsRunning] = useState(false);
+
+  const handleRun = () => {
+    setIsRunning(true);
+    setOutput('');
+    setTimeout(() => {
+      setOutput(SAMPLE_OUTPUT);
+      setExecutionTime('138ms');
+      setIsRunning(false);
+    }, 800);
+  };
 
   const handleConvertToTool = () => {
     addNotification({ type: 'success', title: 'Converted to Tool', message: 'New tool definition cell created from prototype code' });
@@ -1133,7 +1515,7 @@ function CodeExecutionCell() {
   };
 
   return (
-    <Cell borderColor="#DC2626" warningStripe>
+    <Cell borderColor="#DC2626" warningStripe headerLabel="Code Execution">
       <div className="px-5 py-4">
         <div className="flex items-center justify-between mb-3">
           <h3
@@ -1148,13 +1530,25 @@ function CodeExecutionCell() {
               Not available in production
             </span>
           </h3>
+          <button
+            onClick={handleRun}
+            disabled={isRunning}
+            className="text-xs font-semibold text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {isRunning ? (
+              <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>&#x25B6;</span>
+            )}
+            {isRunning ? 'Running...' : 'Run'}
+          </button>
         </div>
 
         <p className="text-[10px] text-gray-500 mb-3 italic" style={{ fontFamily: 'var(--font-body)' }}>
           The omnipotent harness: prototype any capability before hardening it into a governed @tool or @skill.
         </p>
 
-        {/* Code editor area */}
+        {/* Code editor area — editable textarea */}
         <div className="rounded-lg overflow-hidden border border-gray-300 mb-3">
           <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800 text-gray-300">
             <span className="text-[10px] font-medium flex items-center gap-1.5">
@@ -1163,25 +1557,28 @@ function CodeExecutionCell() {
             </span>
             <span className="text-[10px] text-gray-500">prototype_return_check.py</span>
           </div>
-          <pre
-            className="text-[11px] leading-relaxed px-4 py-3 bg-gray-900 text-gray-300 overflow-x-auto"
+          <textarea
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            spellCheck={false}
+            className="w-full text-[11px] leading-relaxed px-4 py-3 bg-gray-900 text-gray-300 resize-y focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-500 min-h-[120px]"
             style={{ fontFamily: 'var(--font-mono)' }}
-          >
-            {SAMPLE_CODE}
-          </pre>
+            rows={Math.max(8, code.split('\n').length)}
+            placeholder="# Write Python code here..."
+          />
         </div>
 
         {/* Output */}
         <div className="rounded-lg overflow-hidden border border-gray-200 mb-4">
           <div className="flex items-center justify-between px-3 py-1 bg-gray-100">
             <span className="text-[10px] font-semibold text-gray-500">Output</span>
-            <span className="text-[10px] text-gray-400 font-mono">142ms</span>
+            <span className="text-[10px] text-gray-400 font-mono">{executionTime}</span>
           </div>
           <pre
-            className="text-[11px] leading-relaxed px-4 py-2.5 bg-white text-green-700 overflow-x-auto"
+            className="text-[11px] leading-relaxed px-4 py-2.5 bg-white text-green-700 overflow-x-auto min-h-[40px]"
             style={{ fontFamily: 'var(--font-mono)' }}
           >
-            {SAMPLE_OUTPUT}
+            {isRunning ? <span className="text-gray-400 animate-pulse">Executing...</span> : (output || <span className="text-gray-400">No output yet</span>)}
           </pre>
         </div>
 
@@ -1248,14 +1645,21 @@ export function NotebookView() {
       </header>
 
       {/* Notebook cells */}
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-4">
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-1">
         <TriggerCell />
+        <AddCellDivider />
         <PlaybookCell />
+        <AddCellDivider />
         <ToolCell />
+        <AddCellDivider />
         <TestCell />
+        <AddCellDivider />
         <SkillCell />
+        <AddCellDivider />
         <ConnectorCell />
+        <AddCellDivider />
         <SchemaCell />
+        <AddCellDivider />
         <CodeExecutionCell />
 
         {/* Add cell button */}

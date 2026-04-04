@@ -283,8 +283,8 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
         transition: 'box-shadow 150ms ease, border-color 150ms ease',
         boxShadow: 'var(--shadow-xs)',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = 'var(--color-border-strong)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
     >
       {/* Header row: type badge + status dot */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -488,8 +488,8 @@ function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: s
         boxShadow: 'var(--shadow-xs)',
         cursor: 'pointer',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = 'var(--color-border-strong)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
     >
       <span
         style={{

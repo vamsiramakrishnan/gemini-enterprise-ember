@@ -383,7 +383,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-auto">
+        <main key={location.pathname} className="flex-1 overflow-auto page-enter">
           {children}
         </main>
       </div>
@@ -402,7 +402,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       >
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
       </aside>
-      <main className="flex-1 overflow-auto">
+      <main key={location.pathname} className="flex-1 overflow-auto page-enter">
         {children}
       </main>
     </div>

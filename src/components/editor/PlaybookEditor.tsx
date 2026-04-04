@@ -10,13 +10,13 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CLAIMS_PLAYBOOK_CONTENT } from '../../data/playbook';
 import { REGISTRY, findChip } from '../../data/registry';
 import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types';
 import { usePlaybook, useNotifications, useRegistry } from '../../contexts/AppContext';
 import { PublishModal } from '../versioning/PublishModal';
+import { ChipAutocomplete } from '../chips/ChipAutocomplete';
 
 // ─── Responsive hook ────────────────────────────────────────────────────
 function useBreakpoint() {
@@ -78,6 +78,10 @@ const STYLE_TAG = `
   0% { offset-distance: 0%; }
   100% { offset-distance: 100%; }
 }
+@keyframes slideInRight {
+  from { transform: translateX(40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 `;
 
 // ─── Inline Smart Chip ──────────────────────────────────────────────────
@@ -105,13 +109,15 @@ function InlineChip({
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer hover:opacity-90 transition-all mx-0.5"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer transition-all mx-0.5"
       style={{
         background: colors.bg,
         color: colors.text,
         border: `1px solid ${colors.border}`,
         boxShadow: glowing ? `0 0 0 2px ${colors.accent}33, 0 0 8px ${colors.accent}22` : 'none',
       }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 1px 3px ${colors.accent}22, 0 0 0 1px ${colors.accent}33`; e.currentTarget.style.transform = 'translateY(-0.5px)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = glowing ? `0 0 0 2px ${colors.accent}33, 0 0 8px ${colors.accent}22` : 'none'; e.currentTarget.style.transform = 'none'; }}
       onClick={onClick}
     >
       <span style={{ color: colors.accent }}>{icon}</span> {name}
@@ -161,72 +167,228 @@ function renderPlaybookLine(
   return parts;
 }
 
-function DocumentTab({
-  onChipClick, highlightedLines, selectedChipKey, lineRefs,
+function EditableDocumentTab({
+  content, onContentChange, onChipClick, highlightedLines, selectedChipKey, lineRefs,
 }: {
+  content: string;
+  onContentChange: (content: string) => void;
   onChipClick: (chip: SmartChip | null, type: ChipType, name: string) => void;
   highlightedLines: number[];
   selectedChipKey: string | null;
   lineRefs: React.MutableRefObject<Map<number, HTMLElement>>;
 }) {
-  const lines = CLAIMS_PLAYBOOK_CONTENT.split('\n');
+  const [editingLine, setEditingLine] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+  const [autocompleteOpen, setAutocompleteOpen] = useState(false);
+  const [autocompleteFilter, setAutocompleteFilter] = useState('');
+  const [justCommittedLine, setJustCommittedLine] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editContainerRef = useRef<HTMLDivElement>(null);
+
+  const lines = useMemo(() => content.split('\n'), [content]);
+
+  const startEditing = useCallback((lineIdx: number) => {
+    setEditingLine(lineIdx);
+    setEditText(lines[lineIdx]);
+    setAutocompleteOpen(false);
+    setAutocompleteFilter('');
+  }, [lines]);
+
+  const commitEdit = useCallback(() => {
+    if (editingLine === null) return;
+    const newLines = [...lines];
+    newLines[editingLine] = editText;
+    onContentChange(newLines.join('\n'));
+    setJustCommittedLine(editingLine);
+    setEditingLine(null);
+    setAutocompleteOpen(false);
+    setAutocompleteFilter('');
+    setTimeout(() => setJustCommittedLine(null), 600);
+  }, [editingLine, editText, lines, onContentChange]);
+
+  const handleEditChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setEditText(value);
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@([a-z:]*)$/);
+    if (atMatch) {
+      setAutocompleteFilter(atMatch[1]);
+      setAutocompleteOpen(true);
+    } else {
+      setAutocompleteOpen(false);
+      setAutocompleteFilter('');
+    }
+  }, []);
+
+  const handleChipSelect = useCallback((chip: { type: string; name: string }) => {
+    const textarea = textareaRef.current;
+    const cursorPos = textarea?.selectionStart ?? editText.length;
+    const textBeforeCursor = editText.slice(0, cursorPos);
+    const atIdx = textBeforeCursor.lastIndexOf('@');
+    if (atIdx >= 0) {
+      const before = editText.slice(0, atIdx);
+      const after = editText.slice(cursorPos);
+      const inserted = `@${chip.type}(${chip.name})`;
+      setEditText(before + inserted + after);
+      setAutocompleteOpen(false);
+      setAutocompleteFilter('');
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          const newCursorPos = atIdx + inserted.length;
+          textareaRef.current.selectionStart = newCursorPos;
+          textareaRef.current.selectionEnd = newCursorPos;
+        }
+      }, 0);
+    }
+  }, [editText]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey && !autocompleteOpen) {
+      e.preventDefault();
+      commitEdit();
+    }
+    if (e.key === 'Escape') {
+      if (autocompleteOpen) {
+        setAutocompleteOpen(false);
+        setAutocompleteFilter('');
+      } else {
+        setEditingLine(null);
+        setAutocompleteOpen(false);
+      }
+    }
+  }, [commitEdit, autocompleteOpen]);
+
+  useEffect(() => {
+    if (editingLine !== null && textareaRef.current) {
+      textareaRef.current.focus();
+      const len = textareaRef.current.value.length;
+      textareaRef.current.selectionStart = len;
+      textareaRef.current.selectionEnd = len;
+    }
+  }, [editingLine]);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [editText, editingLine]);
+
+  const autocompletePos = useMemo(() => {
+    if (!editContainerRef.current) return { top: 0, left: 0 };
+    const rect = editContainerRef.current.getBoundingClientRect();
+    return { top: rect.bottom + 4, left: rect.left + 16 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingLine, editText, autocompleteOpen]);
+
+  const renderLine = useCallback((line: string, idx: number) => {
+    const trimmed = line.trimStart();
+    const isHighlighted = highlightedLines.includes(idx);
+    const isJustCommitted = justCommittedLine === idx;
+    const hlStyle: React.CSSProperties = isHighlighted
+      ? { borderLeft: '3px solid #3B82F6', paddingLeft: 12, background: '#EFF6FF', borderRadius: 4, animation: 'lineHighlightPulse 1.5s ease-out' }
+      : {};
+    const refCb = (el: HTMLElement | null) => { if (el) lineRefs.current.set(idx, el); };
+    const wrapperClass = `group/line relative transition-all duration-150 cursor-text rounded-sm ${isJustCommitted ? '' : 'hover:bg-blue-50/40'}`;
+    const commitFlashStyle: React.CSSProperties = isJustCommitted
+      ? { background: '#DCFCE730', transition: 'background 0.6s ease-out' } : {};
+    const clickHandler = (e: React.MouseEvent) => {
+      if ((e.target as Element).closest('.inline-chip-click')) return;
+      startEditing(idx);
+    };
+    const hoverBar = <div className="absolute left-0 top-0 bottom-0 w-[2px] rounded-full bg-blue-400 opacity-0 group-hover/line:opacity-100 transition-opacity" />;
+
+    if (trimmed.startsWith('### ')) return (
+      <div key={idx} className={wrapperClass} style={commitFlashStyle} onClick={clickHandler}>
+        <h3 ref={refCb} className="text-base font-semibold text-gray-800 mt-6 mb-2 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
+          {renderPlaybookLine(trimmed.slice(4), idx, onChipClick, selectedChipKey)}
+        </h3>{hoverBar}
+      </div>
+    );
+    if (trimmed.startsWith('## ')) return (
+      <div key={idx} className={wrapperClass} style={commitFlashStyle} onClick={clickHandler}>
+        <h2 ref={refCb} className="text-lg font-semibold text-gray-900 mt-8 mb-3 pb-1 border-b border-gray-200 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
+          {renderPlaybookLine(trimmed.slice(3), idx, onChipClick, selectedChipKey)}
+        </h2>{hoverBar}
+      </div>
+    );
+    if (trimmed.startsWith('# ')) return (
+      <div key={idx} className={wrapperClass} style={commitFlashStyle} onClick={clickHandler}>
+        <h1 ref={refCb} className="text-2xl font-bold text-gray-900 mb-4 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
+          {renderPlaybookLine(trimmed.slice(2), idx, onChipClick, selectedChipKey)}
+        </h1>{hoverBar}
+      </div>
+    );
+    if (/^\d+\./.test(trimmed)) return (
+      <div key={idx} className={wrapperClass} style={commitFlashStyle} onClick={clickHandler}>
+        <div ref={refCb} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed transition-all" style={hlStyle}>
+          <span className="text-gray-400 font-mono text-sm mt-0.5 shrink-0">{trimmed.match(/^\d+/)![0]}.</span>
+          <span>{renderPlaybookLine(trimmed.replace(/^\d+\.\s*/, ''), idx, onChipClick, selectedChipKey)}</span>
+        </div>{hoverBar}
+      </div>
+    );
+    if (trimmed.startsWith('- ')) return (
+      <div key={idx} className={wrapperClass} style={commitFlashStyle} onClick={clickHandler}>
+        <div ref={refCb} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed transition-all" style={hlStyle}>
+          <span className="text-gray-400 mt-1 shrink-0">&bull;</span>
+          <span>{renderPlaybookLine(trimmed.slice(2), idx, onChipClick, selectedChipKey)}</span>
+        </div>{hoverBar}
+      </div>
+    );
+    if (trimmed === '') return <div key={idx} className="h-3 cursor-text" onClick={clickHandler} />;
+    return (
+      <div key={idx} className={wrapperClass} style={commitFlashStyle} onClick={clickHandler}>
+        <p ref={refCb} className="text-[15px] text-gray-700 leading-relaxed mb-1 transition-all" style={hlStyle}>
+          {renderPlaybookLine(line, idx, onChipClick, selectedChipKey)}
+        </p>{hoverBar}
+      </div>
+    );
+  }, [highlightedLines, justCommittedLine, selectedChipKey, onChipClick, lineRefs, startEditing]);
 
   return (
     <div className="max-w-3xl mx-auto py-4 px-3 sm:py-6 sm:px-4 md:py-8 md:px-4" style={{ fontFamily: 'var(--font-body)' }}>
       {lines.map((line, idx) => {
-        const trimmed = line.trimStart();
-        const isHighlighted = highlightedLines.includes(idx);
-        const hlStyle: React.CSSProperties = isHighlighted
-          ? { borderLeft: '3px solid #3B82F6', paddingLeft: 12, background: '#EFF6FF', borderRadius: 4, animation: 'lineHighlightPulse 1.5s ease-out' }
-          : {};
-
-        const refCb = (el: HTMLElement | null) => {
-          if (el) lineRefs.current.set(idx, el);
-        };
-
-        if (trimmed.startsWith('### ')) {
+        if (editingLine === idx) {
           return (
-            <h3 key={idx} ref={refCb} className="text-base font-semibold text-gray-800 mt-6 mb-2 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
-              {renderPlaybookLine(trimmed.slice(4), idx, onChipClick, selectedChipKey)}
-            </h3>
-          );
-        }
-        if (trimmed.startsWith('## ')) {
-          return (
-            <h2 key={idx} ref={refCb} className="text-lg font-semibold text-gray-900 mt-8 mb-3 pb-1 border-b border-gray-200 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
-              {renderPlaybookLine(trimmed.slice(3), idx, onChipClick, selectedChipKey)}
-            </h2>
-          );
-        }
-        if (trimmed.startsWith('# ')) {
-          return (
-            <h1 key={idx} ref={refCb} className="text-2xl font-bold text-gray-900 mb-4 transition-all" style={{ fontFamily: 'var(--font-ui)', ...hlStyle }}>
-              {renderPlaybookLine(trimmed.slice(2), idx, onChipClick, selectedChipKey)}
-            </h1>
-          );
-        }
-        if (/^\d+\./.test(trimmed)) {
-          return (
-            <div key={idx} ref={refCb} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed transition-all" style={hlStyle}>
-              <span className="text-gray-400 font-mono text-sm mt-0.5 shrink-0">{trimmed.match(/^\d+/)![0]}.</span>
-              <span>{renderPlaybookLine(trimmed.replace(/^\d+\.\s*/, ''), idx, onChipClick, selectedChipKey)}</span>
+            <div key={idx} ref={editContainerRef} className="relative my-0.5">
+              <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full" style={{ background: 'var(--color-accent)' }} />
+              <textarea
+                ref={textareaRef}
+                value={editText}
+                onChange={handleEditChange}
+                onBlur={() => { if (!autocompleteOpen) setTimeout(commitEdit, 120); }}
+                onKeyDown={handleKeyDown}
+                className="w-full resize-none rounded-lg border-2 pl-4 pr-24 py-2 text-[13px] leading-relaxed outline-none"
+                style={{
+                  borderColor: 'var(--color-accent)', background: '#FAFBFF',
+                  color: 'var(--color-text-primary)', minHeight: 44,
+                  fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                }}
+                rows={1}
+              />
+              <div className="absolute right-2 top-2 flex items-center gap-1.5 text-[9px] px-1.5 py-0.5 rounded pointer-events-none select-none"
+                style={{ color: 'var(--color-text-tertiary)', background: 'var(--color-surface-2)' }}>
+                <span>Type <kbd className="font-mono bg-white/60 px-0.5 rounded">@</kbd> for refs</span>
+                <span>&middot;</span>
+                <span><kbd className="font-mono bg-white/60 px-0.5 rounded">Enter</kbd> save</span>
+                <span>&middot;</span>
+                <span><kbd className="font-mono bg-white/60 px-0.5 rounded">Esc</kbd> cancel</span>
+              </div>
+              {autocompleteOpen && (
+                <ChipAutocomplete
+                  isOpen={true}
+                  onClose={() => { setAutocompleteOpen(false); setAutocompleteFilter(''); }}
+                  onSelect={handleChipSelect}
+                  position={autocompletePos}
+                  filterText={autocompleteFilter}
+                />
+              )}
             </div>
           );
         }
-        if (trimmed.startsWith('- ')) {
-          return (
-            <div key={idx} ref={refCb} className="flex gap-2 ml-4 mb-1 text-[15px] text-gray-700 leading-relaxed transition-all" style={hlStyle}>
-              <span className="text-gray-400 mt-1 shrink-0">•</span>
-              <span>{renderPlaybookLine(trimmed.slice(2), idx, onChipClick, selectedChipKey)}</span>
-            </div>
-          );
-        }
-        if (trimmed === '') return <div key={idx} className="h-3" />;
-        return (
-          <p key={idx} ref={refCb} className="text-[15px] text-gray-700 leading-relaxed mb-1 transition-all" style={hlStyle}>
-            {renderPlaybookLine(line, idx, onChipClick, selectedChipKey)}
-          </p>
-        );
+        return renderLine(line, idx);
       })}
     </div>
   );
@@ -235,10 +397,11 @@ function DocumentTab({
 // ─── Interactive Flow Graph ──────────────────────────────────────────────
 
 function FlowGraph({
-  selectedNodeId, hoveredNodeId,
+  content, selectedNodeId, hoveredNodeId,
   onNodeClick, onNodeHover, onNodeLeave,
   onGoToSource,
 }: {
+  content: string;
   selectedNodeId: string | null;
   hoveredNodeId: string | null;
   onNodeClick: (nodeId: string) => void;
@@ -246,7 +409,7 @@ function FlowGraph({
   onNodeLeave: () => void;
   onGoToSource: (nodeId: string) => void;
 }) {
-  const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
+  const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
 
   // Pan & zoom state
@@ -900,8 +1063,8 @@ function InspectorDetails({
   );
 }
 
-function ProblemSpaceVisualizer() {
-  const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
+function ProblemSpaceVisualizer({ content }: { content: string }) {
+  const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
 
   const TINTED: Record<string, { bg: string; accent: string; text: string; tint: string; border: string }> = {
     trigger:   { bg: '#FFF7ED', accent: '#EA580C', text: '#C2410C', tint: '#FFEDD5', border: '#FED7AA' },
@@ -1250,8 +1413,8 @@ function StatusBar({
           <span className="hidden sm:inline">Auto-compiling</span>
         </span>
         <span className="hidden md:inline">
-          {activeTab === 'document' && 'Editing document'}
-          {activeTab === 'flow' && 'Viewing compiled graph'}
+          {activeTab === 'document' && 'Click any @reference to inspect \u00B7 Type @ to insert'}
+          {activeTab === 'flow' && 'Compiled graph \u00B7 Click nodes to view source'}
           {activeTab === 'notebook' && 'Development mode'}
         </span>
       </div>
@@ -1295,7 +1458,7 @@ export function PlaybookEditor() {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
   const navigate = useNavigate();
-  const { openPublishModal, publishModalOpen, closePublishModal, publish, dirty, saving, currentVersion } = usePlaybook();
+  const { content, setContent, openPublishModal, publishModalOpen, closePublishModal, publish, dirty, saving, currentVersion } = usePlaybook();
   const { addNotification } = useNotifications();
   const { createChip } = useRegistry();
   const [activeTab, setActiveTab] = useState<EditorTab>('document');
@@ -1309,8 +1472,8 @@ export function PlaybookEditor() {
 
   const lineRefs = useRef<Map<number, HTMLElement>>(new Map());
 
-  // Parse + compile once
-  const parsed = useMemo(() => parsePlaybook(CLAIMS_PLAYBOOK_CONTENT, REGISTRY), []);
+  // Parse + compile reactively from content
+  const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
 
   // Stats
@@ -1562,15 +1725,21 @@ export function PlaybookEditor() {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 overflow-auto">
           {activeTab === 'document' && (
-            <DocumentTab
+            <div key="tab-document" className="tab-content-enter">
+            <EditableDocumentTab
+              content={content}
+              onContentChange={setContent}
               onChipClick={handleChipClick}
               highlightedLines={highlightedLines}
               selectedChipKey={selectedChipKey}
               lineRefs={lineRefs}
             />
+            </div>
           )}
           {activeTab === 'flow' && (
+            <div key="tab-flow" className="tab-content-enter h-full">
             <FlowGraph
+              content={content}
               selectedNodeId={selectedNodeId}
               hoveredNodeId={hoveredNodeId}
               onNodeClick={handleNodeClick}
@@ -1578,9 +1747,10 @@ export function PlaybookEditor() {
               onNodeLeave={() => setHoveredNodeId(null)}
               onGoToSource={handleGoToSource}
             />
+            </div>
           )}
           {activeTab === 'notebook' && (
-            <div className="h-full flex flex-col items-center justify-center text-center px-8">
+            <div key="tab-notebook" className="tab-content-enter h-full flex flex-col items-center justify-center text-center px-8">
               <div className="w-12 h-12 rounded-xl bg-[#F3F4F6] flex items-center justify-center mb-4">
                 <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
                   <rect x="3" y="2" width="10" height="4" rx="1" stroke="#9CA3AF" strokeWidth="1.2"/>
@@ -1624,7 +1794,11 @@ export function PlaybookEditor() {
                   ? 'fixed right-0 top-0 bottom-0 z-40 w-[min(300px,85vw)]'
                   : 'shrink-0 w-[280px] lg:w-[300px]'
               } overflow-auto bg-white`}
-              style={{ borderLeft: '1px solid var(--color-border)', boxShadow: isMobile ? 'var(--shadow-xl)' : 'none' }}
+              style={{
+                borderLeft: '1px solid var(--color-border)',
+                boxShadow: isMobile ? 'var(--shadow-xl)' : 'none',
+                animation: isMobile ? 'slideInRight 200ms ease-out' : 'fadeIn 150ms ease-out',
+              }}
             >
             {/* Inspector tab bar */}
             <div className="flex" style={{ borderBottom: '1px solid #F3F4F6' }}>
@@ -1674,7 +1848,7 @@ export function PlaybookEditor() {
               )
             )}
 
-            {inspectorTab === 'space' && <ProblemSpaceVisualizer />}
+            {inspectorTab === 'space' && <ProblemSpaceVisualizer content={content} />}
           </div>
           </>
         )}

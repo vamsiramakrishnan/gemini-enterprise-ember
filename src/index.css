@@ -271,9 +271,15 @@ body {
 /* Interactive card */
 .card-interactive {
   cursor: pointer;
+  transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 .card-interactive:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Chip base */
@@ -287,10 +293,11 @@ body {
   font-weight: 500;
   line-height: 20px;
   white-space: nowrap;
-  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .chip:hover {
   opacity: 0.9;
+  transform: translateY(-0.5px);
 }
 
 /* Section header */
@@ -340,6 +347,10 @@ body {
 }
 .btn-primary:hover {
   background: var(--color-accent-hover);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2);
+}
+.btn-primary:active {
+  transform: scale(0.98);
 }
 
 /* Button secondary */
@@ -361,6 +372,11 @@ body {
 .btn-secondary:hover {
   background: var(--color-surface-1);
   border-color: var(--color-border-strong);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.btn-secondary:active {
+  transform: scale(0.98);
+  background: var(--color-surface-2);
 }
 
 /* Badge */
@@ -599,4 +615,122 @@ body {
   .shell-overlay { display: none !important; }
   .shell-mobile-header { display: none !important; }
   .shell-sidebar { transform: none !important; }
+}
+
+/* ─── Editable Line States ───────────────────────────────────────── */
+
+.editable-line {
+  cursor: text;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+  transition: all 150ms ease;
+  border-radius: 4px;
+}
+.editable-line:hover {
+  border-left-color: var(--color-accent);
+  background: rgba(26, 115, 232, 0.04);
+}
+.editable-line.editing {
+  border-left-color: var(--color-accent);
+  background: #FAFBFF;
+}
+
+/* ─── Notebook Cell Container ────────────────────────────────────── */
+
+.cell-container {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: white;
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+.cell-container:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-color: var(--color-border-strong);
+}
+
+.cell-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.add-cell-divider {
+  height: 0;
+  position: relative;
+  margin: 4px 0;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.add-cell-divider:hover,
+.cell-container:hover + .add-cell-divider {
+  opacity: 1;
+}
+
+/* ─── Chip Resolve Glow ──────────────────────────────────────────── */
+
+@keyframes chipResolve {
+  from { box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.2); }
+  to { box-shadow: none; }
+}
+.chip-glow-enter {
+  animation: chipResolve 600ms ease-out forwards;
+}
+
+/* ─── Page Transition ────────────────────────────────────────────── */
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-enter {
+  animation: pageIn 200ms ease-out;
+}
+
+/* ─── Tab Content Transition ─────────────────────────────────────── */
+
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tab-content-enter {
+  animation: tabFadeIn 150ms ease-out;
+}
+
+/* ─── Focus Visible ──────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Remove default outline for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ─── Smooth Scrollbar (Firefox) ─────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+/* ─── Global Button Polish ───────────────────────────────────────── */
+
+button {
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+
+/* ─── Global Link Hover ──────────────────────────────────────────── */
+
+a:not([class]) {
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+a:not([class]):hover {
+  text-decoration: underline;
 }
