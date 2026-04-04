@@ -441,11 +441,13 @@ function EvalCases() {
 // Test Activation panel (collapsible bottom drawer)
 // ---------------------------------------------------------------------------
 
-function TestActivation() {
+function TestActivation({ onRunTest }: { onRunTest: (prompt: string) => Promise<{ activated: boolean; confidence: number; response?: string }> }) {
   const [testPrompt, setTestPrompt] = useState(
     'What are the KYC requirements for our Singapore clients?',
   );
-  const [hasResult, setHasResult] = useState(true);
+  const [hasResult, setHasResult] = useState(false);
+  const [testRunning, setTestRunning] = useState(false);
+  const [activationResult, setActivationResult] = useState<{ activated: boolean; confidence: number; response?: string } | null>(null);
   const [manualActivate, setManualActivate] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
 
@@ -503,17 +505,39 @@ function TestActivation() {
               style={{ fontFamily: 'var(--font-body)', borderColor: '#E5E7EB', background: '#F9FAFB' }}
             />
             <button
-              onClick={() => setHasResult(true)}
+              onClick={async () => {
+                if (!testPrompt.trim() || testRunning) return;
+                setTestRunning(true);
+                setHasResult(false);
+                try {
+                  const result = await onRunTest(testPrompt);
+                  setActivationResult(result);
+                  setHasResult(true);
+                } finally {
+                  setTestRunning(false);
+                }
+              }}
+              disabled={!testPrompt.trim() || testRunning}
               className="px-4 py-2 text-[11px] font-medium text-white rounded-lg transition-colors hover:opacity-90"
-              style={{ background: '#1A73E8' }}
+              style={{ background: testRunning ? '#93C5FD' : '#1A73E8', cursor: testRunning ? 'not-allowed' : 'pointer' }}
             >
-              Test
+              {testRunning ? 'Testing...' : 'Test'}
             </button>
           </div>
 
           {/* Results */}
-          {hasResult && (
+          {hasResult && activationResult && (
             <div className="space-y-3">
+              {/* Activation status */}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-medium w-32 flex-shrink-0" style={{ color: '#6B7280' }}>
+                  Activated
+                </span>
+                <span className="text-[11px] font-semibold" style={{ color: activationResult.activated ? '#059669' : '#DC2626' }}>
+                  {activationResult.activated ? 'Yes' : 'No'}
+                </span>
+              </div>
+
               {/* Confidence bar */}
               <div className="flex items-center gap-3">
                 <span className="text-[11px] font-medium w-32 flex-shrink-0" style={{ color: '#6B7280' }}>
@@ -522,11 +546,17 @@ function TestActivation() {
                 <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
                   <div
                     className="h-full rounded-full transition-all duration-700"
-                    style={{ width: '94%', background: '#059669' }}
+                    style={{
+                      width: `${activationResult.confidence}%`,
+                      background: activationResult.confidence > 70 ? '#059669' : activationResult.confidence > 40 ? '#D97706' : '#DC2626',
+                    }}
                   />
                 </div>
-                <span className="text-[11px] font-semibold w-10 text-right" style={{ color: '#059669' }}>
-                  94%
+                <span
+                  className="text-[11px] font-semibold w-10 text-right"
+                  style={{ color: activationResult.confidence > 70 ? '#059669' : activationResult.confidence > 40 ? '#D97706' : '#DC2626' }}
+                >
+                  {activationResult.confidence}%
                 </span>
               </div>
 
@@ -551,32 +581,33 @@ function TestActivation() {
               </div>
 
               {/* Simulated response */}
-              <div className="rounded-lg border p-3" style={{ borderColor: '#E5E7EB', background: '#F9FAFB' }}>
-                <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>
-                  Simulated response
-                </p>
-                <p
-                  className="text-[12px] leading-relaxed"
-                  style={{ fontFamily: 'var(--font-body)', color: '#374151' }}
-                >
-                  Based on MAS guidelines, KYC requirements for Singapore clients
-                  include customer identification, verification of identity
-                  documents, screening against sanctions lists, and ongoing
-                  monitoring of transactions. Reference:{' '}
-                  <Chip type="doc" name="mas-guidelines-2024" />
-                </p>
-              </div>
+              {activationResult.response && (
+                <div className="rounded-lg border p-3" style={{ borderColor: '#E5E7EB', background: '#F9FAFB' }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>
+                    Simulated response
+                  </p>
+                  <p
+                    className="text-[12px] leading-relaxed"
+                    style={{ fontFamily: 'var(--font-body)', color: '#374151' }}
+                  >
+                    {activationResult.response}{' '}
+                    <Chip type="doc" name="mas-guidelines-2024" />
+                  </p>
+                </div>
+              )}
 
               {/* Code execution trace */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
-                <CheckIcon />
-                <span
-                  className="text-[11px]"
-                  style={{ fontFamily: 'var(--font-mono)', color: '#166534' }}
-                >
-                  validate_kyc.py executed &rarr; SG jurisdiction &rarr; compliant
-                </span>
-              </div>
+              {activationResult.activated && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                  <CheckIcon />
+                  <span
+                    className="text-[11px]"
+                    style={{ fontFamily: 'var(--font-mono)', color: '#166534' }}
+                  >
+                    validate_kyc.py executed &rarr; SG jurisdiction &rarr; compliant
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -736,10 +767,43 @@ function Frontmatter() {
 // ===========================================================================
 
 export function SkillEditor() {
+  const { addNotification } = useNotifications();
   const [scope, setScope] = useState<Scope>('workspace');
   const [activation, setActivation] = useState<'pinned' | 'on-demand'>(
     'on-demand',
   );
+
+  const handleUploadResource = useCallback(() => {
+    addNotification({ type: 'info', title: 'Upload', message: 'File picker would open here' });
+  }, [addNotification]);
+
+  const handleInstallToWorkspace = useCallback(() => {
+    addNotification({ type: 'success', title: 'Skill installed', message: 'Installed to workspace scope' });
+  }, [addNotification]);
+
+  const handlePublishToRegistry = useCallback(() => {
+    addNotification({ type: 'success', title: 'Published', message: 'Skill published to registry' });
+  }, [addNotification]);
+
+  const handleRunSkillActivation = useCallback(async (prompt: string): Promise<{ activated: boolean; confidence: number; response?: string }> => {
+    // Simulate skill activation test with realistic delay
+    await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 600));
+
+    // Simple keyword matching to simulate activation confidence
+    const keywords = ['compliance', 'apac', 'regulatory', 'singapore', 'kyc', 'mas', 'apra', 'rbi'];
+    const promptLower = prompt.toLowerCase();
+    const matchCount = keywords.filter((kw) => promptLower.includes(kw)).length;
+    const confidence = Math.min(99, Math.round(40 + (matchCount / keywords.length) * 55 + Math.random() * 5));
+    const activated = confidence > 50;
+
+    return {
+      activated,
+      confidence,
+      response: activated
+        ? 'Based on MAS guidelines, KYC requirements for Singapore clients include customer identification, verification of identity documents, screening against sanctions lists, and ongoing monitoring of transactions. Reference:'
+        : undefined,
+    };
+  }, []);
 
   return (
     <div className="h-full flex flex-col" style={{ background: '#F9FAFB' }}>
@@ -773,12 +837,14 @@ export function SkillEditor() {
           {/* Actions */}
           <div className="flex items-center gap-2 ml-2">
             <button
+              onClick={handleInstallToWorkspace}
               className="text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-[#F9FAFB]"
               style={{ color: '#6B7280', borderColor: '#E5E7EB' }}
             >
               Install to Workspace
             </button>
             <button
+              onClick={handlePublishToRegistry}
               className="text-[11px] font-medium text-white px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
               style={{ background: '#7C3AED' }}
             >
@@ -849,12 +915,12 @@ export function SkillEditor() {
 
           {/* -- Right Panel (40%): Skill Resources ----------------------- */}
           <div className="w-[40%] bg-white overflow-y-auto border-l" style={{ borderColor: '#E5E7EB' }}>
-            <ResourceBrowser />
+            <ResourceBrowser onUpload={handleUploadResource} />
           </div>
         </div>
 
         {/* -- Bottom Panel: Test Activation ------------------------------- */}
-        <TestActivation />
+        <TestActivation onRunTest={handleRunSkillActivation} />
       </div>
     </div>
   );
