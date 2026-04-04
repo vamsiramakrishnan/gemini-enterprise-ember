@@ -13,7 +13,7 @@
 import { useState, useMemo } from 'react';
 import { VERSIONS, DIFF_SUMMARY } from '../../data/versions';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
-import type { ChipChange, ChipType, SemverBump } from '../../parser/types';
+import type { ChipChange, SemverBump } from '../../parser/types';
 
 // ─── Types ───────────────────────────────────────────────────────────
 

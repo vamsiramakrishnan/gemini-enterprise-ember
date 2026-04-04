@@ -49,7 +49,6 @@ function RenderPlaybook({ text, highlightedChip, onChipClick }: {
   text: string; highlightedChip: string | null;
   onChipClick: (type: ChipType, name: string) => void;
 }) {
-  const refRegex = /@(\w+)\(([^)]+)\)/g;
   const lines = text.split('\n');
 
   return (
@@ -205,7 +204,7 @@ export function LiveSplitView() {
   const [highlightedChip, setHighlightedChip] = useState<string | null>(null);
   const [layout, setLayout] = useState<'side' | 'stacked'>('side');
   const [prevNodeIds, setPrevNodeIds] = useState<Set<string>>(new Set());
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [compiledGraph, setCompiledGraph] = useState<CompiledGraph | null>(null);
 
   // Parse & compile with debounce
