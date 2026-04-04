@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNotifications } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 
 interface SharedUser {
@@ -20,9 +20,9 @@ const SHARED_USERS: SharedUser[] = [
   { name: 'Priya Sharma', email: 'priya@acme.com', avatar: 'PS', role: 'Admin' },
   { name: 'Vamsi K', email: 'vamsi@acme.com', avatar: 'VK', role: 'Editor' },
   { name: 'Wei Chen', email: 'wei@acme.com', avatar: 'WC', role: 'Editor' },
-  { name: 'APAC Claims Team', email: 'apac-claims@acme.com', avatar: '👥', role: 'Invoker', inherited: 'APAC Support Team catalog' },
-  { name: 'Platform Team', email: 'platform-team@acme.com', avatar: '👥', role: 'Viewer', inherited: 'Engineering org' },
-  { name: 'Security Audit', email: 'security-audit@acme.com', avatar: '🔒', role: 'Viewer' },
+  { name: 'APAC Claims Team', email: 'apac-claims@acme.com', avatar: 'AC', role: 'Invoker', inherited: 'APAC Support Team catalog' },
+  { name: 'Platform Team', email: 'platform-team@acme.com', avatar: 'PT', role: 'Viewer', inherited: 'Engineering org' },
+  { name: 'Security Audit', email: 'security-audit@acme.com', avatar: 'SA', role: 'Viewer' },
 ];
 
 const ROLES = ['Viewer', 'Invoker', 'Editor', 'Admin'] as const;
@@ -37,24 +37,22 @@ function Avatar({ text, size = 'md' }: { text: string; size?: 'sm' | 'md' }) {
 }
 
 export function SharingModal() {
+  const { addNotification } = useNotifications();
   const [generalAccess, setGeneralAccess] = useState<'restricted' | 'organization' | 'published'>('organization');
   const [users, setUsers] = useState(SHARED_USERS);
   const [addEmail, setAddEmail] = useState('');
 
   return (
-    <div className="min-h-screen bg-gray-100/80 flex items-center justify-center p-4">
+    <div className="h-full bg-gray-100/80 flex items-center justify-center p-2 sm:p-4">
       {/* Background context */}
       <div className="fixed inset-0 bg-[var(--color-surface-0)] -z-10 opacity-50" />
 
       <div className="w-full max-w-lg">
-        <div className="mb-4">
-          <Link to="/" className="text-xs text-gray-500 hover:text-gray-700">← Back to Home</Link>
-        </div>
 
         {/* Modal */}
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border overflow-hidden max-h-[90vh] overflow-y-auto" style={{ borderColor: 'var(--color-border)' }}>
           {/* Header */}
-          <div className="px-6 pt-5 pb-3">
+          <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3">
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
                 Share "Claims Processing Agent"
@@ -62,10 +60,10 @@ export function SharingModal() {
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[10px] font-medium"
-                style={{ background: CHIP_COLORS.agent.bg }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                style={{ background: CHIP_COLORS.agent.bg, color: CHIP_COLORS.agent.text, border: `1px solid ${CHIP_COLORS.agent.border}` }}
               >
-                {CHIP_ICONS.agent} Agent Playbook
+                <span style={{ color: CHIP_COLORS.agent.accent }}>{CHIP_ICONS.agent}</span> Agent Playbook
               </span>
               <span>v2.1 · Published</span>
             </div>
@@ -81,7 +79,17 @@ export function SharingModal() {
                 placeholder="Add people, groups, or emails"
                 className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-              <button className="px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
+              <button
+                onClick={() => {
+                  const trimmed = addEmail.trim();
+                  if (!trimmed) return;
+                  const initials = trimmed.split('@')[0].slice(0, 2).toUpperCase();
+                  setUsers(prev => [...prev, { name: trimmed.split('@')[0], email: trimmed, avatar: initials, role: 'Viewer' }]);
+                  setAddEmail('');
+                  addNotification({ type: 'success', title: 'Invitation sent', message: `Access shared with ${trimmed}` });
+                }}
+                className="px-4 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+              >
                 Send
               </button>
             </div>
@@ -111,9 +119,11 @@ export function SharingModal() {
                   <select
                     value={user.role}
                     onChange={e => {
+                      const newRole = e.target.value as SharedUser['role'];
                       const next = [...users];
-                      next[i] = { ...next[i], role: e.target.value as SharedUser['role'] };
+                      next[i] = { ...next[i], role: newRole };
                       setUsers(next);
+                      addNotification({ type: 'info', title: 'Role updated', message: `${user.name} is now ${newRole}` });
                     }}
                     className="text-xs border border-gray-200 rounded-md px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
@@ -129,9 +139,9 @@ export function SharingModal() {
             <h3 className="text-xs font-semibold text-gray-700 mb-3">General access</h3>
             <div className="space-y-2">
               {[
-                { key: 'restricted' as const, icon: '🔒', label: 'Restricted', desc: 'Only people with explicit access' },
-                { key: 'organization' as const, icon: '🏢', label: 'ACME Insurance', desc: 'Anyone in the organization can discover and invoke' },
-                { key: 'published' as const, icon: '🌐', label: 'Published', desc: 'Available in the public registry for cross-org sharing' },
+                { key: 'restricted' as const, icon: '◉', label: 'Restricted', desc: 'Only people with explicit access' },
+                { key: 'organization' as const, icon: '◎', label: 'ACME Insurance', desc: 'Anyone in the organization can discover and invoke' },
+                { key: 'published' as const, icon: '◈', label: 'Published', desc: 'Available in the public registry for cross-org sharing' },
               ].map(opt => (
                 <label
                   key={opt.key}
@@ -145,7 +155,10 @@ export function SharingModal() {
                     type="radio"
                     name="access"
                     checked={generalAccess === opt.key}
-                    onChange={() => setGeneralAccess(opt.key)}
+                    onChange={() => {
+                      setGeneralAccess(opt.key);
+                      addNotification({ type: 'info', title: 'Access updated', message: `General access set to ${opt.label}` });
+                    }}
                     className="accent-blue-600"
                   />
                   <span className="text-base">{opt.icon}</span>
@@ -161,7 +174,7 @@ export function SharingModal() {
           {/* Service perimeter */}
           <div className="px-6 py-3 border-t border-gray-100">
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="text-gray-400">🛡️</span>
+              <span className="text-gray-400">△</span>
               <span>Service Perimeter: <span className="font-mono text-gray-700">apac-finance-perimeter</span></span>
             </div>
           </div>
@@ -177,10 +190,21 @@ export function SharingModal() {
 
           {/* Actions */}
           <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-            <button className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              🔗 Copy link
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText('https://agent-builder.acme.com/agent/claims-processing/v2.1');
+                addNotification({ type: 'success', title: 'Link copied to clipboard' });
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            >
+              Copy link
             </button>
-            <button className="px-5 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
+            <button
+              onClick={() => {
+                addNotification({ type: 'success', title: 'Sharing settings saved' });
+              }}
+              className="px-5 py-2 bg-[#1A73E8] text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+            >
               Done
             </button>
           </div>

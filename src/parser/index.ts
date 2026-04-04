@@ -12,6 +12,16 @@
  *   const mermaid = graphToMermaid(graph);
  */
 
-export { parsePlaybook, extractReferences, extractConditionals, resolveReferences, summarizePlaybook } from './playbook-parser';
+export {
+  parsePlaybook,
+  extractReferences,
+  extractConditionals,
+  resolveReferences,
+  summarizePlaybook,
+  extractTopologyExpression,
+  parseTopologyExpression,
+  topologyToIR,
+  buildIRFromPlaybook,
+} from './playbook-parser';
 export { compilePlaybookToGraph, diffGraphs, graphToMermaid } from './graph-compiler';
 export type * from './types';

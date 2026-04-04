@@ -240,7 +240,7 @@ function ItemRow({
       {/* Colored type dot + icon */}
       <span
         className="flex items-center justify-center w-6 h-6 rounded-md text-xs flex-shrink-0"
-        style={{ backgroundColor: colors.bg + '18', color: colors.bg }}
+        style={{ backgroundColor: colors.bg, color: colors.accent }}
       >
         {leadIcon}
       </span>
@@ -542,9 +542,9 @@ export function ChipAutocomplete({
                       onClick={() => onSelect({ type: chip.type, name: chip.name })}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium
                         transition-all hover:shadow-sm hover:scale-[1.03] active:scale-[0.97]"
-                      style={{ backgroundColor: c.bg + '16', color: c.bg, border: `1px solid ${c.bg}30` }}
+                      style={{ backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}` }}
                     >
-                      <span className="text-[10px]">{CHIP_ICONS[chip.type]}</span>
+                      <span className="text-[10px]" style={{ color: c.accent }}>{CHIP_ICONS[chip.type]}</span>
                       {chip.name}
                     </button>
                   );
@@ -596,7 +596,7 @@ export function ChipAutocomplete({
                 >
                   <span
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: colors.bg }}
+                    style={{ backgroundColor: colors.accent }}
                   />
                   <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex-1 text-left">
                     {sec.label}

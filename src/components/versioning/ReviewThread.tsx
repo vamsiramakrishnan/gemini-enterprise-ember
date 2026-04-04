@@ -99,10 +99,10 @@ function InlineChip({ type, name }: { type: ChipType; name: string }) {
   const icon = CHIP_ICONS[type];
   return (
     <span
-      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white"
-      style={{ background: colors.bg }}
+      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+      style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
     >
-      {icon} {name}
+      <span style={{ color: colors.accent }}>{icon}</span> {name}
     </span>
   );
 }
@@ -163,7 +163,7 @@ export function ReviewThread({
   const [newComment, setNewComment] = useState('');
   const [resolved, setResolved] = useState(false);
 
-  const accentColor = chipType ? CHIP_COLORS[chipType]?.bg : '#6B7280';
+  const accentColor = chipType ? CHIP_COLORS[chipType]?.accent : '#6B7280';
 
   const handleAddComment = () => {
     if (newComment.trim() === '') return;

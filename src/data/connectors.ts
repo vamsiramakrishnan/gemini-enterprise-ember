@@ -27,7 +27,7 @@ export const GOOGLE_CONNECTORS: ConnectorEntry[] = [
     id: 'google-drive',
     product: 'Google Drive',
     provider: 'google',
-    icon: '📁',
+    icon: 'GD',
     status: 'active',
     description: 'Search and retrieve documents across shared drives and My Drive.',
     entities: [
@@ -49,7 +49,7 @@ export const GOOGLE_CONNECTORS: ConnectorEntry[] = [
     id: 'gmail',
     product: 'Gmail',
     provider: 'google',
-    icon: '✉️',
+    icon: 'GM',
     status: 'active',
     description: 'Search and send email messages for customer communications.',
     entities: [
@@ -71,7 +71,7 @@ export const GOOGLE_CONNECTORS: ConnectorEntry[] = [
     id: 'google-calendar',
     product: 'Google Calendar',
     provider: 'google',
-    icon: '📅',
+    icon: 'GC',
     status: 'active',
     description: 'Search, create, and update calendar events.',
     entities: [
@@ -93,7 +93,7 @@ export const GOOGLE_CONNECTORS: ConnectorEntry[] = [
     id: 'bigquery',
     product: 'BigQuery',
     provider: 'google',
-    icon: '🔍',
+    icon: 'BQ',
     status: 'active',
     description: 'Query analytics datasets and historical trend data. 12 datasets connected.',
     entities: [
@@ -114,7 +114,7 @@ export const GOOGLE_CONNECTORS: ConnectorEntry[] = [
     id: 'cloud-storage',
     product: 'Cloud Storage',
     provider: 'google',
-    icon: '☁️',
+    icon: 'CS',
     status: 'active',
     description: 'Access blobs and objects in GCS buckets. 47 buckets connected.',
     entities: [
@@ -135,7 +135,7 @@ export const GOOGLE_CONNECTORS: ConnectorEntry[] = [
     id: 'spanner',
     product: 'Spanner',
     provider: 'google',
-    icon: '🗄️',
+    icon: 'SP',
     status: 'available',
     description: 'Globally distributed relational database. Available for connection.',
     entities: [],
@@ -151,7 +151,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'jira-cloud',
     product: 'Jira Cloud',
     provider: 'third-party',
-    icon: '🎫',
+    icon: 'JC',
     status: 'active',
     description: 'Create and track claims tickets, manage workflows in CLAIMS project.',
     entities: [
@@ -178,7 +178,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'salesforce',
     product: 'Salesforce',
     provider: 'third-party',
-    icon: '☁️',
+    icon: 'SF',
     status: 'active',
     description: 'Customer accounts, contacts, opportunities, and cases. V2 connector.',
     entities: [
@@ -203,7 +203,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'slack',
     product: 'Slack',
     provider: 'third-party',
-    icon: '💬',
+    icon: 'SL',
     status: 'active',
     description: 'Search messages, post to channels, and share files with the claims team.',
     entities: [
@@ -226,7 +226,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'confluence',
     product: 'Confluence Cloud',
     provider: 'third-party',
-    icon: '📝',
+    icon: 'CF',
     status: 'active',
     description: 'Search knowledge base pages, blog posts, and documentation spaces.',
     entities: [
@@ -245,7 +245,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'servicenow',
     product: 'ServiceNow',
     provider: 'third-party',
-    icon: '🔧',
+    icon: 'SN',
     status: 'active',
     description: 'IT service management — incidents, knowledge articles, and change requests.',
     entities: [
@@ -268,7 +268,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'sharepoint',
     product: 'SharePoint Online',
     provider: 'third-party',
-    icon: '📄',
+    icon: 'MS',
     status: 'active',
     description: 'Documents, lists, and sites from Microsoft SharePoint.',
     entities: [
@@ -289,7 +289,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'github',
     product: 'GitHub',
     provider: 'third-party',
-    icon: '🐙',
+    icon: 'GH',
     status: 'active',
     description: 'Repository search, branch creation, file management, and PR workflows.',
     entities: [
@@ -313,7 +313,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'box',
     product: 'Box',
     provider: 'third-party',
-    icon: '📦',
+    icon: 'BX',
     status: 'draft',
     description: 'Cloud content management. Currently being configured.',
     entities: [],
@@ -325,7 +325,7 @@ export const THIRD_PARTY_CONNECTORS: ConnectorEntry[] = [
     id: 'hubspot',
     product: 'HubSpot',
     provider: 'third-party',
-    icon: '🟠',
+    icon: 'HS',
     status: 'available',
     description: 'CRM, marketing, and sales automation. Available — not yet connected.',
     entities: [],

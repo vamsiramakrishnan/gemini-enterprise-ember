@@ -34,6 +34,12 @@ This agent connects to the following enterprise systems:
 - @connector(google-drive) for supporting document retrieval
 - @connector(slack) to notify the claims team channel
 
+## Topology
+The agent follows this execution flow:
+- pipeline: @guard(pii-redaction) >> intake >> parallel_lookup >> validation >> escalation >> @schema(claims-response-v2)
+- parallel_lookup: @tool(policy-lookup) | @connector(salesforce) | @tool(claims-history)
+- escalation: Route("risk_level").eq("high", @agent(senior-adjuster)).eq("flagged", @guard(fraud-detection) >> @agent(senior-adjuster)).default(auto_process)
+
 ## Process
 
 When a customer submits a claim:
@@ -43,6 +49,32 @@ When a customer submits a claim:
 3. Search @connector(salesforce) for the customer's account history
 4. Use @tool(claims-history) to check for prior claims in the last 12 months
 5. Validate the claim against @doc(claims-policy-2024) coverage rules
+
+### Agent Topology
+\`\`\`topology
+# Main processing pipeline (adk-fluent expression)
+intake >> policy_check >> history_check >> validation
+
+# Parallel lookups (fan-out)
+policy_check = @tool(policy-lookup) | @connector(salesforce)
+
+# Sequential validation
+validation = @doc(claims-policy-2024) >> coverage_check
+
+# Escalation routing (conditional)
+escalation = Route("risk_level")
+  .eq("high", @agent(senior-adjuster))
+  .eq("flagged", @guard(fraud-detection) >> @agent(senior-adjuster))
+  .default(auto_process)
+
+# Full pipeline with guards
+pipeline = @guard(pii-redaction) >> intake >> (policy_check | history_check) >> validation >> escalation >> @schema(claims-response-v2)
+
+# Composition patterns used:
+# - fan_out_merge(policy_check, history_check, merge_key="context")
+# - supervised(worker=auto_process, gate_condition=lambda s: s["amount"] > 50000)
+# - cascade(@tool(policy-lookup) // @tool(policy-lookup-v1))
+\`\`\`
 
 ### Escalation Rules
 - If claim amount exceeds $50,000, route to @agent(senior-adjuster)

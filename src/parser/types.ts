@@ -236,6 +236,136 @@ export interface CompiledGraph {
   skillRegions: SkillRegion[];
 }
 
+// ─── adk-fluent IR Node Types ─────────────────────────────────────────
+// These mirror the IR dataclasses in adk-fluent's _ir.py
+// The graph compiler produces these; backends consume them.
+
+export type IRNodeKind =
+  | 'agent'       // AgentNode — LLM agent with instructions
+  | 'sequence'    // SequenceNode — a >> b >> c
+  | 'parallel'    // ParallelNode — a | b | c
+  | 'loop'        // LoopNode — a * 3 or a * until(pred)
+  | 'route'       // RouteNode — Route("key").eq("val", handler) or dict shorthand
+  | 'gate'        // GateNode — .proceed_if(pred) or gate(pred)
+  | 'transform'   // TransformNode — S.pick() / S.rename() / >> fn
+  | 'fallback'    // FallbackNode — a // b
+  | 'tap'         // TapNode — tap(fn), observe without mutate
+  | 'race';       // RaceNode — first to complete wins
+
+export interface IRNode {
+  kind: IRNodeKind;
+  name: string;
+  children?: IRNode[];
+  // Agent-specific
+  model?: string;
+  instructions?: string;
+  tools?: string[];
+  guards?: string[];       // Guard specs from G namespace
+  outputSchema?: string;   // @ operator target
+  outputKey?: string;      // .writes() / output_key
+  // Loop-specific
+  maxIterations?: number;
+  untilCondition?: string; // Human-readable predicate description
+  // Route-specific
+  routeKey?: string;       // State key to route on
+  branches?: Record<string, IRNode>; // key → handler mapping
+  // Gate-specific
+  predicate?: string;      // Human-readable gate condition
+  // Metadata
+  sourceLines?: number[];
+  chipRefs?: string[];     // @type(name) references within this node
+}
+
+// ─── Topology Expression Types ────────────────────────────────────────
+// These represent the parsed form of adk-fluent's expression language
+
+export type TopologyOperator = '>>' | '|' | '*' | '//' | '@';
+
+export interface TopologyExpression {
+  type: 'operator' | 'agent-ref' | 'skill-ref' | 'function-ref' | 'group';
+  operator?: TopologyOperator;
+  operands?: TopologyExpression[];
+  // For agent/skill/function refs
+  name?: string;
+  // For * operator
+  iterations?: number;
+  untilCondition?: string;
+  // For @ operator
+  schema?: string;
+  // For group (parenthesized expression)
+  inner?: TopologyExpression;
+  // Source position
+  sourceLine?: number;
+}
+
+// ─── Operator Precedence (for reference) ──────────────────────────────
+// From adk-fluent docs:
+// 1. @ (tightest — type validation)
+// 2. * (loop)
+// 3. >> (sequence)
+// 4. | (parallel)
+// 5. // (fallback — loosest)
+
+// ─── adk-fluent Backend Service Interface ─────────────────────────────
+// These interfaces define the contract for wiring to a real backend.
+// Currently mocked; replace implementations when adk-fluent SDK is available.
+
+export interface AdkFluentService {
+  // Compile playbook to IR
+  compileToIR(content: string): Promise<IRNode>;
+  // Compile IR to native ADK objects (returns opaque handle)
+  compileToADK(ir: IRNode, config?: ExecutionConfig): Promise<string>;
+  // Execute a test prompt against a compiled agent
+  executeTest(agentId: string, prompt: string): Promise<TestExecutionResult>;
+  // Stream execution events
+  streamExecution(agentId: string, prompt: string): AsyncIterable<AgentEvent>;
+  // Validate playbook references against registry
+  validateReferences(content: string): Promise<ValidationResult>;
+  // Export IR as Mermaid diagram
+  toMermaid(ir: IRNode): string;
+  // Get IR from topology expression string
+  parseTopology(expr: string): IRNode;
+}
+
+export interface ExecutionConfig {
+  appName: string;
+  resumable?: boolean;
+  backend?: 'adk' | 'temporal' | 'asyncio';
+  middlewares?: string[];
+}
+
+export interface TestExecutionResult {
+  iterations: LoopIteration[];
+  totalDuration: number;
+  tokenCount: number;
+  finalResponse: string;
+}
+
+export interface LoopIteration {
+  index: number;
+  observe: string;
+  reason: { playbookExcerpt: string; confidence: number; skillActivated?: string };
+  act: { chipRef: string; parameters: Record<string, unknown>; duration: number };
+  result: string;
+  guardChecks: Array<{ guard: string; passed: boolean; detail?: string }>;
+  decision: 'loop' | 'respond';
+  decisionReason?: string;
+}
+
+export interface AgentEvent {
+  type: 'thought' | 'tool_call' | 'tool_result' | 'guard_check' | 'response' | 'state_delta';
+  timestamp: number;
+  data: Record<string, unknown>;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: Array<{ line: number; message: string; chipRef?: string }>;
+  warnings: Array<{ line: number; message: string }>;
+  resolvedChips: number;
+  unresolvedChips: number;
+}
+
 // ─── Parsed Playbook (output of the parser) ────────────────────────────
 
 export interface ParsedReference {
@@ -259,6 +389,8 @@ export interface ParsedSection {
   children: ParsedSection[];
   content: string;
   semanticRole?: 'role' | 'triggers' | 'skills' | 'knowledge' | 'connectors' | 'process' | 'escalation' | 'compliance' | 'output';
+  // adk-fluent topology expression within this section
+  topologyExpression?: string;
 }
 
 export interface ParsedConditional {
@@ -284,6 +416,11 @@ export interface ParsedPlaybook {
     uniqueTypes: ChipType[];
     sectionCount: number;
   };
+  // adk-fluent topology (if declared in playbook)
+  topology?: TopologyExpression;
+  topologyRaw?: string;  // The raw topology expression string
+  // IR tree (compiled from playbook)
+  ir?: IRNode;
 }
 
 // ─── Version & Diff Types ──────────────────────────────────────────────
@@ -344,26 +481,26 @@ export interface VersionDiff {
 
 // ─── Chip Color System ─────────────────────────────────────────────────
 
-export const CHIP_COLORS: Record<ChipType, { bg: string; text: string; border: string }> = {
-  doc:       { bg: '#0D9488', text: '#FFFFFF', border: '#0D9488' },
-  tool:      { bg: '#4F46E5', text: '#FFFFFF', border: '#4F46E5' },
-  agent:     { bg: '#D97706', text: '#FFFFFF', border: '#D97706' },
-  guard:     { bg: '#E11D48', text: '#FFFFFF', border: '#E11D48' },
-  data:      { bg: '#059669', text: '#FFFFFF', border: '#059669' },
-  schema:    { bg: '#475569', text: '#FFFFFF', border: '#475569' },
-  connector: { bg: '#2563EB', text: '#FFFFFF', border: '#2563EB' },
-  skill:     { bg: '#7C3AED', text: '#FFFFFF', border: '#7C3AED' },
-  trigger:   { bg: '#EA580C', text: '#FFFFFF', border: '#EA580C' },
+export const CHIP_COLORS: Record<ChipType, { bg: string; text: string; border: string; accent: string; tint: string }> = {
+  doc:       { bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4', accent: '#0D9488', tint: '#CCFBF1' },
+  tool:      { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE', accent: '#4F46E5', tint: '#E0E7FF' },
+  agent:     { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', accent: '#D97706', tint: '#FEF3C7' },
+  guard:     { bg: '#FFF1F2', text: '#BE123C', border: '#FECDD3', accent: '#E11D48', tint: '#FFE4E6' },
+  data:      { bg: '#ECFDF5', text: '#047857', border: '#A7F3D0', accent: '#059669', tint: '#D1FAE5' },
+  schema:    { bg: '#F8FAFC', text: '#334155', border: '#CBD5E1', accent: '#475569', tint: '#E2E8F0' },
+  connector: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', accent: '#2563EB', tint: '#DBEAFE' },
+  skill:     { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE', accent: '#7C3AED', tint: '#EDE9FE' },
+  trigger:   { bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA', accent: '#EA580C', tint: '#FFEDD5' },
 };
 
 export const CHIP_ICONS: Record<ChipType, string> = {
-  doc:       '📄',
-  tool:      '🔧',
-  agent:     '🤖',
-  guard:     '🛡️',
-  data:      '📊',
-  schema:    '📐',
-  connector: '🔗',
-  skill:     '✨',
-  trigger:   '⚡',
+  doc:       '◇',
+  tool:      '⬡',
+  agent:     '◎',
+  guard:     '△',
+  data:      '▣',
+  schema:    '▢',
+  connector: '◈',
+  skill:     '✦',
+  trigger:   '▸',
 };

@@ -32,18 +32,18 @@ function SmartChip({ type, name, resolved }: { type: ChipType; name: string; res
         style={{ borderColor: '#DC2626', color: '#DC2626', background: '#FEF2F2' }}
         title={`Unresolved: @${type}(${name})`}
       >
-        {icon} @{type}({name}) ⚠️
+        {icon} @{type}({name})
       </span>
     );
   }
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
-      style={{ background: colors.bg }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity"
+      style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
       title={`@${type}(${name}) — click to inspect`}
     >
-      {icon} {name}
+      <span style={{ color: colors.accent }}>{icon}</span> {name}
     </span>
   );
 }
@@ -52,18 +52,18 @@ function SmartChip({ type, name, resolved }: { type: ChipType; name: string; res
 
 function GraphNodeBadge({ node }: { node: CompiledGraphNode }) {
   const chipColors = node.chipType ? CHIP_COLORS[node.chipType] : null;
-  const bg = chipColors?.bg || '#6B7280';
+  const bg = chipColors?.accent || '#6B7280';
 
   const typeLabel: Record<string, string> = {
-    'trigger-entry': '⚡ TRIGGER',
-    'agent': '🤖 AGENT',
-    'tool-call': '🔧 TOOL',
-    'connector-call': '🔗 CONNECTOR',
+    'trigger-entry': '▸ TRIGGER',
+    'agent': '◎ AGENT',
+    'tool-call': '⬡ TOOL',
+    'connector-call': '◈ CONNECTOR',
     'decision': '◆ DECISION',
-    'gate': '🛡️ GATE',
-    'grounding': '📄 DOC',
-    'output': '📐 OUTPUT',
-    'transform': '⚙️ TRANSFORM',
+    'gate': '△ GATE',
+    'grounding': '◇ DOC',
+    'output': '▢ OUTPUT',
+    'transform': '▣ TRANSFORM',
   };
 
   return (
@@ -103,8 +103,8 @@ function ReferenceTable({ refs }: { refs: ParsedReference[] }) {
           <div key={type}>
             <div className="flex items-center gap-2 mb-1.5">
               <span
-                className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded"
-                style={{ background: CHIP_COLORS[type].bg }}
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                style={{ background: CHIP_COLORS[type].bg, color: CHIP_COLORS[type].text, border: `1px solid ${CHIP_COLORS[type].border}` }}
               >
                 @{type}
               </span>
@@ -331,7 +331,7 @@ export function ParserDemo() {
                       </h3>
                       {graph.skillRegions.map((region, i) => (
                         <div key={i} className="p-2 rounded-lg border text-xs" style={{ borderColor: region.color + '40', background: region.color + '10' }}>
-                          <span className="font-medium" style={{ color: region.color }}>✨ {region.label}</span>
+                          <span className="font-medium" style={{ color: region.color }}>✦ {region.label}</span>
                           <span className="text-gray-400 ml-2">affects {region.nodeIds.length} nodes</span>
                         </div>
                       ))}

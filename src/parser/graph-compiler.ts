@@ -123,10 +123,12 @@ function deduplicateRefs(refs: ParsedReference[]): ParsedReference[] {
  *   N+1: Output (schemas)
  */
 function layoutGraph(graph: CompiledGraph): void {
-  const NODE_WIDTH = 200;
-  const NODE_HEIGHT = 80;
-  const HORIZONTAL_GAP = 100;
-  const VERTICAL_GAP = 40;
+  // Match the FlowGraph rendering dimensions
+  const NODE_WIDTH = 220;
+  const NODE_HEIGHT = 72;
+  const HORIZONTAL_GAP = 130;
+  const VERTICAL_GAP = 48;
+  const MAX_PER_COLUMN = 4; // Split process nodes into multiple columns if > 4
 
   // Categorize nodes by column
   const columns: Map<number, CompiledGraphNode[]> = new Map();
@@ -136,7 +138,11 @@ function layoutGraph(graph: CompiledGraph): void {
     columns.get(col)!.push(node);
   }
 
-  // Assign columns by node type
+  // Separate process nodes by type for better distribution
+  const toolNodes: CompiledGraphNode[] = [];
+  const connectorNodes: CompiledGraphNode[] = [];
+  const agentNodes: CompiledGraphNode[] = [];
+
   for (const node of graph.nodes) {
     switch (node.type) {
       case 'trigger-entry':
@@ -148,18 +154,42 @@ function layoutGraph(graph: CompiledGraph): void {
       case 'output':
         addToColumn(99, node); // Will be renumbered
         break;
-      case 'gate':
-        // Gates go near the end
-        addToColumn(5, node);
+      case 'tool-call':
+        toolNodes.push(node);
+        break;
+      case 'connector-call':
+        connectorNodes.push(node);
+        break;
+      case 'agent':
+        agentNodes.push(node);
         break;
       case 'decision':
-        addToColumn(4, node);
+        addToColumn(5, node);
+        break;
+      case 'gate':
+        addToColumn(6, node);
         break;
       default:
-        // Process nodes: tools, connectors, agents
         addToColumn(3, node);
         break;
     }
+  }
+
+  // Distribute process nodes across columns 2-4 based on type
+  // Tools and connectors do lookups (parallel), agents handle escalation
+  const lookupNodes = [...toolNodes, ...connectorNodes];
+  if (lookupNodes.length > 0) {
+    // If many lookup nodes, split into 2 columns
+    if (lookupNodes.length > MAX_PER_COLUMN) {
+      const half = Math.ceil(lookupNodes.length / 2);
+      lookupNodes.slice(0, half).forEach(n => addToColumn(2, n));
+      lookupNodes.slice(half).forEach(n => addToColumn(3, n));
+    } else {
+      lookupNodes.forEach(n => addToColumn(2, n));
+    }
+  }
+  if (agentNodes.length > 0) {
+    agentNodes.forEach(n => addToColumn(4, n));
   }
 
   // Renumber columns to be contiguous
@@ -167,7 +197,7 @@ function layoutGraph(graph: CompiledGraph): void {
   const colRemap = new Map<number, number>();
   sortedCols.forEach((col, idx) => colRemap.set(col, idx));
 
-  // Assign positions
+  // Assign positions — center each column vertically
   for (const [origCol, nodes] of columns) {
     const col = colRemap.get(origCol) || 0;
     const x = col * (NODE_WIDTH + HORIZONTAL_GAP);
@@ -533,28 +563,28 @@ export function graphToMermaid(graph: CompiledGraph): string {
     const label = node.label.replace(/"/g, "'");
     switch (node.type) {
       case 'trigger-entry':
-        lines.push(`    ${node.id}(("⚡ ${label}"))`);
+        lines.push(`    ${node.id}(("${label}"))`);
         break;
       case 'grounding':
-        lines.push(`    ${node.id}[/"📄 ${label}"/]`);
+        lines.push(`    ${node.id}[/"${label}"/]`);
         break;
       case 'tool-call':
-        lines.push(`    ${node.id}["🔧 ${label}"]`);
+        lines.push(`    ${node.id}["${label}"]`);
         break;
       case 'connector-call':
-        lines.push(`    ${node.id}["🔗 ${label}"]`);
+        lines.push(`    ${node.id}["${label}"]`);
         break;
       case 'agent':
-        lines.push(`    ${node.id}["🤖 ${label}"]`);
+        lines.push(`    ${node.id}["${label}"]`);
         break;
       case 'decision':
         lines.push(`    ${node.id}{"${label}"}`);
         break;
       case 'gate':
-        lines.push(`    ${node.id}{{"🛡️ ${label}"}}`);
+        lines.push(`    ${node.id}{{"${label}"}}`);
         break;
       case 'output':
-        lines.push(`    ${node.id}[["📐 ${label}"]]`);
+        lines.push(`    ${node.id}[["${label}"]]`);
         break;
       case 'transform':
         lines.push(`    ${node.id}>"${label}"]`);

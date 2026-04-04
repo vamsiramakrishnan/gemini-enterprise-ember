@@ -4,16 +4,104 @@
  * A dedicated editor for creating and managing agent skills.
  * Skills are reusable capability bundles in SKILL.md format.
  *
- * Three panels:
+ * Two-panel layout:
  *   Left  (60%) -- SKILL.md editor (frontmatter card + body with smart chips + eval cases)
  *   Right (40%) -- Skill Resources file browser (scripts, references, assets)
- *   Bottom       -- Test Activation panel
+ *   Bottom       -- Test Activation panel (collapsible)
  */
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useCallback } from 'react';
+import { useNotifications } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType } from '../../parser/types';
+
+// ---------------------------------------------------------------------------
+// SVG icon helpers (no emoji, no HTML entities)
+// ---------------------------------------------------------------------------
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      className="flex-shrink-0"
+      style={{
+        transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+        transition: 'transform 150ms ease',
+      }}
+    >
+      <path d="M3 1.5L7 5L3 8.5" stroke="#9CA3AF" strokeWidth="1.3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0">
+      <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0">
+      <path d="M6 8V2M3 4l3-3 3 3M2 10h8" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0">
+      <path d="M2.5 6.5L5 9L9.5 3" stroke="#059669" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" className="flex-shrink-0">
+      <path d="M2 1.5L8.5 5L2 8.5V1.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+function TestBeakerIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" className="flex-shrink-0">
+      <path d="M5 1h4M5 1v4L2 11.5a1 1 0 001 1.5h8a1 1 0 001-1.5L9 5V1" stroke="currentColor" strokeWidth="1.1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 8.5h6" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" opacity="0.5" />
+    </svg>
+  );
+}
+
+function FileCodeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" className="flex-shrink-0">
+      <rect x="2" y="1" width="10" height="12" rx="1.5" stroke="#7C3AED" strokeWidth="1" fill="none" />
+      <path d="M5.5 5.5L4 7l1.5 1.5M8.5 5.5L10 7l-1.5 1.5" stroke="#7C3AED" strokeWidth="0.9" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FilePdfIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" className="flex-shrink-0">
+      <rect x="2" y="1" width="10" height="12" rx="1.5" stroke="#DC2626" strokeWidth="1" fill="none" />
+      <path d="M5 5h4M5 7.5h3M5 10h2" stroke="#DC2626" strokeWidth="0.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" className="flex-shrink-0">
+      <path d="M1 3.5V10a1 1 0 001 1h8a1 1 0 001-1V4.5a1 1 0 00-1-1H6L5 2H2a1 1 0 00-1 1.5z" stroke="#9CA3AF" strokeWidth="1" fill="none" />
+    </svg>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Inline SmartChip renderer
@@ -38,24 +126,57 @@ function Chip({
         style={{ borderColor: '#DC2626', color: '#DC2626', background: '#FEF2F2' }}
         title={`Unresolved: @${type}(${name})`}
       >
-        {icon} @{type}({name}) ⚠️
+        {icon} @{type}({name})
       </span>
     );
   }
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
-      style={{ background: colors.bg }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity"
+      style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
       title={`@${type}(${name})`}
     >
-      {icon} {name}
+      <span style={{ color: colors.accent }}>{icon}</span> {name}
     </span>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Scope selector pills
+// Segmented control (shared by scope and activation)
+// ---------------------------------------------------------------------------
+
+function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: { key: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div className="flex rounded-lg p-0.5" style={{ background: '#F3F4F6' }}>
+      {options.map((o) => (
+        <button
+          key={o.key}
+          onClick={() => onChange(o.key)}
+          className="px-3 py-1 text-[11px] font-medium rounded-md transition-all"
+          style={
+            value === o.key
+              ? { background: '#FFFFFF', color: '#111827', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }
+              : { background: 'transparent', color: '#9CA3AF' }
+          }
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Scope selector
 // ---------------------------------------------------------------------------
 
 type Scope = 'workspace' | 'user' | 'extension';
@@ -67,28 +188,16 @@ function ScopeSelector({
   value: Scope;
   onChange: (s: Scope) => void;
 }) {
-  const options: { key: Scope; label: string }[] = [
-    { key: 'workspace', label: 'Workspace' },
-    { key: 'user', label: 'User' },
-    { key: 'extension', label: 'Extension' },
-  ];
-
   return (
-    <div className="flex rounded-lg overflow-hidden border border-gray-200">
-      {options.map((o) => (
-        <button
-          key={o.key}
-          onClick={() => onChange(o.key)}
-          className={`px-3 py-1 text-xs font-medium transition-colors ${
-            value === o.key
-              ? 'bg-[#1A73E8] text-white'
-              : 'bg-white text-gray-500 hover:bg-gray-50'
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <SegmentedControl
+      options={[
+        { key: 'workspace' as Scope, label: 'Workspace' },
+        { key: 'user' as Scope, label: 'User' },
+        { key: 'extension' as Scope, label: 'Extension' },
+      ]}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 
@@ -104,28 +213,14 @@ function ActivationToggle({
   onChange: (v: 'pinned' | 'on-demand') => void;
 }) {
   return (
-    <div className="flex rounded-lg overflow-hidden border border-violet-200">
-      <button
-        onClick={() => onChange('pinned')}
-        className={`px-3 py-1 text-xs font-medium transition-colors ${
-          value === 'pinned'
-            ? 'bg-[#7C3AED] text-white'
-            : 'bg-white text-gray-500 hover:bg-violet-50'
-        }`}
-      >
-        Pinned
-      </button>
-      <button
-        onClick={() => onChange('on-demand')}
-        className={`px-3 py-1 text-xs font-medium transition-colors ${
-          value === 'on-demand'
-            ? 'bg-[#7C3AED] text-white'
-            : 'bg-white text-gray-500 hover:bg-violet-50'
-        }`}
-      >
-        On-Demand
-      </button>
-    </div>
+    <SegmentedControl
+      options={[
+        { key: 'pinned' as const, label: 'Pinned' },
+        { key: 'on-demand' as const, label: 'On-Demand' },
+      ]}
+      value={value}
+      onChange={onChange}
+    />
   );
 }
 
@@ -135,7 +230,7 @@ function ActivationToggle({
 
 interface ResourceFile {
   name: string;
-  icon: string;
+  type: 'code' | 'pdf' | 'other';
   meta: string;
   hasRunTest?: boolean;
 }
@@ -147,7 +242,7 @@ interface ResourceFolder {
   emptyLabel?: string;
 }
 
-function ResourceBrowser() {
+function ResourceBrowser({ onUpload }: { onUpload: () => void }) {
   const [folders, setFolders] = useState<ResourceFolder[]>([
     {
       name: 'scripts/',
@@ -155,13 +250,13 @@ function ResourceBrowser() {
       files: [
         {
           name: 'validate_kyc.py',
-          icon: '\uD83D\uDC0D',
+          type: 'code',
           meta: 'Last audited: Mar 15, 2026',
           hasRunTest: true,
         },
         {
           name: 'format_disclosure.ts',
-          icon: '\uD83D\uDCD8',
+          type: 'code',
           meta: 'Last audited: Mar 10, 2026',
           hasRunTest: true,
         },
@@ -171,8 +266,8 @@ function ResourceBrowser() {
       name: 'references/',
       expanded: true,
       files: [
-        { name: 'mas-guidelines-2024.pdf', icon: '\uD83D\uDCD5', meta: '2.1 MB' },
-        { name: 'apra-standards.pdf', icon: '\uD83D\uDCD5', meta: '1.8 MB' },
+        { name: 'mas-guidelines-2024.pdf', type: 'pdf', meta: '2.1 MB' },
+        { name: 'apra-standards.pdf', type: 'pdf', meta: '1.8 MB' },
       ],
     },
     {
@@ -189,70 +284,69 @@ function ResourceBrowser() {
     );
   };
 
+  const fileIcon = (type: ResourceFile['type']) => {
+    switch (type) {
+      case 'code': return <FileCodeIcon />;
+      case 'pdf': return <FilePdfIcon />;
+      default: return <FolderIcon />;
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: '#E5E7EB' }}>
         <h3
-          className="text-sm font-semibold text-gray-900"
-          style={{ fontFamily: 'var(--font-ui)' }}
+          className="text-[11px] font-semibold uppercase tracking-wider"
+          style={{ fontFamily: 'var(--font-ui)', color: '#374151' }}
         >
-          Skill Resources
+          Resources
         </h3>
-        <button className="text-xs font-medium text-[#1A73E8] hover:underline">
-          Upload Resource
-        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-1">
+      <div className="flex-1 overflow-y-auto p-3 space-y-0.5">
         {folders.map((folder, fi) => (
           <div key={folder.name}>
-            {/* Folder header */}
             <button
               onClick={() => toggleFolder(fi)}
-              className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-[#F9FAFB] transition-colors"
             >
+              <ChevronIcon open={folder.expanded} />
               <span
-                className="text-[10px] text-gray-400 transition-transform inline-block"
-                style={{
-                  transform: folder.expanded ? 'rotate(90deg)' : 'rotate(0)',
-                }}
+                className="text-[11px] font-semibold"
+                style={{ fontFamily: 'var(--font-mono)', color: '#374151' }}
               >
-                &#9654;
-              </span>
-              <span className="text-xs font-semibold text-gray-700" style={{ fontFamily: 'var(--font-mono)' }}>
                 {folder.name}
               </span>
-              <span className="text-[10px] text-gray-400 ml-auto">
-                {folder.files.length} {folder.files.length === 1 ? 'file' : 'files'}
+              <span className="text-[10px] ml-auto" style={{ color: '#9CA3AF' }}>
+                {folder.files.length}
               </span>
             </button>
 
-            {/* Folder contents */}
             {folder.expanded && (
               <div className="ml-5 space-y-0.5">
                 {folder.files.length === 0 && folder.emptyLabel && (
-                  <p className="text-[11px] text-gray-400 italic px-2 py-1">
+                  <p className="text-[11px] italic px-2 py-1" style={{ color: '#9CA3AF' }}>
                     {folder.emptyLabel}
                   </p>
                 )}
                 {folder.files.map((file) => (
                   <div
                     key={file.name}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors group"
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-[#F9FAFB] transition-colors group cursor-pointer"
                   >
-                    <span className="text-sm">{file.icon}</span>
+                    {fileIcon(file.type)}
                     <div className="flex-1 min-w-0">
                       <p
-                        className="text-xs font-medium text-gray-800 truncate"
-                        style={{ fontFamily: 'var(--font-mono)' }}
+                        className="text-[12px] font-medium truncate"
+                        style={{ fontFamily: 'var(--font-mono)', color: '#374151' }}
                       >
                         {file.name}
                       </p>
-                      <p className="text-[10px] text-gray-400">{file.meta}</p>
+                      <p className="text-[10px]" style={{ color: '#9CA3AF' }}>{file.meta}</p>
                     </div>
                     {file.hasRunTest && (
-                      <button className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full hover:bg-violet-100">
-                        Run Test
+                      <button className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-medium px-2 py-0.5 rounded-md border flex items-center gap-1" style={{ color: '#7C3AED', borderColor: '#DDD6FE', background: '#F5F3FF' }}>
+                        <PlayIcon /> Run
                       </button>
                     )}
                   </div>
@@ -263,20 +357,25 @@ function ResourceBrowser() {
         ))}
       </div>
 
-      {/* Visual annotation: dashed connector lines */}
-      <div className="px-4 py-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+      {/* Upload button */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={onUpload}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-medium rounded-lg border border-dashed transition-colors hover:bg-[#F9FAFB]"
+          style={{ color: '#9CA3AF', borderColor: '#D1D5DB' }}
+        >
+          <UploadIcon /> Upload Resource
+        </button>
+      </div>
+
+      {/* Annotation */}
+      <div className="px-4 py-2.5 border-t" style={{ borderColor: '#F3F4F6' }}>
+        <div className="flex items-center gap-2 text-[10px]" style={{ color: '#9CA3AF' }}>
           <svg width="24" height="12" viewBox="0 0 24 12" className="flex-shrink-0">
-            <line
-              x1="0" y1="6" x2="24" y2="6"
-              stroke="#7C3AED"
-              strokeWidth="1"
-              strokeDasharray="3 2"
-              opacity="0.5"
-            />
+            <line x1="0" y1="6" x2="24" y2="6" stroke="#7C3AED" strokeWidth="1" strokeDasharray="3 2" opacity="0.5" />
             <circle cx="22" cy="6" r="2" fill="#7C3AED" opacity="0.5" />
           </svg>
-          <span>Scripts are linked to skill body sections that invoke them</span>
+          <span>Scripts linked to skill body instructions</span>
         </div>
       </div>
     </div>
@@ -300,178 +399,219 @@ function EvalCases() {
   return (
     <div className="mt-6">
       <h3
-        className="text-sm font-semibold text-gray-900 mb-3"
-        style={{ fontFamily: 'var(--font-ui)' }}
+        className="text-[10px] font-semibold uppercase tracking-wider mb-3"
+        style={{ fontFamily: 'var(--font-ui)', color: '#9CA3AF' }}
       >
         Eval Cases
       </h3>
-      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="rounded-lg border overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-3 py-2 font-medium text-gray-500 w-3/5">
+            <tr className="border-b" style={{ background: '#F9FAFB', borderColor: '#E5E7EB' }}>
+              <th className="text-left px-3 py-2 text-[10px] font-medium uppercase tracking-wider w-3/5" style={{ color: '#9CA3AF' }}>
                 Prompt
               </th>
-              <th className="text-left px-3 py-2 font-medium text-gray-500 w-2/5">
+              <th className="text-left px-3 py-2 text-[10px] font-medium uppercase tracking-wider w-2/5" style={{ color: '#9CA3AF' }}>
                 expect_contains
               </th>
             </tr>
           </thead>
           <tbody>
             {cases.map((c, i) => (
-              <tr key={i} className="border-b border-gray-100 last:border-0">
-                <td
-                  className="px-3 py-2.5 text-gray-700"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
-                  &quot;{c.prompt}&quot;
+              <tr key={i} className="border-b last:border-0" style={{ borderColor: '#F3F4F6' }}>
+                <td className="px-3 py-2.5 text-[12px]" style={{ fontFamily: 'var(--font-mono)', color: '#374151' }}>
+                  "{c.prompt}"
                 </td>
-                <td
-                  className="px-3 py-2.5 text-gray-700"
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                >
-                  &quot;{c.expectContains}&quot;
+                <td className="px-3 py-2.5 text-[12px]" style={{ fontFamily: 'var(--font-mono)', color: '#374151' }}>
+                  "{c.expectContains}"
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button className="mt-2 text-xs font-medium text-[#1A73E8] hover:underline flex items-center gap-1">
-        <span className="text-sm">+</span> Add eval case
+      <button className="mt-2 text-[11px] font-medium hover:underline flex items-center gap-1" style={{ color: '#1A73E8' }}>
+        <PlusIcon /> Add eval case
       </button>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Test Activation panel
+// Test Activation panel (collapsible bottom drawer)
 // ---------------------------------------------------------------------------
 
-function TestActivation() {
+function TestActivation({ onRunTest }: { onRunTest: (prompt: string) => Promise<{ activated: boolean; confidence: number; response?: string }> }) {
   const [testPrompt, setTestPrompt] = useState(
     'What are the KYC requirements for our Singapore clients?',
   );
-  const [hasResult, setHasResult] = useState(true);
+  const [hasResult, setHasResult] = useState(false);
+  const [testRunning, setTestRunning] = useState(false);
+  const [activationResult, setActivationResult] = useState<{ activated: boolean; confidence: number; response?: string } | null>(null);
   const [manualActivate, setManualActivate] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className="border-t border-gray-200 bg-white">
-      <div className="px-5 py-3 flex items-center justify-between border-b border-gray-100">
-        <h3
-          className="text-sm font-semibold text-gray-900"
-          style={{ fontFamily: 'var(--font-ui)' }}
-        >
-          Test Activation
-        </h3>
+    <div className="border-t bg-white" style={{ borderColor: '#E5E7EB' }}>
+      {/* Collapsible header */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-5 py-2.5 flex items-center justify-between hover:bg-[#F9FAFB] transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <TestBeakerIcon />
+          <h3
+            className="text-[11px] font-semibold uppercase tracking-wider"
+            style={{ fontFamily: 'var(--font-ui)', color: '#374151' }}
+          >
+            Test Activation
+          </h3>
+        </div>
         <div className="flex items-center gap-3">
-          {/* Manual activate toggle */}
-          <label className="flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer">
+          <label
+            className="flex items-center gap-1.5 text-[11px] cursor-pointer"
+            style={{ color: '#9CA3AF' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <span>Activate manually</span>
             <button
-              onClick={() => setManualActivate(!manualActivate)}
-              className={`relative w-8 h-4 rounded-full transition-colors ${
-                manualActivate ? 'bg-[#7C3AED]' : 'bg-gray-300'
-              }`}
+              onClick={(e) => { e.stopPropagation(); setManualActivate(!manualActivate); }}
+              className="relative w-7 h-[14px] rounded-full transition-colors"
+              style={{ background: manualActivate ? '#7C3AED' : '#D1D5DB' }}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform shadow-sm ${
-                  manualActivate ? 'translate-x-4' : ''
-                }`}
+                className="absolute top-[2px] left-[2px] w-[10px] h-[10px] rounded-full bg-white transition-transform"
+                style={{
+                  transform: manualActivate ? 'translateX(13px)' : 'translateX(0)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                }}
               />
             </button>
           </label>
+          <ChevronIcon open={isOpen} />
         </div>
-      </div>
+      </button>
 
-      <div className="p-5">
-        {/* Input */}
-        <div className="flex gap-3 mb-4">
-          <input
-            type="text"
-            value={testPrompt}
-            onChange={(e) => setTestPrompt(e.target.value)}
-            placeholder="Enter a test prompt..."
-            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-all"
-            style={{ fontFamily: 'var(--font-body)' }}
-          />
-          <button
-            onClick={() => setHasResult(true)}
-            className="px-4 py-2 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
-            style={{ background: '#7C3AED' }}
-          >
-            Test Activation
-          </button>
-        </div>
-
-        {/* Results */}
-        {hasResult && (
-          <div className="space-y-3">
-            {/* Confidence bar */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-600 w-36 flex-shrink-0">
-                Activation confidence:
-              </span>
-              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: '94%', background: '#059669' }}
-                />
-              </div>
-              <span className="text-xs font-bold text-green-700 w-10 text-right">
-                94%
-              </span>
-            </div>
-
-            {/* Matched keywords */}
-            <div className="flex items-start gap-3">
-              <span className="text-xs font-medium text-gray-600 w-36 flex-shrink-0">
-                Matched on:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {['regulatory compliance', 'APAC markets', 'Singapore'].map(
-                  (kw) => (
-                    <span
-                      key={kw}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
-                    >
-                      {kw}
-                    </span>
-                  ),
-                )}
-              </div>
-            </div>
-
-            {/* Simulated response */}
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1.5">
-                Simulated response
-              </p>
-              <p
-                className="text-sm text-gray-700 leading-relaxed"
-                style={{ fontFamily: 'var(--font-body)' }}
-              >
-                Based on MAS guidelines, KYC requirements for Singapore clients
-                include customer identification, verification of identity
-                documents, screening against sanctions lists, and ongoing
-                monitoring of transactions. Reference:{' '}
-                <Chip type="doc" name="mas-guidelines-2024" />
-              </p>
-            </div>
-
-            {/* Code execution trace */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
-              <span className="text-green-600 font-bold text-xs">&#10003;</span>
-              <span
-                className="text-xs text-green-800"
-                style={{ fontFamily: 'var(--font-mono)' }}
-              >
-                validate_kyc.py executed &rarr; SG jurisdiction &rarr; compliant
-              </span>
-            </div>
+      {isOpen && (
+        <div className="px-5 pb-4">
+          {/* Input */}
+          <div className="flex gap-3 mb-4">
+            <input
+              type="text"
+              value={testPrompt}
+              onChange={(e) => setTestPrompt(e.target.value)}
+              placeholder="Enter a test prompt..."
+              className="flex-1 px-3 py-2 text-[12px] border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-all"
+              style={{ fontFamily: 'var(--font-body)', borderColor: '#E5E7EB', background: '#F9FAFB' }}
+            />
+            <button
+              onClick={async () => {
+                if (!testPrompt.trim() || testRunning) return;
+                setTestRunning(true);
+                setHasResult(false);
+                try {
+                  const result = await onRunTest(testPrompt);
+                  setActivationResult(result);
+                  setHasResult(true);
+                } finally {
+                  setTestRunning(false);
+                }
+              }}
+              disabled={!testPrompt.trim() || testRunning}
+              className="px-4 py-2 text-[11px] font-medium text-white rounded-lg transition-colors hover:opacity-90"
+              style={{ background: testRunning ? '#93C5FD' : '#1A73E8', cursor: testRunning ? 'not-allowed' : 'pointer' }}
+            >
+              {testRunning ? 'Testing...' : 'Test'}
+            </button>
           </div>
-        )}
-      </div>
+
+          {/* Results */}
+          {hasResult && activationResult && (
+            <div className="space-y-3">
+              {/* Activation status */}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-medium w-32 flex-shrink-0" style={{ color: '#6B7280' }}>
+                  Activated
+                </span>
+                <span className="text-[11px] font-semibold" style={{ color: activationResult.activated ? '#059669' : '#DC2626' }}>
+                  {activationResult.activated ? 'Yes' : 'No'}
+                </span>
+              </div>
+
+              {/* Confidence bar */}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-medium w-32 flex-shrink-0" style={{ color: '#6B7280' }}>
+                  Activation confidence
+                </span>
+                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: '#F3F4F6' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${activationResult.confidence}%`,
+                      background: activationResult.confidence > 70 ? '#059669' : activationResult.confidence > 40 ? '#D97706' : '#DC2626',
+                    }}
+                  />
+                </div>
+                <span
+                  className="text-[11px] font-semibold w-10 text-right"
+                  style={{ color: activationResult.confidence > 70 ? '#059669' : activationResult.confidence > 40 ? '#D97706' : '#DC2626' }}
+                >
+                  {activationResult.confidence}%
+                </span>
+              </div>
+
+              {/* Matched keywords */}
+              <div className="flex items-start gap-3">
+                <span className="text-[11px] font-medium w-32 flex-shrink-0" style={{ color: '#6B7280' }}>
+                  Matched on
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {['regulatory compliance', 'APAC markets', 'Singapore'].map(
+                    (kw) => (
+                      <span
+                        key={kw}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-md border"
+                        style={{ background: '#F5F3FF', color: '#7C3AED', borderColor: '#DDD6FE' }}
+                      >
+                        {kw}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {/* Simulated response */}
+              {activationResult.response && (
+                <div className="rounded-lg border p-3" style={{ borderColor: '#E5E7EB', background: '#F9FAFB' }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#9CA3AF' }}>
+                    Simulated response
+                  </p>
+                  <p
+                    className="text-[12px] leading-relaxed"
+                    style={{ fontFamily: 'var(--font-body)', color: '#374151' }}
+                  >
+                    {activationResult.response}{' '}
+                    <Chip type="doc" name="mas-guidelines-2024" />
+                  </p>
+                </div>
+              )}
+
+              {/* Code execution trace */}
+              {activationResult.activated && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                  <CheckIcon />
+                  <span
+                    className="text-[11px]"
+                    style={{ fontFamily: 'var(--font-mono)', color: '#166534' }}
+                  >
+                    validate_kyc.py executed &rarr; SG jurisdiction &rarr; compliant
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -498,27 +638,6 @@ function SkillBody() {
         <Chip type="schema" name="apra-disclosure-format" resolved={false} />.
       </p>
 
-      {/* Dashed annotation line connecting to scripts panel */}
-      <div className="relative my-2">
-        <svg
-          width="100%"
-          height="16"
-          className="absolute -top-2 left-0 pointer-events-none overflow-visible"
-        >
-          <line
-            x1="70%"
-            y1="8"
-            x2="100%"
-            y2="8"
-            stroke="#7C3AED"
-            strokeWidth="1"
-            strokeDasharray="4 3"
-            opacity="0.35"
-          />
-          <circle cx="70%" cy="8" r="2.5" fill="#7C3AED" opacity="0.35" />
-        </svg>
-      </div>
-
       <h2>Connected Data</h2>
       <p>
         Search <Chip type="connector" name="salesforce" /> for customer
@@ -544,22 +663,25 @@ function Frontmatter() {
   const tags = ['compliance', 'apac', 'regulatory'];
 
   return (
-    <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-5 space-y-4">
+    <div className="rounded-lg border bg-white p-5 space-y-4" style={{ borderColor: '#E5E7EB', boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}>
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-[10px] font-semibold text-violet-500 uppercase tracking-wider">
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wider"
+          style={{ color: '#9CA3AF' }}
+        >
           Frontmatter
         </span>
-        <span className="text-[10px] text-gray-400">(YAML)</span>
+        <span className="text-[10px]" style={{ color: '#D1D5DB' }}>(YAML)</span>
       </div>
 
       {/* Name */}
       <div>
-        <label className="block text-[11px] font-medium text-gray-500 mb-1">
+        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>
           name
         </label>
         <div
-          className="w-full px-3 py-1.5 text-sm border border-violet-200 rounded-md bg-white text-gray-900"
-          style={{ fontFamily: 'var(--font-mono)' }}
+          className="w-full px-3 py-1.5 text-[13px] border rounded-md"
+          style={{ fontFamily: 'var(--font-mono)', borderColor: '#E5E7EB', background: '#F9FAFB', color: '#111827' }}
         >
           apac-compliance
         </div>
@@ -567,12 +689,12 @@ function Frontmatter() {
 
       {/* Description */}
       <div>
-        <label className="block text-[11px] font-medium text-gray-500 mb-1">
+        <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>
           description
         </label>
         <div
-          className="w-full px-3 py-2 text-sm border border-violet-200 rounded-md bg-white text-gray-700 leading-relaxed"
-          style={{ fontFamily: 'var(--font-body)' }}
+          className="w-full px-3 py-2 text-[12px] border rounded-md leading-relaxed"
+          style={{ fontFamily: 'var(--font-body)', borderColor: '#E5E7EB', background: '#F9FAFB', color: '#374151' }}
         >
           Use this skill when the agent handles regulatory compliance questions
           in APAC markets. Covers MAS, APRA, RBI, OJK, and FSC regulations.
@@ -582,26 +704,27 @@ function Frontmatter() {
       {/* Version + Tags */}
       <div className="flex gap-6">
         <div>
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>
             version
           </label>
           <span
-            className="text-sm text-gray-800"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className="text-[12px]"
+            style={{ fontFamily: 'var(--font-mono)', color: '#374151' }}
           >
             2.0.0
           </span>
         </div>
 
         <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>
             tags
           </label>
           <div className="flex flex-wrap gap-1.5">
             {tags.map((t) => (
               <span
                 key={t}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                className="text-[10px] font-medium px-2 py-0.5 rounded-md border"
+                style={{ background: '#F9FAFB', color: '#6B7280', borderColor: '#E5E7EB' }}
               >
                 {t}
               </span>
@@ -613,23 +736,23 @@ function Frontmatter() {
       {/* Input / Output schemas */}
       <div className="flex gap-6">
         <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>
             input
           </label>
           <div
-            className="text-xs text-gray-600 bg-white rounded-md border border-violet-200 px-3 py-1.5"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className="text-[11px] rounded-md border px-3 py-1.5"
+            style={{ fontFamily: 'var(--font-mono)', borderColor: '#E5E7EB', background: '#F9FAFB', color: '#374151' }}
           >
             jurisdiction: string, query: string
           </div>
         </div>
         <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#9CA3AF' }}>
             output
           </label>
           <div
-            className="text-xs text-gray-600 bg-white rounded-md border border-violet-200 px-3 py-1.5"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className="text-[11px] rounded-md border px-3 py-1.5"
+            style={{ fontFamily: 'var(--font-mono)', borderColor: '#E5E7EB', background: '#F9FAFB', color: '#374151' }}
           >
             compliant: boolean, notes: string
           </div>
@@ -644,44 +767,62 @@ function Frontmatter() {
 // ===========================================================================
 
 export function SkillEditor() {
+  const { addNotification } = useNotifications();
   const [scope, setScope] = useState<Scope>('workspace');
   const [activation, setActivation] = useState<'pinned' | 'on-demand'>(
     'on-demand',
   );
 
+  const handleUploadResource = useCallback(() => {
+    addNotification({ type: 'info', title: 'Upload', message: 'File picker would open here' });
+  }, [addNotification]);
+
+  const handleInstallToWorkspace = useCallback(() => {
+    addNotification({ type: 'success', title: 'Skill installed', message: 'Installed to workspace scope' });
+  }, [addNotification]);
+
+  const handlePublishToRegistry = useCallback(() => {
+    addNotification({ type: 'success', title: 'Published', message: 'Skill published to registry' });
+  }, [addNotification]);
+
+  const handleRunSkillActivation = useCallback(async (prompt: string): Promise<{ activated: boolean; confidence: number; response?: string }> => {
+    // Simulate skill activation test with realistic delay
+    await new Promise((resolve) => setTimeout(resolve, 800 + Math.random() * 600));
+
+    // Simple keyword matching to simulate activation confidence
+    const keywords = ['compliance', 'apac', 'regulatory', 'singapore', 'kyc', 'mas', 'apra', 'rbi'];
+    const promptLower = prompt.toLowerCase();
+    const matchCount = keywords.filter((kw) => promptLower.includes(kw)).length;
+    const confidence = Math.min(99, Math.round(40 + (matchCount / keywords.length) * 55 + Math.random() * 5));
+    const activated = confidence > 50;
+
+    return {
+      activated,
+      confidence,
+      response: activated
+        ? 'Based on MAS guidelines, KYC requirements for Singapore clients include customer identification, verification of identity documents, screening against sanctions lists, and ongoing monitoring of transactions. Reference:'
+        : undefined,
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#FAFAF9] flex flex-col">
-      {/* --- Top Bar ---------------------------------------------------- */}
-      <header className="border-b border-gray-200 bg-white/90 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-[1440px] mx-auto px-5 py-3 flex items-center gap-4">
-          {/* Back link */}
-          <Link
-            to="/"
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
-          >
-            <span>&larr;</span> Home
-          </Link>
-
-          <div className="w-px h-5 bg-gray-200" />
-
-          {/* Skill icon */}
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-sm"
-            style={{ background: '#7C3AED' }}
-          >
-            &#10024;
-          </div>
-
+    <div className="h-full flex flex-col" style={{ background: '#F9FAFB' }}>
+      {/* --- Header -------------------------------------------------------- */}
+      <header className="bg-white border-b" style={{ borderColor: '#E5E7EB' }}>
+        <div className="max-w-[1440px] mx-auto px-5 py-3 flex items-center gap-3">
           {/* Skill name */}
           <h1
-            className="text-lg font-bold text-gray-900"
-            style={{ fontFamily: 'var(--font-ui)' }}
+            className="text-[13px] font-semibold"
+            style={{ fontFamily: 'var(--font-ui)', color: '#111827' }}
           >
             apac-compliance
           </h1>
 
           {/* Version badge */}
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+            style={{ background: '#EDE9FE', color: '#6D28D9' }}
+          >
             v2.0.0
           </span>
 
@@ -695,11 +836,16 @@ export function SkillEditor() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 ml-2">
-            <button className="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+            <button
+              onClick={handleInstallToWorkspace}
+              className="text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-[#F9FAFB]"
+              style={{ color: '#6B7280', borderColor: '#E5E7EB' }}
+            >
               Install to Workspace
             </button>
             <button
-              className="text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
+              onClick={handlePublishToRegistry}
+              className="text-[11px] font-medium text-white px-3 py-1.5 rounded-lg transition-colors hover:opacity-90"
               style={{ background: '#7C3AED' }}
             >
               Publish to Registry
@@ -708,19 +854,20 @@ export function SkillEditor() {
         </div>
 
         {/* Precedence indicator */}
-        <div className="max-w-[1440px] mx-auto px-5 pb-2 flex items-center gap-2">
-          <span className="text-[10px] text-gray-400">Precedence:</span>
+        <div className="max-w-[1440px] mx-auto px-5 pb-2 flex items-center gap-1">
+          <span className="text-[10px]" style={{ color: '#9CA3AF' }}>Precedence:</span>
           {(['Workspace', 'User', 'Extension'] as const).map((level, i) => (
             <span key={level} className="flex items-center gap-1">
               {i > 0 && (
-                <span className="text-[10px] text-gray-300">&gt;</span>
+                <span className="text-[10px]" style={{ color: '#D1D5DB' }}>&gt;</span>
               )}
               <span
-                className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                style={
                   level.toLowerCase() === scope
-                    ? 'bg-violet-100 text-violet-700'
-                    : 'text-gray-400'
-                }`}
+                    ? { background: '#EDE9FE', color: '#6D28D9' }
+                    : { color: '#9CA3AF' }
+                }
               >
                 {level}
               </span>
@@ -729,11 +876,11 @@ export function SkillEditor() {
         </div>
       </header>
 
-      {/* --- Main Content ------------------------------------------------ */}
-      <div className="flex-1 flex flex-col max-w-[1440px] mx-auto w-full">
+      {/* --- Main Content -------------------------------------------------- */}
+      <div className="flex-1 flex flex-col max-w-[1440px] mx-auto w-full min-h-0">
         <div className="flex-1 flex min-h-0">
-          {/* -- Left Panel (60%): SKILL.md Editor ----------------------- */}
-          <div className="w-[60%] border-r border-gray-200 overflow-y-auto">
+          {/* -- Left Panel (60%): SKILL.md Editor ------------------------- */}
+          <div className="w-[60%] border-r overflow-y-auto" style={{ borderColor: '#E5E7EB' }}>
             <div className="p-6 space-y-6">
               {/* Section 1: Frontmatter */}
               <Frontmatter />
@@ -741,12 +888,15 @@ export function SkillEditor() {
               {/* Section 2: Body */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <span
+                    className="text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ color: '#9CA3AF' }}
+                  >
                     Skill Body
                   </span>
-                  <span className="text-[10px] text-gray-400">(Markdown + Smart Chips)</span>
+                  <span className="text-[10px]" style={{ color: '#D1D5DB' }}>(Markdown + Smart Chips)</span>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-5 relative">
+                <div className="rounded-lg border bg-white p-5 relative" style={{ borderColor: '#E5E7EB' }}>
                   {/* Violet left border accent */}
                   <div
                     className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full"
@@ -763,14 +913,14 @@ export function SkillEditor() {
             </div>
           </div>
 
-          {/* -- Right Panel (40%): Skill Resources ---------------------- */}
-          <div className="w-[40%] bg-white overflow-y-auto border-l border-gray-100">
-            <ResourceBrowser />
+          {/* -- Right Panel (40%): Skill Resources ----------------------- */}
+          <div className="w-[40%] bg-white overflow-y-auto border-l" style={{ borderColor: '#E5E7EB' }}>
+            <ResourceBrowser onUpload={handleUploadResource} />
           </div>
         </div>
 
-        {/* -- Bottom Panel: Test Activation ----------------------------- */}
-        <TestActivation />
+        {/* -- Bottom Panel: Test Activation ------------------------------- */}
+        <TestActivation onRunTest={handleRunSkillActivation} />
       </div>
     </div>
   );

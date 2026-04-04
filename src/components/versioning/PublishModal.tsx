@@ -117,7 +117,7 @@ function ChipChangeBadge({ change }: { change: ChipChange }) {
       <span className="font-bold">{prefix}</span>
       <span
         className="w-2 h-2 rounded-full shrink-0"
-        style={{ background: colors.bg }}
+        style={{ background: colors.accent }}
       />
       <span>{icon}</span>
       <span>@{change.chipType}({change.chipName})</span>
@@ -380,9 +380,9 @@ export function PublishModal({ open, onClose, onPublish }: PublishModalProps) {
               <div className="flex gap-2 mb-3">
                 {(
                   [
-                    { key: 'draft', label: 'Draft only', icon: '📝', desc: 'Save without deploying' },
-                    { key: 'staging', label: 'Staging', icon: '🧪', desc: 'Deploy to staging environment' },
-                    { key: 'production', label: 'Production', icon: '🚀', desc: 'Deploy to production' },
+                    { key: 'draft', label: 'Draft only', icon: '○', desc: 'Save without deploying' },
+                    { key: 'staging', label: 'Staging', icon: '◐', desc: 'Deploy to staging environment' },
+                    { key: 'production', label: 'Production', icon: '●', desc: 'Deploy to production' },
                   ] as const
                 ).map((t) => {
                   const isSelected = deployTarget === t.key;
