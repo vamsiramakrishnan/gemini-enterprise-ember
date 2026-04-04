@@ -507,6 +507,10 @@ body {
 .hide-below-lg { display: none; }
 @media (min-width: 1024px) { .hide-below-lg { display: flex; } }
 
+/* Show below lg (1024px) only — for mobile/tablet collapsible panels */
+.show-below-lg { display: flex; }
+@media (min-width: 1024px) { .show-below-lg { display: none; } }
+
 /* ─── Version History: mobile timeline ─────────────────────────────── */
 /* On mobile, the sidebar becomes a horizontal scrolling strip */
 @media (max-width: 767px) {

@@ -5,6 +5,11 @@
  *   Left: scrollable version timeline with status-colored cards
  *   Center: chip-aware diff with colored inline chips and line-level annotations
  *   Right: change summary, stats, and actions
+ *
+ * Responsive:
+ *   Mobile (<768px): panels stack vertically; timeline is horizontal scrolling strip
+ *   Tablet (768–1023px): sidebar + main; aside hidden behind toggle
+ *   Desktop (1024px+): all three panels side by side
  */
 
 import { useState, useMemo } from 'react';
@@ -28,7 +33,7 @@ const STATUS_STYLES: Record<VersionStatus, { bg: string; text: string; label: st
   staging:        { bg: '#DBEAFE', text: '#1E40AF', label: 'STAGING' },
   production:     { bg: '#DCFCE7', text: '#166534', label: 'LIVE' },
   'rolled-back':  { bg: '#FEE2E2', text: '#991B1B', label: 'ROLLED BACK' },
-  deprecated:     { bg: '#F3F4F6', text: '#6B7280', label: 'DEPRECATED' },
+  deprecated:     { bg: '#F3F4F6', text: 'var(--color-text-secondary)', label: 'DEPRECATED' },
 };
 
 const ACTION_STYLES = {
@@ -142,6 +147,7 @@ function TimelineEntry({
   return (
     <div
       onClick={onSelect}
+      className="vh-timeline-entry"
       style={{
         padding: '10px 12px',
         borderLeft: `3px solid ${borderColor}`,
@@ -165,7 +171,7 @@ function TimelineEntry({
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: '#111827',
+            color: 'var(--color-text-primary)',
             fontFamily: 'var(--font-ui)',
           }}
         >
@@ -191,7 +197,7 @@ function TimelineEntry({
           alignItems: 'center',
           gap: 5,
           fontSize: 10,
-          color: '#9CA3AF',
+          color: 'var(--color-text-tertiary)',
           fontFamily: 'var(--font-ui)',
           marginBottom: 6,
         }}
@@ -222,7 +228,7 @@ function TimelineEntry({
       <p
         style={{
           fontSize: 11,
-          color: '#6B7280',
+          color: 'var(--color-text-secondary)',
           fontFamily: 'var(--font-ui)',
           lineHeight: '15px',
           margin: 0,
@@ -261,7 +267,7 @@ const LINE_TEXT: Record<DiffLineEntry['type'], string> = {
   added:     '#166534',
   removed:   '#991B1B',
   modified:  '#92400E',
-  unchanged: '#6B7280',
+  unchanged: 'var(--color-text-secondary)',
 };
 
 const LINE_PREFIX: Record<DiffLineEntry['type'], string> = {
@@ -373,6 +379,8 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
           color: LINE_TEXT[line.type],
           padding: '2px 8px 2px 0',
           flex: 1,
+          minWidth: 0,
+          overflowWrap: 'break-word',
         }}
       >
         {renderContent(line.content)}
@@ -393,7 +401,7 @@ function CollapsedUnchanged({ count, onExpand }: { count: number; onExpand: () =
         justifyContent: 'center',
         padding: '4px 0',
         fontSize: 10,
-        color: '#9CA3AF',
+        color: 'var(--color-text-tertiary)',
         fontFamily: 'var(--font-ui)',
         background: '#FAFAFA',
         borderTop: '1px solid #F3F4F6',
@@ -401,10 +409,290 @@ function CollapsedUnchanged({ count, onExpand }: { count: number; onExpand: () =
         cursor: 'pointer',
         userSelect: 'none',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = '#6B7280'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = '#9CA3AF'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-tertiary)'; }}
     >
       Show {count} unchanged line{count !== 1 ? 's' : ''}
+    </div>
+  );
+}
+
+/* ─── Summary Panel (extracted for reuse in collapsible mobile view) ── */
+
+function SummaryPanel({
+  selected,
+  selectedVersion,
+  diffStats,
+  diffChipChanges,
+}: {
+  selected: VersionEntry;
+  selectedVersion: string;
+  diffStats: { added: number; removed: number; unchanged: number };
+  diffChipChanges: ChipChange[];
+}) {
+  return (
+    <div
+      style={{
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+      }}
+    >
+      {/* Version info card */}
+      <div
+        style={{
+          padding: 12,
+          border: '1px solid var(--color-border)',
+          borderRadius: 6,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginBottom: 8,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--font-ui)',
+            }}
+          >
+            v{selected.version}
+          </span>
+          <VersionStatusBadge status={selected.status} />
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 10,
+            color: 'var(--color-text-tertiary)',
+            fontFamily: 'var(--font-ui)',
+            marginBottom: 6,
+          }}
+        >
+          <span
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              background: '#D1D5DB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 9,
+              fontWeight: 700,
+              color: '#fff',
+              flexShrink: 0,
+            }}
+          >
+            {selected.author.name[0]}
+          </span>
+          <span>{selected.author.name}</span>
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 11,
+            color: 'var(--color-text-secondary)',
+            fontFamily: 'var(--font-ui)',
+            lineHeight: '15px',
+          }}
+        >
+          {selected.changeSummary}
+        </p>
+      </div>
+
+      {/* Diff stats */}
+      {selectedVersion === '2.2.0' && (
+        <div
+          style={{
+            padding: 12,
+            border: '1px solid var(--color-border)',
+            borderRadius: 6,
+          }}
+        >
+          <h3
+            className="text-section-label"
+            style={{
+              margin: '0 0 8px',
+            }}
+          >
+            Diff Stats
+          </h3>
+          <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+            <span style={{ color: '#166534' }}>+{diffStats.added} added</span>
+            <span style={{ color: '#991B1B' }}>{diffStats.removed > 0 ? `\u2212${diffStats.removed}` : '0'} removed</span>
+          </div>
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 10,
+              color: 'var(--color-text-tertiary)',
+              fontFamily: 'var(--font-ui)',
+            }}
+          >
+            {diffStats.unchanged} unchanged lines
+          </div>
+        </div>
+      )}
+
+      {/* Chip changes */}
+      <div
+        style={{
+          padding: 12,
+          border: '1px solid var(--color-border)',
+          borderRadius: 6,
+        }}
+      >
+        <h3
+          className="text-section-label"
+          style={{
+            margin: '0 0 8px',
+          }}
+        >
+          @Reference Changes ({diffChipChanges.length})
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {diffChipChanges.map((c, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <ChipChangePill change={c} />
+              {c.detail && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--color-text-tertiary)',
+                    fontFamily: 'var(--font-ui)',
+                    marginLeft: 20,
+                  }}
+                >
+                  {c.detail}
+                </span>
+              )}
+            </div>
+          ))}
+          {diffChipChanges.length === 0 && (
+            <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)' }}>
+              No chip changes in this version.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div
+        style={{
+          padding: 12,
+          border: '1px solid var(--color-border)',
+          borderRadius: 6,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <button
+          style={{
+            width: '100%',
+            padding: '7px 0',
+            borderRadius: 5,
+            border: 'none',
+            background: '#1A73E8',
+            color: '#FFFFFF',
+            fontSize: 11,
+            fontWeight: 600,
+            fontFamily: 'var(--font-ui)',
+            cursor: 'pointer',
+          }}
+        >
+          Publish v{selected.version}
+        </button>
+        <button
+          style={{
+            width: '100%',
+            padding: '7px 0',
+            borderRadius: 5,
+            border: '1px solid var(--color-border)',
+            background: '#F9FAFB',
+            color: '#374151',
+            fontSize: 11,
+            fontWeight: 500,
+            fontFamily: 'var(--font-ui)',
+            cursor: 'pointer',
+          }}
+        >
+          Restore This Version
+        </button>
+        <button
+          style={{
+            width: '100%',
+            padding: '7px 0',
+            borderRadius: 5,
+            border: '1px solid var(--color-border)',
+            background: '#F9FAFB',
+            color: '#374151',
+            fontSize: 11,
+            fontWeight: 500,
+            fontFamily: 'var(--font-ui)',
+            cursor: 'pointer',
+          }}
+        >
+          Fork From Here
+        </button>
+      </div>
+
+      {/* Review status */}
+      {selected.reviewStatus && (
+        <div
+          style={{
+            padding: 12,
+            border: '1px solid var(--color-border)',
+            borderRadius: 6,
+          }}
+        >
+          <h3
+            className="text-section-label"
+            style={{
+              margin: '0 0 8px',
+            }}
+          >
+            Review
+          </h3>
+          <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+            {selected.reviewStatus === 'approved' && (
+              <span style={{ color: '#16A34A', fontWeight: 600 }}>Approved</span>
+            )}
+            {selected.reviewStatus === 'pending' && (
+              <span style={{ color: '#D97706', fontWeight: 600 }}>Pending review</span>
+            )}
+          </div>
+          {selected.reviewers && (
+            <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {selected.reviewers.map((r) => (
+                <span
+                  key={r}
+                  style={{
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 3,
+                    background: '#F3F4F6',
+                    color: 'var(--color-text-secondary)',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                >
+                  {r.split('@')[0]}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -414,6 +702,7 @@ function CollapsedUnchanged({ count, onExpand }: { count: number; onExpand: () =
 export function VersionHistory() {
   const [selectedVersion, setSelectedVersion] = useState('2.2.0');
   const [expandedUnchanged, setExpandedUnchanged] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   const selected = VERSIONS.find((v) => v.version === selectedVersion) || VERSIONS[4];
   const compareFrom = VERSIONS.find((v) => v.version === '2.1.0')!;
@@ -479,25 +768,16 @@ export function VersionHistory() {
   }, [selectedVersion, expandedUnchanged]);
 
   return (
-    <div style={{ height: '100%', background: '#FFFFFF', display: 'flex', flexDirection: 'column' }}>
+    <div className="page-container">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 20px',
-          borderBottom: '1px solid #E5E7EB',
-          flexShrink: 0,
-        }}
-      >
+      <header className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1
             style={{
               margin: 0,
               fontSize: 13,
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--color-text-primary)',
               fontFamily: 'var(--font-ui)',
             }}
           >
@@ -507,7 +787,7 @@ export function VersionHistory() {
             style={{
               margin: 0,
               fontSize: 10,
-              color: '#9CA3AF',
+              color: 'var(--color-text-tertiary)',
               fontFamily: 'var(--font-ui)',
               marginTop: 1,
             }}
@@ -518,7 +798,7 @@ export function VersionHistory() {
         <div
           style={{
             fontSize: 11,
-            color: '#6B7280',
+            color: 'var(--color-text-secondary)',
             fontFamily: 'var(--font-ui)',
             padding: '3px 10px',
             borderRadius: 4,
@@ -530,32 +810,17 @@ export function VersionHistory() {
       </header>
 
       {/* ── Three-Panel Layout ──────────────────────────────────────── */}
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          overflow: 'hidden',
-          minHeight: 0,
-        }}
-      >
+      <div className="layout-triple page-body" style={{ padding: 0 }}>
         {/* ── Left: Version Timeline ──────────────────────────────── */}
         <div
+          className="panel-sidebar vh-timeline"
           style={{
-            width: 280,
-            flexShrink: 0,
-            borderRight: '1px solid #E5E7EB',
-            overflowY: 'auto',
             padding: '12px 8px',
           }}
         >
           <h2
+            className="text-section-label"
             style={{
-              fontSize: 10,
-              fontWeight: 600,
-              color: '#9CA3AF',
-              fontFamily: 'var(--font-ui)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
               margin: '0 0 10px 12px',
             }}
           >
@@ -576,12 +841,11 @@ export function VersionHistory() {
 
         {/* ── Center: Chip-Aware Diff ─────────────────────────────── */}
         <div
+          className="panel-main"
           style={{
-            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            minWidth: 0,
           }}
         >
           {/* Diff sub-header */}
@@ -611,7 +875,7 @@ export function VersionHistory() {
                 alignItems: 'center',
                 gap: 12,
                 fontSize: 10,
-                color: '#9CA3AF',
+                color: 'var(--color-text-tertiary)',
                 fontFamily: 'var(--font-ui)',
               }}
             >
@@ -657,7 +921,7 @@ export function VersionHistory() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: 48,
-                  color: '#9CA3AF',
+                  color: 'var(--color-text-tertiary)',
                   fontSize: 12,
                   fontFamily: 'var(--font-ui)',
                   textAlign: 'center',
@@ -677,7 +941,7 @@ export function VersionHistory() {
             <div
               style={{
                 padding: '8px 16px',
-                borderTop: '1px solid #E5E7EB',
+                borderTop: '1px solid var(--color-border)',
                 background: '#F0F9FF',
                 display: 'flex',
                 alignItems: 'center',
@@ -699,293 +963,54 @@ export function VersionHistory() {
               >
                 {DIFF_SUMMARY.suggestedBump.toUpperCase()}
               </span>
-              <span style={{ color: '#6B7280' }}>{DIFF_SUMMARY.suggestedBumpReason}</span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>{DIFF_SUMMARY.suggestedBumpReason}</span>
+            </div>
+          )}
+
+          {/* Mobile/tablet: toggle button for summary panel */}
+          <button
+            className="vh-aside-toggle"
+            onClick={() => setShowMobileSummary((prev) => !prev)}
+          >
+            {showMobileSummary ? 'Hide' : 'Show'} Change Summary
+            <span style={{ fontSize: 14 }}>{showMobileSummary ? '\u25B2' : '\u25BC'}</span>
+          </button>
+
+          {/* Mobile/tablet: collapsible summary */}
+          {showMobileSummary && (
+            <div
+              className="show-below-lg"
+              style={{
+                flexDirection: 'column',
+                overflowY: 'auto',
+                borderTop: '1px solid var(--color-border)',
+                maxHeight: 400,
+              }}
+            >
+              <SummaryPanel
+                selected={selected}
+                selectedVersion={selectedVersion}
+                diffStats={diffStats}
+                diffChipChanges={diffChipChanges}
+              />
             </div>
           )}
         </div>
 
-        {/* ── Right: Change Summary & Actions ────────────────────── */}
+        {/* ── Right: Change Summary & Actions (desktop only) ────── */}
         <div
+          className="panel-aside hide-below-lg"
           style={{
-            width: 260,
-            flexShrink: 0,
-            borderLeft: '1px solid #E5E7EB',
-            overflowY: 'auto',
-            padding: 16,
-            display: 'flex',
             flexDirection: 'column',
             gap: 14,
           }}
         >
-          {/* Version info card */}
-          <div
-            style={{
-              padding: 12,
-              border: '1px solid #E5E7EB',
-              borderRadius: 6,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 8,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#111827',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                v{selected.version}
-              </span>
-              <VersionStatusBadge status={selected.status} />
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 10,
-                color: '#9CA3AF',
-                fontFamily: 'var(--font-ui)',
-                marginBottom: 6,
-              }}
-            >
-              <span
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  background: '#D1D5DB',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color: '#fff',
-                  flexShrink: 0,
-                }}
-              >
-                {selected.author.name[0]}
-              </span>
-              <span>{selected.author.name}</span>
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 11,
-                color: '#6B7280',
-                fontFamily: 'var(--font-ui)',
-                lineHeight: '15px',
-              }}
-            >
-              {selected.changeSummary}
-            </p>
-          </div>
-
-          {/* Diff stats */}
-          {selectedVersion === '2.2.0' && (
-            <div
-              style={{
-                padding: 12,
-                border: '1px solid #E5E7EB',
-                borderRadius: 6,
-              }}
-            >
-              <h3
-                style={{
-                  margin: '0 0 8px',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: '#9CA3AF',
-                  fontFamily: 'var(--font-ui)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                Diff Stats
-              </h3>
-              <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: 'var(--font-ui)' }}>
-                <span style={{ color: '#166534' }}>+{diffStats.added} added</span>
-                <span style={{ color: '#991B1B' }}>{diffStats.removed > 0 ? `\u2212${diffStats.removed}` : '0'} removed</span>
-              </div>
-              <div
-                style={{
-                  marginTop: 6,
-                  fontSize: 10,
-                  color: '#9CA3AF',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                {diffStats.unchanged} unchanged lines
-              </div>
-            </div>
-          )}
-
-          {/* Chip changes */}
-          <div
-            style={{
-              padding: 12,
-              border: '1px solid #E5E7EB',
-              borderRadius: 6,
-            }}
-          >
-            <h3
-              style={{
-                margin: '0 0 8px',
-                fontSize: 10,
-                fontWeight: 600,
-                color: '#9CA3AF',
-                fontFamily: 'var(--font-ui)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              @Reference Changes ({diffChipChanges.length})
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {diffChipChanges.map((c, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <ChipChangePill change={c} />
-                  {c.detail && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: '#9CA3AF',
-                        fontFamily: 'var(--font-ui)',
-                        marginLeft: 20,
-                      }}
-                    >
-                      {c.detail}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {diffChipChanges.length === 0 && (
-                <p style={{ margin: 0, fontSize: 10, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-                  No chip changes in this version.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div
-            style={{
-              padding: 12,
-              border: '1px solid #E5E7EB',
-              borderRadius: 6,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-            }}
-          >
-            <button
-              style={{
-                width: '100%',
-                padding: '7px 0',
-                borderRadius: 5,
-                border: 'none',
-                background: '#1A73E8',
-                color: '#FFFFFF',
-                fontSize: 11,
-                fontWeight: 600,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
-            >
-              Publish v{selected.version}
-            </button>
-            <button
-              style={{
-                width: '100%',
-                padding: '7px 0',
-                borderRadius: 5,
-                border: '1px solid #E5E7EB',
-                background: '#F9FAFB',
-                color: '#374151',
-                fontSize: 11,
-                fontWeight: 500,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
-            >
-              Restore This Version
-            </button>
-            <button
-              style={{
-                width: '100%',
-                padding: '7px 0',
-                borderRadius: 5,
-                border: '1px solid #E5E7EB',
-                background: '#F9FAFB',
-                color: '#374151',
-                fontSize: 11,
-                fontWeight: 500,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
-            >
-              Fork From Here
-            </button>
-          </div>
-
-          {/* Review status */}
-          {selected.reviewStatus && (
-            <div
-              style={{
-                padding: 12,
-                border: '1px solid #E5E7EB',
-                borderRadius: 6,
-              }}
-            >
-              <h3
-                style={{
-                  margin: '0 0 8px',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: '#9CA3AF',
-                  fontFamily: 'var(--font-ui)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                }}
-              >
-                Review
-              </h3>
-              <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)' }}>
-                {selected.reviewStatus === 'approved' && (
-                  <span style={{ color: '#16A34A', fontWeight: 600 }}>Approved</span>
-                )}
-                {selected.reviewStatus === 'pending' && (
-                  <span style={{ color: '#D97706', fontWeight: 600 }}>Pending review</span>
-                )}
-              </div>
-              {selected.reviewers && (
-                <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {selected.reviewers.map((r) => (
-                    <span
-                      key={r}
-                      style={{
-                        fontSize: 10,
-                        padding: '1px 6px',
-                        borderRadius: 3,
-                        background: '#F3F4F6',
-                        color: '#6B7280',
-                        fontFamily: 'var(--font-ui)',
-                      }}
-                    >
-                      {r.split('@')[0]}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <SummaryPanel
+            selected={selected}
+            selectedVersion={selectedVersion}
+            diffStats={diffStats}
+            diffChipChanges={diffChipChanges}
+          />
         </div>
       </div>
     </div>
