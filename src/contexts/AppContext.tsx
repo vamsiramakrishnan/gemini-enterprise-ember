@@ -698,7 +698,6 @@ function TestProvider({ children }: { children: ReactNode }) {
   const runTest = useCallback((input: string) => {
     const id = `test-${Date.now()}`;
     const iterations = buildClaimsIterations();
-    const totalDuration = iterations.reduce((s, it) => s + it.durationMs, 0);
 
     const result: TestResult = {
       id,

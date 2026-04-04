@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistry, useNotifications } from '../../contexts/AppContext';
+import { useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
 
@@ -698,7 +698,6 @@ function CreateModal({ onClose, onCreate }: { onClose: () => void; onCreate: (pa
 export function RegistryCatalog() {
   const navigate = useNavigate();
   const { filteredChips: contextFilteredChips, chips: allChips, searchQuery, setSearchQuery, selectChip, createModalOpen, openCreateModal, closeCreateModal, createChip } = useRegistry();
-  const { addNotification } = useNotifications();
 
   const [typeFilter, setTypeFilter] = useState<ChipType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('relevance');

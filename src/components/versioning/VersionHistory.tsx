@@ -431,6 +431,8 @@ function SummaryPanel({
   diffStats: { added: number; removed: number; unchanged: number };
   diffChipChanges: ChipChange[];
 }) {
+  const { addNotification } = useNotifications();
+  const { restoreVersion, openPublishModal } = usePlaybook();
   return (
     <div
       style={{
@@ -709,8 +711,6 @@ function SummaryPanel({
 /* ─── Main Component ────────────────────────────────────────────────── */
 
 export function VersionHistory() {
-  const { addNotification } = useNotifications();
-  const { restoreVersion, openPublishModal } = usePlaybook();
   const [selectedVersion, setSelectedVersion] = useState('2.2.0');
   const [expandedUnchanged, setExpandedUnchanged] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);

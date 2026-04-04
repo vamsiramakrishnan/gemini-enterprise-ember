@@ -1104,7 +1104,7 @@ export function PlaybookEditor() {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
   const navigate = useNavigate();
-  const { openPublishModal, publishModalOpen, closePublishModal, publish, save, dirty, saving, currentVersion } = usePlaybook();
+  const { openPublishModal, publishModalOpen, closePublishModal, publish, dirty, saving, currentVersion } = usePlaybook();
   const { addNotification } = useNotifications();
   const { createChip } = useRegistry();
   const [activeTab, setActiveTab] = useState<EditorTab>('document');
