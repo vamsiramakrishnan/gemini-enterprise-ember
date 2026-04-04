@@ -26,7 +26,10 @@ function TypeFilter({
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {ALL_TYPES.map((t) => {
         const isActive = t === active;
-        const bg = t === 'all' ? '#374151' : CHIP_COLORS[t as ChipType].bg;
+        const chipColor = t === 'all' ? null : CHIP_COLORS[t as ChipType];
+        const activeBg = chipColor ? chipColor.bg : '#374151';
+        const activeText = chipColor ? chipColor.text : '#fff';
+        const activeBorder = chipColor ? chipColor.border : '#374151';
         const icon = t === 'all' ? null : CHIP_ICONS[t as ChipType];
         return (
           <button
@@ -41,11 +44,11 @@ function TypeFilter({
               fontSize: 11,
               fontWeight: 500,
               fontFamily: 'var(--font-ui)',
-              border: 'none',
+              border: isActive && chipColor ? `1px solid ${activeBorder}` : '1px solid transparent',
               cursor: 'pointer',
               transition: 'all 150ms ease',
-              background: isActive ? bg : '#F3F4F6',
-              color: isActive ? '#fff' : '#6B7280',
+              background: isActive ? activeBg : '#F3F4F6',
+              color: isActive ? activeText : '#6B7280',
             }}
           >
             {icon && <span style={{ fontSize: 10 }}>{icon}</span>}
@@ -293,13 +296,14 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
             fontSize: 10,
             fontWeight: 600,
             fontFamily: 'var(--font-ui)',
-            color: '#fff',
+            color: colors.text,
             background: colors.bg,
+            border: `1px solid ${colors.border}`,
             padding: '2px 7px',
             borderRadius: 4,
           }}
         >
-          {icon} @{chip.type}
+          <span style={{ color: colors.accent }}>{icon}</span> @{chip.type}
         </span>
         <StatusDot status={chip.status} />
       </div>
@@ -492,14 +496,15 @@ function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: s
           fontSize: 10,
           fontWeight: 600,
           fontFamily: 'var(--font-ui)',
-          color: '#fff',
+          color: colors.text,
           background: colors.bg,
+          border: `1px solid ${colors.border}`,
           padding: '2px 7px',
           borderRadius: 4,
           flexShrink: 0,
         }}
       >
-        {icon} @{chip.type}
+        <span style={{ color: colors.accent }}>{icon}</span> @{chip.type}
       </span>
       <span style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-ui)', color: '#111827', width: 180, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {chip.name}
@@ -960,7 +965,7 @@ export function RegistryCatalog() {
                     padding: '5px 10px',
                     borderRadius: 6,
                     border: 'none',
-                    background: typeFilter === t ? CHIP_COLORS[t].bg + '14' : '#F9FAFB',
+                    background: typeFilter === t ? CHIP_COLORS[t].bg : '#F9FAFB',
                     cursor: 'pointer',
                     fontSize: 11,
                     fontFamily: 'var(--font-ui)',
@@ -973,7 +978,7 @@ export function RegistryCatalog() {
                       width: 7,
                       height: 7,
                       borderRadius: '50%',
-                      background: CHIP_COLORS[t].bg,
+                      background: CHIP_COLORS[t].accent,
                       flexShrink: 0,
                     }}
                   />

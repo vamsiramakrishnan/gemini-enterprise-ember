@@ -133,11 +133,11 @@ function Chip({
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
-      style={{ background: colors.bg }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity"
+      style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
       title={`@${type}(${name})`}
     >
-      {icon} {name}
+      <span style={{ color: colors.accent }}>{icon}</span> {name}
     </span>
   );
 }
