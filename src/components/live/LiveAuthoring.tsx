@@ -13,15 +13,15 @@ import { useNotifications } from '../../contexts/AppContext';
 
 type ChipType = 'doc' | 'tool' | 'agent' | 'guard' | 'connector' | 'skill' | 'trigger' | 'data';
 
-const CHIP_COLORS: Record<ChipType, string> = {
-  doc: '#0D9488',
-  tool: '#4F46E5',
-  agent: '#D97706',
-  guard: '#E11D48',
-  connector: '#2563EB',
-  skill: '#7C3AED',
-  trigger: '#EA580C',
-  data: '#059669',
+const CHIP_COLORS: Record<ChipType, { bg: string; text: string; border: string; accent: string }> = {
+  doc:       { bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4', accent: '#0D9488' },
+  tool:      { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE', accent: '#4F46E5' },
+  agent:     { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', accent: '#D97706' },
+  guard:     { bg: '#FFF1F2', text: '#BE123C', border: '#FECDD3', accent: '#E11D48' },
+  connector: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', accent: '#2563EB' },
+  skill:     { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE', accent: '#7C3AED' },
+  trigger:   { bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA', accent: '#EA580C' },
+  data:      { bg: '#ECFDF5', text: '#047857', border: '#A7F3D0', accent: '#059669' },
 };
 
 // ─── Inline Chip Renderer ────────────────────────────────────────────
@@ -33,14 +33,14 @@ interface ChipRef {
 }
 
 function InlineChip({ type, name, isDraft }: ChipRef) {
-  const color = CHIP_COLORS[type];
+  const c = CHIP_COLORS[type];
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold mx-0.5 whitespace-nowrap"
       style={{
-        background: isDraft ? 'transparent' : `${color}15`,
-        color: isDraft ? '#92700C' : color,
-        border: isDraft ? '1.5px dashed #EAB308' : `1px solid ${color}30`,
+        background: isDraft ? 'transparent' : c.bg,
+        color: isDraft ? '#92700C' : c.text,
+        border: isDraft ? '1.5px dashed #EAB308' : `1px solid ${c.border}`,
       }}
     >
       @{type}({name})

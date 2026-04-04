@@ -276,7 +276,7 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
       onClick={() => { setExpanded(!expanded); onSelect(chip.id); }}
       style={{
         background: '#fff',
-        border: `1px solid ${expanded ? colors.bg + '50' : 'var(--color-border)'}`,
+        border: `1px solid ${expanded ? colors.border : 'var(--color-border)'}`,
         borderRadius: 8,
         padding: 14,
         cursor: 'pointer',
