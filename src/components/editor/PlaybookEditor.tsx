@@ -691,18 +691,37 @@ function FlowGraph({
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
       </svg>
 
+      {/* Topology expression bar */}
+      {parsed.topologyRaw && (
+        <div className="absolute top-0 left-0 right-0 z-20 px-4 py-2 border-b flex items-center gap-2" style={{ background: '#1E293B', borderColor: '#334155' }}>
+          <span className="text-[9px] uppercase tracking-wider font-semibold shrink-0" style={{ color: '#64748B' }}>topology</span>
+          <code className="text-[11px] leading-relaxed overflow-x-auto whitespace-nowrap" style={{ fontFamily: 'var(--font-mono)', color: '#E2E8F0' }}>
+            {parsed.topologyRaw.split(/(>>|\/\/|\||\*)/).map((part, i) => {
+              const t = part.trim();
+              if (t === '>>') return <span key={i} style={{ color: '#60A5FA', fontWeight: 600 }}> {'>>'} </span>;
+              if (t === '|') return <span key={i} style={{ color: '#FB923C', fontWeight: 600 }}> | </span>;
+              if (t === '*') return <span key={i} style={{ color: '#A78BFA', fontWeight: 600 }}> * </span>;
+              if (t === '//') return <span key={i} style={{ color: '#FB7185', fontWeight: 600 }}> // </span>;
+              if (t.startsWith('@')) return <span key={i} style={{ color: '#93C5FD' }}>{t}</span>;
+              return <span key={i}>{part}</span>;
+            })}
+          </code>
+          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded" style={{ background: '#334155', color: '#94A3B8' }}>read-only</span>
+        </div>
+      )}
+
       {/* Controls */}
-      <div className="absolute top-3 left-3 z-10 flex gap-1.5">
-        <div className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-[11px] text-gray-500 flex items-center gap-1.5">
-          Compiled from playbook — click a node to go to source
+      <div className={`absolute left-3 z-10 flex gap-1.5 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
+        <div className="px-2.5 py-1.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg text-[11px] text-gray-500 flex items-center gap-1.5 shadow-sm">
+          Auto-compiled from playbook · {graph.nodes.length} nodes · {graph.edges.length} edges
         </div>
       </div>
-      <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+      <div className={`absolute right-3 z-10 flex gap-1.5 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
         <button onClick={fitToScreen} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-600 hover:bg-gray-50 shadow-sm">
-          Fit ⊞
+          Fit
         </button>
         <button onClick={() => setZoom(z => Math.min(2, z + 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">+</button>
-        <button onClick={() => setZoom(z => Math.max(0.3, z - 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">−</button>
+        <button onClick={() => setZoom(z => Math.max(0.3, z - 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">-</button>
         <span className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] text-gray-400 font-mono">{(zoom * 100).toFixed(0)}%</span>
       </div>
 
@@ -779,12 +798,10 @@ function FlowGraph({
                   opacity={active && !isConnected ? 0.25 : 1}
                   style={{ transition: 'all 0.3s ease' }}
                 />
-                {/* Flowing dot animation */}
-                {isConnected && (
-                  <circle r="3" fill={color} opacity={0.8}>
-                    <animateMotion dur="2s" repeatCount="indefinite" path={d} />
-                  </circle>
-                )}
+                {/* Flowing dot animation — subtle on all edges, brighter when connected */}
+                <circle r={isConnected ? 3 : 2} fill={color} opacity={isConnected ? 0.8 : 0.3}>
+                  <animateMotion dur={isConnected ? '1.5s' : '4s'} repeatCount="indefinite" path={d} />
+                </circle>
                 {/* Edge label */}
                 {edge.label && (
                   <text dy={-8} fill={color} fontSize={10} fontWeight={500}>
@@ -883,7 +900,7 @@ function FlowGraph({
                 <text x={x + 16} y={y + 24} fill="#374151" fontSize={14}>{icon}</text>
                 <text x={x + 34} y={y + 25} fill="#1F2937" fontSize={12} fontWeight={600}
                   style={{ fontFamily: 'var(--font-ui)' }}>
-                  {node.label.length > 16 ? node.label.slice(0, 16) + '…' : node.label}
+                  {node.label.length > 22 ? node.label.slice(0, 22) + '…' : node.label}
                 </text>
                 {/* Type label + adk-fluent construct */}
                 <text x={x + 16} y={y + 44} fill="#9CA3AF" fontSize={10}>
