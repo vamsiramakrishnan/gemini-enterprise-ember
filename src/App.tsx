@@ -1,21 +1,44 @@
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { ParserDemo } from './components/editor/ParserDemo';
+import { PlaybookEditor } from './components/editor/PlaybookEditor';
 import { RegistryCatalog } from './components/registry/RegistryCatalog';
 import { ConnectorHub } from './components/connectors/ConnectorHub';
 import { VersionHistory } from './components/versioning/VersionHistory';
+import { LiveAuthoring } from './components/live/LiveAuthoring';
+import { DocsEmbed } from './components/workspace/DocsEmbed';
+import { SheetsSchema } from './components/workspace/SheetsSchema';
+import { SharingModal } from './components/permissions/SharingModal';
+import { lazy, Suspense } from 'react';
+
+// Lazy-loaded screens (may not exist yet during dev)
+const NotebookView = lazy(() =>
+  import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView }))
+);
+const SkillEditor = lazy(() =>
+  import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor }))
+);
 
 const screens = [
-  { path: '/editor', label: 'Playbook Editor', desc: 'Document | Flow | Notebook — three views of one agent', ready: false },
-  { path: '/parser-demo', label: 'Parser Demo', desc: 'Live playbook parsing + graph compilation', ready: true },
-  { path: '/notebook', label: 'Notebook', desc: 'Colab-style cell-based development', ready: false },
-  { path: '/registry', label: 'Registry', desc: 'Searchable asset catalog for all @-references', ready: true },
-  { path: '/live-authoring', label: 'Gemini Live', desc: 'Voice-driven playbook generation', ready: false },
-  { path: '/skill-editor', label: 'Skill Editor', desc: 'SKILL.md authoring with smart chips', ready: false },
-  { path: '/connectors', label: 'Connector Hub', desc: 'Gemini Enterprise data source management', ready: true },
-  { path: '/history', label: 'Version History', desc: 'Chip-aware diffing and version timeline', ready: true },
-  { path: '/docs-embed', label: 'Docs Embed', desc: 'Agent block in Google Docs', ready: false },
-  { path: '/sheets-schema', label: 'Sheets Schema', desc: 'Spreadsheet as tool parameter schema', ready: false },
+  { path: '/editor', label: 'Playbook Editor', desc: 'Document | Flow | Notebook — three views of one agent', icon: '📝', ready: true },
+  { path: '/parser-demo', label: 'Parser Demo', desc: 'Live playbook parsing + graph compilation', icon: '🔬', ready: true },
+  { path: '/notebook', label: 'Notebook', desc: 'Colab-style cell-based development', icon: '📓', ready: true },
+  { path: '/registry', label: 'Registry', desc: 'Searchable asset catalog for all @-references', icon: '📚', ready: true },
+  { path: '/permissions', label: 'Permissions', desc: 'Google-Docs-style sharing for agent assets', icon: '🔐', ready: true },
+  { path: '/live-authoring', label: 'Gemini Live', desc: 'Voice-driven playbook generation', icon: '🎤', ready: true },
+  { path: '/skill-editor', label: 'Skill Editor', desc: 'SKILL.md authoring with smart chips', icon: '✨', ready: true },
+  { path: '/connectors', label: 'Connector Hub', desc: 'Gemini Enterprise data source management', icon: '🔗', ready: true },
+  { path: '/history', label: 'Version History', desc: 'Chip-aware diffing and version timeline', icon: '🕐', ready: true },
+  { path: '/docs-embed', label: 'Docs Embed', desc: 'Agent block in Google Docs', icon: '📄', ready: true },
+  { path: '/sheets-schema', label: 'Sheets Schema', desc: 'Spreadsheet as tool parameter schema', icon: '📊', ready: true },
 ];
+
+function Loading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-surface-0)]">
+      <div className="text-sm text-gray-400">Loading...</div>
+    </div>
+  );
+}
 
 function Landing() {
   return (
@@ -55,11 +78,12 @@ function Landing() {
               to={screen.path}
               className={`group block rounded-xl border p-5 transition-all hover:shadow-md ${
                 screen.ready
-                  ? 'border-[var(--color-accent)] bg-white hover:border-[var(--color-accent-hover)]'
+                  ? 'border-[var(--color-accent)]/30 bg-white hover:border-[var(--color-accent)]'
                   : 'border-[var(--color-border)] bg-white/60 hover:bg-white'
               }`}
             >
               <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">{screen.icon}</span>
                 <h3 className="text-sm font-semibold text-gray-900">{screen.label}</h3>
                 {screen.ready ? (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">
@@ -94,6 +118,31 @@ function Landing() {
             <code className="font-mono text-[10px] bg-gray-100 px-1 py-0.5 rounded">viz.ir_to_mermaid()</code>
           </p>
         </div>
+
+        {/* Thesis Cards */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="text-base mb-2">🔄</div>
+            <h4 className="text-xs font-semibold text-gray-900 mb-1">The Loop Is Simple</h4>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Every agent is the same loop: Observe → Reason → Act → Observe. No magic graph. The playbook constrains the <em>space</em>, not the <em>sequence</em>.
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="text-base mb-2">💎</div>
+            <h4 className="text-xs font-semibold text-gray-900 mb-1">Code Is Omnipotent</h4>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Tools, connectors, skills — they're all cached reductions of the code execution space. The enterprise governs the boundary.
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <div className="text-base mb-2">📐</div>
+            <h4 className="text-xs font-semibold text-gray-900 mb-1">@ Shapes The Manifold</h4>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Each @reference is a dimension. Skills reduce. Connectors expand governedly. Guards constrain. The playbook IS the manifold definition.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -102,13 +151,22 @@ function Landing() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/parser-demo" element={<ParserDemo />} />
-        <Route path="/registry" element={<RegistryCatalog />} />
-        <Route path="/connectors" element={<ConnectorHub />} />
-        <Route path="/history" element={<VersionHistory />} />
-      </Routes>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/editor" element={<PlaybookEditor />} />
+          <Route path="/parser-demo" element={<ParserDemo />} />
+          <Route path="/notebook" element={<NotebookView />} />
+          <Route path="/registry" element={<RegistryCatalog />} />
+          <Route path="/permissions" element={<SharingModal />} />
+          <Route path="/live-authoring" element={<LiveAuthoring />} />
+          <Route path="/skill-editor" element={<SkillEditor />} />
+          <Route path="/connectors" element={<ConnectorHub />} />
+          <Route path="/history" element={<VersionHistory />} />
+          <Route path="/docs-embed" element={<DocsEmbed />} />
+          <Route path="/sheets-schema" element={<SheetsSchema />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
