@@ -237,6 +237,64 @@ function FlowGraph({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // Pattern detection badges
+  const patternBadges = useMemo(() => {
+    const badges: { label: string; x: number; y: number }[] = [];
+
+    // Supervised Pattern: decision diamond followed by agent delegation node
+    const decisionNodes = graph.nodes.filter(n => n.type === 'decision');
+    for (const dn of decisionNodes) {
+      const outEdges = graph.edges.filter(e => e.from === dn.id);
+      for (const edge of outEdges) {
+        const target = graph.nodes.find(n => n.id === edge.to);
+        if (target && target.type === 'agent') {
+          const mx = ((dn.position?.x ?? 0) + (target.position?.x ?? 0)) / 2 + NW / 2;
+          const my = Math.min(dn.position?.y ?? 0, target.position?.y ?? 0) - 24;
+          badges.push({ label: 'Supervised Pattern', x: mx, y: my });
+          break;
+        }
+      }
+    }
+
+    // Fan-Out Pattern: multiple parallel process nodes sharing same source
+    const processTypes = new Set(['tool-call', 'connector-call']);
+    const sourceToTargets = new Map<string, typeof graph.nodes>();
+    for (const edge of graph.edges) {
+      const target = graph.nodes.find(n => n.id === edge.to);
+      if (target && processTypes.has(target.type)) {
+        const list = sourceToTargets.get(edge.from) || [];
+        list.push(target);
+        sourceToTargets.set(edge.from, list);
+      }
+    }
+    for (const [, targets] of sourceToTargets) {
+      if (targets.length >= 2) {
+        const avgX = targets.reduce((s, n) => s + (n.position?.x ?? 0), 0) / targets.length + NW / 2;
+        const minY = Math.min(...targets.map(n => (n.position?.y ?? 0))) - 24;
+        badges.push({ label: 'Fan-Out Pattern', x: avgX, y: minY });
+      }
+    }
+
+    // Gated Pattern: any gate node (guard)
+    const gateNodes = graph.nodes.filter(n => n.type === 'gate');
+    for (const gn of gateNodes) {
+      badges.push({
+        label: 'Gated Pattern',
+        x: (gn.position?.x ?? 0) + NW / 2,
+        y: (gn.position?.y ?? 0) - 24,
+      });
+    }
+
+    // Deduplicate badges at nearby positions
+    const seen = new Set<string>();
+    return badges.filter(b => {
+      const key = `${b.label}-${Math.round(b.x / 80)}-${Math.round(b.y / 80)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [graph.nodes, graph.edges]);
+
   // Connected node tracking
   const connectedNodeIds = useMemo(() => {
     const active = hoveredNodeId || selectedNodeId;
@@ -538,6 +596,92 @@ function FlowGraph({
   );
 }
 
+// ─── Context Strategy Card ──────────────────────────────────────────────
+
+function ContextStrategyCard() {
+  const stateKeys = [
+    { key: 'topic', color: '#059669' },
+    { key: 'jurisdiction', color: '#059669' },
+    { key: 'claim_id', color: '#059669' },
+  ];
+
+  return (
+    <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 space-y-2.5">
+      {/* Header */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px]" style={{ lineHeight: 1 }}>🧠</span>
+        <span className="text-[11px] font-semibold text-gray-600" style={{ fontFamily: 'var(--font-ui)' }}>
+          Context Strategy
+        </span>
+      </div>
+
+      {/* Window */}
+      <div className="space-y-1">
+        <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Window</div>
+        <div className="flex items-center gap-1.5">
+          <div className="flex gap-0.5">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-sm"
+                style={{
+                  width: 10, height: 14,
+                  background: `rgba(79, 70, 229, ${0.15 + i * 0.12})`,
+                  border: '1px solid rgba(79, 70, 229, 0.25)',
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-[10px] text-gray-600">Last 3 turns</span>
+          <span className="text-[10px] text-gray-400 font-mono">C.window(3)</span>
+        </div>
+      </div>
+
+      {/* State Injections */}
+      <div className="space-y-1">
+        <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">State Injections</div>
+        <div className="flex flex-wrap gap-1">
+          {stateKeys.map(({ key, color }) => (
+            <span
+              key={key}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+              style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}
+            >
+              {key}
+            </span>
+          ))}
+        </div>
+        <div className="text-[10px] text-gray-400 font-mono">C.from_state(&quot;topic&quot;, &quot;jurisdiction&quot;, &quot;claim_id&quot;)</div>
+      </div>
+
+      {/* Filtering */}
+      <div className="space-y-1">
+        <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Filtering</div>
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+          User messages only
+        </span>
+        <div className="text-[10px] text-gray-400 font-mono">C.user_only()</div>
+      </div>
+
+      {/* Summarization */}
+      <div className="space-y-1">
+        <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">Summarization</div>
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
+          LLM-summarized
+        </span>
+        <div className="text-[10px] text-gray-400 font-mono">C.summarize()</div>
+      </div>
+
+      {/* Annotation */}
+      <div className="pt-1 border-t border-gray-200">
+        <div className="text-[9px] text-gray-400 leading-relaxed italic">
+          Controls what the LLM sees on each iteration of the loop.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Inspector Sidebar ──────────────────────────────────────────────────
 
 function InspectorDetails({
@@ -600,6 +744,27 @@ function InspectorDetails({
             {chip.status.toUpperCase()}
           </span>
         </div>
+        {chip.type === 'guard' && (() => {
+          const guardPhases: Record<string, { phase: string; label: string; description: string }> = {
+            'pii-redaction': { phase: 'post_model', label: 'post_model', description: 'Fires after LLM responds' },
+            'fraud-detection': { phase: 'pre_model', label: 'pre_model', description: 'Fires before LLM call' },
+            'apac-compliance-rules': { phase: 'context', label: 'context', description: 'Fires during context assembly' },
+          };
+          const phaseInfo = guardPhases[chip.name] || { phase: 'post_model', label: 'post_model', description: 'Fires after LLM responds' };
+          return (
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-gray-500">Phase</span>
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                style={{ background: '#FFF1F2', color: '#9F1239' }}
+                title={phaseInfo.description}
+              >
+                {phaseInfo.phase === 'pre_model' ? '⬆' : phaseInfo.phase === 'post_model' ? '⬇' : '⟳'}{' '}
+                {phaseInfo.label}
+              </span>
+            </div>
+          );
+        })()}
         {chip.endpoint && (
           <div className="flex justify-between text-xs">
             <span className="text-gray-500">Endpoint</span>
@@ -628,6 +793,9 @@ function InspectorDetails({
         style={{ color: colors.bg }}>
         Open in Registry →
       </button>
+
+      {/* Context Strategy Card */}
+      <ContextStrategyCard />
     </div>
   );
 }
