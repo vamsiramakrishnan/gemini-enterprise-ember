@@ -59,8 +59,21 @@ const NODE_ICONS: Record<string, string> = {
   transform: '◇',
 };
 
-const NW = 200; // node width
-const NH = 64;  // node height
+/** adk-fluent construct name for each node type (shown as subtitle) */
+const ADK_CONSTRUCT: Record<string, string> = {
+  'trigger-entry': 'StreamRunner',
+  grounding: 'VertexAiSearchTool',
+  'tool-call': 'FunctionTool',
+  'connector-call': 'IntegrationToolset',
+  agent: 'LlmAgent',
+  decision: 'RouteNode',
+  gate: 'GateNode',
+  output: 'OutputSchema',
+  transform: 'TransformNode',
+};
+
+const NW = 220; // node width
+const NH = 72;  // node height
 
 // ─── CSS Keyframes (injected once) ───────────────────────────────────────
 
@@ -347,49 +360,134 @@ function EditableDocumentTab({
     );
   }, [highlightedLines, justCommittedLine, selectedChipKey, onChipClick, lineRefs, startEditing]);
 
+  // Pre-compute fenced code block ranges (```...```) so we render them as code, not prose
+  const codeBlockRanges = useMemo(() => {
+    const ranges: Array<{ start: number; end: number; lang: string }> = [];
+    let inBlock = false;
+    let blockStart = 0;
+    let blockLang = '';
+    for (let i = 0; i < lines.length; i++) {
+      const trimmed = lines[i].trim();
+      if (!inBlock && trimmed.startsWith('```')) {
+        inBlock = true;
+        blockStart = i;
+        blockLang = trimmed.slice(3).trim();
+      } else if (inBlock && trimmed === '```') {
+        ranges.push({ start: blockStart, end: i, lang: blockLang });
+        inBlock = false;
+      }
+    }
+    return ranges;
+  }, [lines]);
+
+  const isInCodeBlock = useCallback((idx: number) => {
+    return codeBlockRanges.find(r => idx >= r.start && idx <= r.end);
+  }, [codeBlockRanges]);
+
+  // Render code block lines as a styled code block
+  const renderCodeBlock = useCallback((range: { start: number; end: number; lang: string }) => {
+    const codeLines = lines.slice(range.start + 1, range.end);
+    const langLabel = range.lang || 'code';
+    // Syntax highlight topology operators
+    const highlightLine = (line: string) => {
+      if (range.lang !== 'topology') return line;
+      return line.split(/(>>|\/\/|\||\*|@\w+\([^)]+\)|Route\([^)]*\)|gate\([^)]*\)|tap\([^)]*\)|until\([^)]*\))/).map((part, i) => {
+        if (part === '>>') return <span key={i} style={{ color: '#2563EB', fontWeight: 600 }}>{part}</span>;
+        if (part === '|') return <span key={i} style={{ color: '#EA580C', fontWeight: 600 }}>{part}</span>;
+        if (part === '*') return <span key={i} style={{ color: '#7C3AED', fontWeight: 600 }}>{part}</span>;
+        if (part === '//') return <span key={i} style={{ color: '#E11D48', fontWeight: 600 }}>{part}</span>;
+        if (part.startsWith('@')) return <span key={i} style={{ color: '#4F46E5', fontWeight: 500 }}>{part}</span>;
+        if (part.startsWith('Route(') || part.startsWith('gate(') || part.startsWith('tap(') || part.startsWith('until('))
+          return <span key={i} style={{ color: '#7C3AED', fontWeight: 500 }}>{part}</span>;
+        if (part.startsWith('#')) return <span key={i} style={{ color: '#9CA3AF', fontStyle: 'italic' }}>{part}</span>;
+        return part;
+      });
+    };
+
+    return (
+      <div key={`codeblock-${range.start}`} className="my-4 rounded-lg overflow-hidden border" style={{ borderColor: '#E2E8F0', background: '#1E293B' }}>
+        <div className="flex items-center justify-between px-3 py-1.5" style={{ background: '#334155', borderBottom: '1px solid #475569' }}>
+          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider" style={{ color: '#94A3B8' }}>{langLabel}</span>
+          {range.lang === 'topology' && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: '#4F46E520', color: '#93C5FD' }}>adk-fluent expression</span>
+          )}
+        </div>
+        <pre className="px-4 py-3 text-[12.5px] leading-relaxed overflow-x-auto" style={{ fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)', color: '#E2E8F0', margin: 0 }}>
+          {codeLines.map((codeLine, ci) => (
+            <div key={ci} className="flex">
+              <span className="select-none mr-3 text-right shrink-0" style={{ color: '#475569', width: 20, fontSize: 11 }}>{ci + 1}</span>
+              <span>{codeLine.trimStart().startsWith('#') ? <span style={{ color: '#64748B', fontStyle: 'italic' }}>{codeLine}</span> : highlightLine(codeLine)}</span>
+            </div>
+          ))}
+        </pre>
+      </div>
+    );
+  }, [lines]);
+
   return (
     <div className="max-w-3xl mx-auto py-4 px-3 sm:py-6 sm:px-4 md:py-8 md:px-4" style={{ fontFamily: 'var(--font-body)' }}>
-      {lines.map((line, idx) => {
-        if (editingLine === idx) {
-          return (
-            <div key={idx} ref={editContainerRef} className="relative my-0.5">
-              <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full" style={{ background: 'var(--color-accent)' }} />
-              <textarea
-                ref={textareaRef}
-                value={editText}
-                onChange={handleEditChange}
-                onBlur={() => { if (!autocompleteOpen) setTimeout(commitEdit, 120); }}
-                onKeyDown={handleKeyDown}
-                className="w-full resize-none rounded-lg border-2 pl-4 pr-24 py-2 text-[13px] leading-relaxed outline-none"
-                style={{
-                  borderColor: 'var(--color-accent)', background: '#FAFBFF',
-                  color: 'var(--color-text-primary)', minHeight: 44,
-                  fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-                }}
-                rows={1}
-              />
-              <div className="absolute right-2 top-2 flex items-center gap-1.5 text-[9px] px-1.5 py-0.5 rounded pointer-events-none select-none"
-                style={{ color: 'var(--color-text-tertiary)', background: 'var(--color-surface-2)' }}>
-                <span>Type <kbd className="font-mono bg-white/60 px-0.5 rounded">@</kbd> for refs</span>
-                <span>&middot;</span>
-                <span><kbd className="font-mono bg-white/60 px-0.5 rounded">Enter</kbd> save</span>
-                <span>&middot;</span>
-                <span><kbd className="font-mono bg-white/60 px-0.5 rounded">Esc</kbd> cancel</span>
-              </div>
-              {autocompleteOpen && (
-                <ChipAutocomplete
-                  isOpen={true}
-                  onClose={() => { setAutocompleteOpen(false); setAutocompleteFilter(''); }}
-                  onSelect={handleChipSelect}
-                  position={autocompletePos}
-                  filterText={autocompleteFilter}
+      {(() => {
+        const elements: React.ReactNode[] = [];
+        let i = 0;
+        while (i < lines.length) {
+          const codeRange = isInCodeBlock(i);
+          if (codeRange && i === codeRange.start) {
+            // Render the entire code block as one element
+            elements.push(renderCodeBlock(codeRange));
+            i = codeRange.end + 1;
+            continue;
+          }
+          if (codeRange) {
+            // Skip lines inside a code block (already rendered)
+            i++;
+            continue;
+          }
+          // Normal line — editing or display
+          if (editingLine === i) {
+            const idx = i;
+            elements.push(
+              <div key={idx} ref={editContainerRef} className="relative my-0.5">
+                <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full" style={{ background: 'var(--color-accent)' }} />
+                <textarea
+                  ref={textareaRef}
+                  value={editText}
+                  onChange={handleEditChange}
+                  onBlur={() => { if (!autocompleteOpen) setTimeout(commitEdit, 120); }}
+                  onKeyDown={handleKeyDown}
+                  className="w-full resize-none rounded-lg border-2 pl-4 pr-24 py-2 text-[13px] leading-relaxed outline-none"
+                  style={{
+                    borderColor: 'var(--color-accent)', background: '#FAFBFF',
+                    color: 'var(--color-text-primary)', minHeight: 44,
+                    fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                  }}
+                  rows={1}
                 />
-              )}
-            </div>
-          );
+                <div className="absolute right-2 top-2 flex items-center gap-1.5 text-[9px] px-1.5 py-0.5 rounded pointer-events-none select-none"
+                  style={{ color: 'var(--color-text-tertiary)', background: 'var(--color-surface-2)' }}>
+                  <span>Type <kbd className="font-mono bg-white/60 px-0.5 rounded">@</kbd> for refs</span>
+                  <span>&middot;</span>
+                  <span><kbd className="font-mono bg-white/60 px-0.5 rounded">Enter</kbd> save</span>
+                  <span>&middot;</span>
+                  <span><kbd className="font-mono bg-white/60 px-0.5 rounded">Esc</kbd> cancel</span>
+                </div>
+                {autocompleteOpen && (
+                  <ChipAutocomplete
+                    isOpen={true}
+                    onClose={() => { setAutocompleteOpen(false); setAutocompleteFilter(''); }}
+                    onSelect={handleChipSelect}
+                    position={autocompletePos}
+                    filterText={autocompleteFilter}
+                  />
+                )}
+              </div>
+            );
+          } else {
+            elements.push(renderLine(lines[i], i));
+          }
+          i++;
         }
-        return renderLine(line, idx);
-      })}
+        return elements;
+      })()}
     </div>
   );
 }
@@ -412,12 +510,26 @@ function FlowGraph({
   const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
 
+  // Compute graph bounds for centering
+  const graphBounds = useMemo(() => {
+    if (!graph.nodes.length) return { minX: 0, minY: 0, maxX: 400, maxY: 300 };
+    const xs = graph.nodes.map(n => n.position?.x ?? 0);
+    const ys = graph.nodes.map(n => n.position?.y ?? 0);
+    return {
+      minX: Math.min(...xs) - 30,
+      minY: Math.min(...ys) - 40,
+      maxX: Math.max(...xs) + NW + 30,
+      maxY: Math.max(...ys) + NH + 40,
+    };
+  }, [graph.nodes]);
+
   // Pan & zoom state
-  const [pan, setPan] = useState({ x: 40, y: 40 });
-  const [zoom, setZoom] = useState(0.85);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement>(null);
+  const [hasAutoFit, setHasAutoFit] = useState(false);
 
   // Pattern detection badges
   const patternBadges = useMemo(() => {
@@ -490,11 +602,40 @@ function FlowGraph({
     return ids;
   }, [hoveredNodeId, selectedNodeId, graph.edges]);
 
-  // Fit to screen
+  // Fit to screen — compute zoom and pan to center the graph
   const fitToScreen = useCallback(() => {
-    setPan({ x: 60, y: 60 });
-    setZoom(0.85);
-  }, []);
+    const svgEl = svgRef.current;
+    const containerW = svgEl?.clientWidth || 800;
+    const containerH = svgEl?.clientHeight || 500;
+    const graphW = graphBounds.maxX - graphBounds.minX;
+    const graphH = graphBounds.maxY - graphBounds.minY;
+    if (graphW <= 0 || graphH <= 0) { setPan({ x: 60, y: 60 }); setZoom(0.85); return; }
+    const padding = 60;
+    const scaleX = (containerW - padding * 2) / graphW;
+    const scaleY = (containerH - padding * 2) / graphH;
+    const newZoom = Math.max(0.3, Math.min(1.2, Math.min(scaleX, scaleY)));
+    const newPanX = (containerW - graphW * newZoom) / 2 - graphBounds.minX * newZoom;
+    const newPanY = (containerH - graphH * newZoom) / 2 - graphBounds.minY * newZoom;
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
+  }, [graphBounds]);
+
+  // Auto-fit on first render and when graph changes
+  useEffect(() => {
+    if (graph.nodes.length > 0) {
+      // Small delay to ensure SVG has rendered and has dimensions
+      const timer = setTimeout(fitToScreen, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [graph.nodes.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Also auto-fit once after initial mount
+  useEffect(() => {
+    if (!hasAutoFit && svgRef.current && graph.nodes.length > 0) {
+      setHasAutoFit(true);
+      fitToScreen();
+    }
+  }, [hasAutoFit, graph.nodes.length, fitToScreen]);
 
   // Pan handlers
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -744,9 +885,9 @@ function FlowGraph({
                   style={{ fontFamily: 'var(--font-ui)' }}>
                   {node.label.length > 16 ? node.label.slice(0, 16) + '…' : node.label}
                 </text>
-                {/* Type label */}
+                {/* Type label + adk-fluent construct */}
                 <text x={x + 16} y={y + 44} fill="#9CA3AF" fontSize={10}>
-                  {node.type.replace(/-/g, ' ')}
+                  {node.type.replace(/-/g, ' ')}{ADK_CONSTRUCT[node.type] ? ` · ${ADK_CONSTRUCT[node.type]}` : ''}
                 </text>
                 {/* Line badge */}
                 {node.sourceLines[0] != null && (
