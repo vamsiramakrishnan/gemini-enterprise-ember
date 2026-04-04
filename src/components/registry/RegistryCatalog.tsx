@@ -272,15 +272,15 @@ function RegistryCard({ chip }: { chip: SmartChip }) {
       onClick={() => setExpanded(!expanded)}
       style={{
         background: '#fff',
-        border: `1px solid ${expanded ? colors.bg + '50' : '#E5E7EB'}`,
+        border: `1px solid ${expanded ? colors.bg + '50' : 'var(--color-border)'}`,
         borderRadius: 8,
         padding: 14,
         cursor: 'pointer',
         transition: 'box-shadow 150ms ease, border-color 150ms ease',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+        boxShadow: 'var(--shadow-xs)',
       }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
     >
       {/* Header row: type badge + status dot */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -577,45 +577,38 @@ export function RegistryCatalog() {
   }, [search, typeFilter, sortKey]);
 
   return (
-    <div style={{ height: '100%', background: '#F9FAFB', overflow: 'auto' }}>
+    <div className="page-container" style={{ overflow: 'auto' }}>
       {/* Header */}
       <header
-        style={{
-          borderBottom: '1px solid #E5E7EB',
-          background: '#fff',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-        }}
+        className="page-header sticky top-0 z-50"
       >
         <div
           style={{
             maxWidth: 1200,
             margin: '0 auto',
-            padding: '12px 24px',
             display: 'flex',
             alignItems: 'center',
           }}
         >
           <div>
-            <h1 style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-ui)', color: '#111827', margin: 0, lineHeight: 1.3 }}>
+            <h1 style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3 }}>
               Registry & Catalog
             </h1>
-            <p style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: '#9CA3AF', margin: 0, marginTop: 1 }}>
+            <p style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)', margin: 0, marginTop: 1 }}>
               All @-referenceable assets -- {REGISTRY.length} entries
             </p>
           </div>
-          <div style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-ui)', color: '#9CA3AF' }}>
+          <div style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
             {filtered.length} result{filtered.length !== 1 ? 's' : ''}
           </div>
         </div>
       </header>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px' }}>
+      <div className="page-body" style={{ maxWidth: 1200, margin: '0 auto' }}>
         {/* Search + Controls Row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           {/* Search */}
-          <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <div style={{ flex: '1 1 100%', minWidth: 200, position: 'relative', display: 'flex', alignItems: 'center' }}>
             <span style={{ position: 'absolute', left: 12, display: 'flex', pointerEvents: 'none' }}>
               <SearchIcon />
             </span>
@@ -630,12 +623,12 @@ export function RegistryCatalog() {
                 width: '100%',
                 padding: '8px 32px 8px 34px',
                 borderRadius: 8,
-                border: `1px solid ${searchFocused ? '#2563EB' : '#E5E7EB'}`,
+                border: `1px solid ${searchFocused ? 'var(--color-accent)' : 'var(--color-border)'}`,
                 boxShadow: searchFocused ? '0 0 0 3px rgba(37,99,235,0.08)' : 'none',
                 background: '#fff',
                 fontSize: 13,
                 fontFamily: 'var(--font-ui)',
-                color: '#111827',
+                color: 'var(--color-text-primary)',
                 outline: 'none',
                 transition: 'border-color 150ms ease, box-shadow 150ms ease',
               }}
@@ -669,11 +662,11 @@ export function RegistryCatalog() {
             style={{
               padding: '8px 10px',
               borderRadius: 8,
-              border: '1px solid #E5E7EB',
+              border: '1px solid var(--color-border)',
               background: '#fff',
               fontSize: 12,
               fontFamily: 'var(--font-ui)',
-              color: '#6B7280',
+              color: 'var(--color-text-secondary)',
               outline: 'none',
               cursor: 'pointer',
               appearance: 'auto' as const,
@@ -744,13 +737,7 @@ export function RegistryCatalog() {
         {filtered.length === 0 ? (
           <EmptyState onClear={() => { setSearch(''); setTypeFilter('all'); }} />
         ) : viewMode === 'grid' ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: 12,
-            }}
-          >
+          <div className="grid-auto">
             {filtered.map((chip) => (
               <RegistryCard key={chip.id} chip={chip} />
             ))}
@@ -769,7 +756,7 @@ export function RegistryCatalog() {
             marginTop: 32,
             padding: 14,
             borderRadius: 8,
-            border: '1px solid #E5E7EB',
+            border: '1px solid var(--color-border)',
             background: '#fff',
           }}
         >

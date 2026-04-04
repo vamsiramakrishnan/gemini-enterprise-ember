@@ -68,36 +68,36 @@ export function AdminConsole() {
   const [tab, setTab] = useState<AdminTab>('overview');
 
   return (
-    <div className="h-full bg-[#F9FAFB] flex flex-col">
+    <div className="page-container">
       {/* Header */}
       <div
-        className="px-6 pt-5 pb-3 bg-white"
-        style={{ borderBottom: '1px solid #E5E7EB', fontFamily: 'var(--font-ui)' }}
+        className="page-header"
+        style={{ fontFamily: 'var(--font-ui)' }}
       >
-        <div className="text-[13px] font-semibold" style={{ color: '#111827' }}>
+        <div className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>
           Admin Console
         </div>
-        <div className="text-[10px]" style={{ color: '#9CA3AF' }}>
+        <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
           ACME Insurance
         </div>
       </div>
 
       {/* Tab Bar */}
       <div
-        className="px-6 bg-white flex gap-6"
-        style={{ borderBottom: '1px solid #E5E7EB' }}
+        className="px-4 md:px-6 bg-white flex gap-4 md:gap-6 overflow-x-auto"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
       >
         {TAB_ITEMS.map(item => (
           <button
             key={item.id}
             onClick={() => setTab(item.id)}
-            className="relative pb-2.5 pt-3 transition-colors"
+            className="relative pb-2.5 pt-3 transition-colors whitespace-nowrap"
             style={{
               fontSize: '12px',
               fontWeight: 500,
               fontFamily: 'var(--font-ui)',
-              color: tab === item.id ? '#2563EB' : '#9CA3AF',
-              borderBottom: tab === item.id ? '2px solid #2563EB' : '2px solid transparent',
+              color: tab === item.id ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+              borderBottom: tab === item.id ? '2px solid var(--color-accent)' : '2px solid transparent',
               marginBottom: '-1px',
             }}
           >
@@ -107,7 +107,7 @@ export function AdminConsole() {
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="page-body">
         {tab === 'overview' && <OverviewTab />}
         {tab === 'governance' && <GovernanceTab />}
         {tab === 'teams' && <TeamsTab />}
@@ -122,7 +122,7 @@ function OverviewTab() {
   return (
     <div>
       {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid-stats mb-6">
         {[
           { label: 'Total Agents', value: '47', color: '#1A73E8' },
           { label: 'Active Users', value: '156', color: '#16A34A' },
@@ -131,10 +131,10 @@ function OverviewTab() {
         ].map(s => (
           <div
             key={s.label}
-            className="bg-white rounded-lg border border-gray-200 p-4"
-            style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            className="bg-white rounded-lg p-4"
+            style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
           >
-            <div className="text-[10px] text-gray-500 mb-1">{s.label}</div>
+            <div className="text-[10px] mb-1" style={{ color: 'var(--color-text-secondary)' }}>{s.label}</div>
             <div className="text-2xl font-semibold" style={{ color: s.color }}>
               {s.value}
             </div>
@@ -144,8 +144,8 @@ function OverviewTab() {
 
       {/* Agents by Status */}
       <div
-        className="bg-white rounded-lg border border-gray-200 p-4 mb-6"
-        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="bg-white rounded-lg p-4 mb-6"
+        style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
       >
         <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
           Agents by Status
@@ -171,8 +171,8 @@ function OverviewTab() {
 
       {/* Activity Feed */}
       <div
-        className="bg-white rounded-lg border border-gray-200 p-4"
-        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="bg-white rounded-lg p-4"
+        style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
       >
         <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
           Recent Activity
@@ -186,7 +186,7 @@ function OverviewTab() {
             >
               <div className="flex-1">
                 <div className="text-[12px] text-gray-700">{a.text}</div>
-                <div className="text-[10px]" style={{ color: '#9CA3AF' }}>{a.time}</div>
+                <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{a.time}</div>
               </div>
             </div>
           ))}
@@ -202,17 +202,18 @@ function GovernanceTab() {
     <div>
       {/* Guard Policies */}
       <div
-        className="bg-white rounded-lg border border-gray-200 mb-6 overflow-hidden"
-        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="bg-white rounded-lg mb-6 overflow-hidden"
+        style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
       >
         <div className="px-4 pt-4 pb-3">
-          <h3 className="text-xs font-semibold text-gray-700" style={{ fontFamily: 'var(--font-ui)' }}>
+          <h3 className="text-xs font-semibold" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-secondary)' }}>
             Guard Policies
           </h3>
         </div>
-        <table className="w-full text-[12px]">
+        <div className="overflow-x-auto">
+        <table className="w-full text-[12px] min-w-[500px]">
           <thead>
-            <tr className="text-[10px] text-gray-500 uppercase" style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <tr className="text-[10px] uppercase" style={{ color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface-1)', borderBottom: '1px solid var(--color-border)' }}>
               <th className="text-left py-2 px-4 font-medium">Guard</th>
               <th className="text-left py-2 px-4 font-medium">Enforcement</th>
               <th className="text-left py-2 px-4 font-medium">Scope</th>
@@ -221,7 +222,7 @@ function GovernanceTab() {
           </thead>
           <tbody>
             {GUARD_POLICIES.map((g, i) => (
-              <tr key={i} className="hover:bg-gray-50/50" style={{ borderBottom: '1px solid #E5E7EB' }}>
+              <tr key={i} className="hover:bg-gray-50/50" style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <td className="py-2.5 px-4">
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-500 text-white">
                     {g.name}
@@ -248,20 +249,21 @@ function GovernanceTab() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Model Policies */}
       <div
-        className="bg-white rounded-lg border border-gray-200 p-4 mb-6"
-        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="bg-white rounded-lg p-4 mb-6"
+        style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
       >
-        <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
+        <h3 className="text-xs font-semibold mb-3" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-secondary)' }}>
           Model Access Policies
         </h3>
         <div className="space-y-2">
           {MODEL_POLICIES.map(p => (
-            <div key={p.team} className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid #F3F4F6' }}>
-              <span className="text-[12px] font-medium text-gray-700 w-40">{p.team}</span>
+            <div key={p.team} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 py-2" style={{ borderBottom: '1px solid var(--color-surface-2)' }}>
+              <span className="text-[12px] font-medium text-gray-700 sm:w-40">{p.team}</span>
               <div className="flex gap-1.5">
                 {p.models.map(m => (
                   <span key={m} className="text-[9px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">{m}</span>
@@ -274,8 +276,8 @@ function GovernanceTab() {
 
       {/* Token Budgets */}
       <div
-        className="bg-white rounded-lg border border-gray-200 p-4"
-        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="bg-white rounded-lg p-4"
+        style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
       >
         <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
           Token Budgets (Monthly)
@@ -311,20 +313,20 @@ function GovernanceTab() {
 function TeamsTab() {
   return (
     <div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {TEAMS_DATA.map(t => {
           const total = t.roles.admin + t.roles.editor + t.roles.invoker;
           return (
             <div
               key={t.name}
-              className="bg-white rounded-lg border border-gray-200 p-4"
-              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+              className="bg-white rounded-lg p-4"
+              style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-[12px] font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
                   {t.name}
                 </h3>
-                <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{t.members} members</span>
+                <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{t.members} members</span>
               </div>
               <div className="grid grid-cols-3 gap-2 mb-3 text-center">
                 <div className="bg-[#F9FAFB] rounded-lg p-2">
@@ -396,8 +398,8 @@ function AuditTab() {
               fontFamily: 'var(--font-ui)',
               padding: '3px 10px',
               borderRadius: '9999px',
-              backgroundColor: filter === f ? '#2563EB' : '#F3F4F6',
-              color: filter === f ? '#FFFFFF' : '#6B7280',
+              backgroundColor: filter === f ? 'var(--color-accent)' : 'var(--color-surface-2)',
+              color: filter === f ? '#FFFFFF' : 'var(--color-text-secondary)',
               fontWeight: 500,
             }}
           >
@@ -408,12 +410,13 @@ function AuditTab() {
 
       {/* Audit Table */}
       <div
-        className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+        className="bg-white rounded-lg overflow-hidden"
+        style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
       >
-        <table className="w-full text-[12px]">
+        <div className="overflow-x-auto">
+        <table className="w-full text-[12px] min-w-[600px]">
           <thead>
-            <tr className="text-[10px] text-gray-500 uppercase font-medium" style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+            <tr className="text-[10px] uppercase font-medium" style={{ color: 'var(--color-text-secondary)', backgroundColor: 'var(--color-surface-1)', borderBottom: '1px solid var(--color-border)' }}>
               <th className="text-left py-2.5 px-4">Timestamp</th>
               <th className="text-left py-2.5 px-4">Actor</th>
               <th className="text-left py-2.5 px-4">Action</th>
@@ -423,7 +426,7 @@ function AuditTab() {
           </thead>
           <tbody>
             {filtered.map((a, i) => (
-              <tr key={i} className="hover:bg-gray-50/50" style={{ borderBottom: '1px solid #E5E7EB' }}>
+              <tr key={i} className="hover:bg-gray-50/50" style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <td className="py-2.5 px-4 text-gray-500 font-mono text-[10px]">{a.time}</td>
                 <td className="py-2.5 px-4 text-gray-700">{a.actor}</td>
                 <td className="py-2.5 px-4 text-gray-600">{a.action}</td>
@@ -441,6 +444,7 @@ function AuditTab() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

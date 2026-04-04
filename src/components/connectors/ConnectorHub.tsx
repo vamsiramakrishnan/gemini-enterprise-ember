@@ -112,14 +112,14 @@ function ActionSummary() {
 
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#E5E7EB]"
-      style={{ background: '#F9FAFB', fontFamily: 'var(--font-ui)' }}
+      className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-lg"
+      style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface-1)', fontFamily: 'var(--font-ui)' }}
     >
-      <span style={{ fontSize: 12, color: '#6B7280' }}>
+      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
         Agent can perform{' '}
-        <span style={{ fontWeight: 600, color: '#2563EB' }}>{totalActions} actions</span>
+        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{totalActions} actions</span>
         {' '}across{' '}
-        <span style={{ fontWeight: 600, color: '#2563EB' }}>{totalSystems} connected systems</span>
+        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{totalSystems} connected systems</span>
       </span>
     </div>
   );
@@ -201,10 +201,10 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
     <div
       className="rounded-lg border bg-white transition-all cursor-pointer"
       style={{
-        borderColor: expanded ? '#2563EB' : '#E5E7EB',
+        borderColor: expanded ? 'var(--color-accent)' : 'var(--color-border)',
         boxShadow: expanded
           ? '0 1px 3px 0 rgba(37, 99, 235, 0.08)'
-          : '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
+          : 'var(--shadow-xs)',
         opacity: connector.status === 'available' ? 0.72 : 1,
         fontFamily: 'var(--font-ui)',
       }}
@@ -423,42 +423,39 @@ export function ConnectorHub() {
   const activeCount = ALL_CONNECTORS.filter((c) => c.status === 'active').length;
 
   return (
-    <div className="h-full overflow-auto" style={{ background: '#F9FAFB' }}>
+    <div className="page-container" style={{ overflow: 'auto' }}>
       {/* Header */}
       <header
-        className="sticky top-0 z-50 bg-white"
-        style={{ borderBottom: '1px solid #E5E7EB' }}
+        className="page-header sticky top-0 z-50 flex items-center justify-between"
       >
-        <div className="px-6 py-3 flex items-center justify-between">
-          <div style={{ fontFamily: 'var(--font-ui)' }}>
-            <h1 style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, lineHeight: 1.3 }}>
-              Connected Systems
-            </h1>
-            <p style={{ fontSize: 10, color: '#9CA3AF', margin: 0, marginTop: 1 }}>
-              {activeCount} active connection{activeCount !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <button
-            className="rounded-lg"
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              padding: '6px 14px',
-              background: '#2563EB',
-              color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#1D4ED8'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#2563EB'; }}
-          >
-            Add Connector
-          </button>
+        <div style={{ fontFamily: 'var(--font-ui)' }}>
+          <h1 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3 }}>
+            Connected Systems
+          </h1>
+          <p style={{ fontSize: 10, color: 'var(--color-text-tertiary)', margin: 0, marginTop: 1 }}>
+            {activeCount} active connection{activeCount !== 1 ? 's' : ''}
+          </p>
         </div>
+        <button
+          className="rounded-lg"
+          style={{
+            fontSize: 12,
+            fontWeight: 500,
+            padding: '6px 14px',
+            background: 'var(--color-accent)',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-ui)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-accent-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-accent)'; }}
+        >
+          Add Connector
+        </button>
       </header>
 
-      <div className="px-6 py-5 space-y-5">
+      <div className="page-body space-y-5">
         {/* Action summary bar */}
         <ActionSummary />
 
@@ -493,7 +490,7 @@ export function ConnectorHub() {
         {/* Google Sources */}
         <div>
           <SectionHeader label="Google" count={googleFiltered.length} />
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+          <div className="grid-auto">
             {googleFiltered.map((c) => (
               <ConnectorCard key={c.id} connector={c} />
             ))}
@@ -503,7 +500,7 @@ export function ConnectorHub() {
         {/* Third-party */}
         <div>
           <SectionHeader label="Third-Party" count={thirdPartyFiltered.length} />
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+          <div className="grid-auto">
             {thirdPartyFiltered.map((c) => (
               <ConnectorCard key={c.id} connector={c} />
             ))}
@@ -515,10 +512,10 @@ export function ConnectorHub() {
           className="rounded-lg"
           style={{
             padding: '12px 16px',
-            border: '1px dashed #D1D5DB',
-            background: '#F9FAFB',
+            border: '1px dashed var(--color-border-strong)',
+            background: 'var(--color-surface-1)',
             fontSize: 12,
-            color: '#6B7280',
+            color: 'var(--color-text-secondary)',
             fontFamily: 'var(--font-ui)',
             lineHeight: 1.5,
           }}

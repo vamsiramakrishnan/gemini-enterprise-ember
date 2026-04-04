@@ -10,9 +10,29 @@
  *   Bottom       -- Test Activation panel
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType } from '../../parser/types';
+
+// ---------------------------------------------------------------------------
+// Responsive hook
+// ---------------------------------------------------------------------------
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    setIsMobile(mq.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+
+  return isMobile;
+}
 
 // ---------------------------------------------------------------------------
 // Inline SmartChip renderer
@@ -73,16 +93,17 @@ function ScopeSelector({
   ];
 
   return (
-    <div className="flex rounded-lg overflow-hidden border border-gray-200">
+    <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--color-border)' }}>
       {options.map((o) => (
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
           className={`px-3 py-1 text-xs font-medium transition-colors ${
             value === o.key
-              ? 'bg-[#1A73E8] text-white'
-              : 'bg-white text-gray-500 hover:bg-gray-50'
+              ? 'text-white'
+              : 'bg-white hover:bg-gray-50'
           }`}
+          style={value === o.key ? { background: 'var(--color-accent)', color: 'white' } : { color: 'var(--color-text-secondary)' }}
         >
           {o.label}
         </button>
@@ -190,14 +211,14 @@ function ResourceBrowser() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
         <h3
-          className="text-sm font-semibold text-gray-900"
-          style={{ fontFamily: 'var(--font-ui)' }}
+          className="text-sm font-semibold"
+          style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}
         >
           Skill Resources
         </h3>
-        <button className="text-xs font-medium text-[#1A73E8] hover:underline">
+        <button className="text-xs font-medium hover:underline" style={{ color: 'var(--color-accent)' }}>
           Upload Resource
         </button>
       </div>
@@ -211,17 +232,18 @@ function ResourceBrowser() {
               className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
             >
               <span
-                className="text-[10px] text-gray-400 transition-transform inline-block"
+                className="text-[10px] transition-transform inline-block"
                 style={{
                   transform: folder.expanded ? 'rotate(90deg)' : 'rotate(0)',
+                  color: 'var(--color-text-tertiary)',
                 }}
               >
                 &#9654;
               </span>
-              <span className="text-xs font-semibold text-gray-700" style={{ fontFamily: 'var(--font-mono)' }}>
+              <span className="text-xs font-semibold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
                 {folder.name}
               </span>
-              <span className="text-[10px] text-gray-400 ml-auto">
+              <span className="text-[10px] ml-auto" style={{ color: 'var(--color-text-tertiary)' }}>
                 {folder.files.length} {folder.files.length === 1 ? 'file' : 'files'}
               </span>
             </button>
@@ -230,7 +252,7 @@ function ResourceBrowser() {
             {folder.expanded && (
               <div className="ml-5 space-y-0.5">
                 {folder.files.length === 0 && folder.emptyLabel && (
-                  <p className="text-[11px] text-gray-400 italic px-2 py-1">
+                  <p className="text-[11px] italic px-2 py-1" style={{ color: 'var(--color-text-tertiary)' }}>
                     {folder.emptyLabel}
                   </p>
                 )}
@@ -239,15 +261,15 @@ function ResourceBrowser() {
                     key={file.name}
                     className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors group"
                   >
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 tracking-wide" style={{ fontFamily: 'var(--font-mono)' }}>{file.icon}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 tracking-wide" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>{file.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p
-                        className="text-xs font-medium text-gray-800 truncate"
-                        style={{ fontFamily: 'var(--font-mono)' }}
+                        className="text-xs font-medium truncate"
+                        style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}
                       >
                         {file.name}
                       </p>
-                      <p className="text-[10px] text-gray-400">{file.meta}</p>
+                      <p className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{file.meta}</p>
                     </div>
                     {file.hasRunTest && (
                       <button className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full hover:bg-violet-100">
@@ -263,8 +285,8 @@ function ResourceBrowser() {
       </div>
 
       {/* Visual annotation: dashed connector lines */}
-      <div className="px-4 py-3 border-t border-gray-100">
-        <div className="flex items-center gap-2 text-[10px] text-gray-400">
+      <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center gap-2 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
           <svg width="24" height="12" viewBox="0 0 24 12" className="flex-shrink-0">
             <line
               x1="0" y1="6" x2="24" y2="6"
@@ -299,19 +321,19 @@ function EvalCases() {
   return (
     <div className="mt-6">
       <h3
-        className="text-sm font-semibold text-gray-900 mb-3"
-        style={{ fontFamily: 'var(--font-ui)' }}
+        className="text-sm font-semibold mb-3"
+        style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}
       >
         Eval Cases
       </h3>
-      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="rounded-lg border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-3 py-2 font-medium text-gray-500 w-3/5">
+            <tr className="bg-gray-50 border-b" style={{ borderColor: 'var(--color-border)' }}>
+              <th className="text-left px-3 py-2 font-medium w-3/5" style={{ color: 'var(--color-text-secondary)' }}>
                 Prompt
               </th>
-              <th className="text-left px-3 py-2 font-medium text-gray-500 w-2/5">
+              <th className="text-left px-3 py-2 font-medium w-2/5" style={{ color: 'var(--color-text-secondary)' }}>
                 expect_contains
               </th>
             </tr>
@@ -320,14 +342,14 @@ function EvalCases() {
             {cases.map((c, i) => (
               <tr key={i} className="border-b border-gray-100 last:border-0">
                 <td
-                  className="px-3 py-2.5 text-gray-700"
-                  style={{ fontFamily: 'var(--font-mono)' }}
+                  className="px-3 py-2.5"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}
                 >
                   &quot;{c.prompt}&quot;
                 </td>
                 <td
-                  className="px-3 py-2.5 text-gray-700"
-                  style={{ fontFamily: 'var(--font-mono)' }}
+                  className="px-3 py-2.5"
+                  style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}
                 >
                   &quot;{c.expectContains}&quot;
                 </td>
@@ -336,7 +358,7 @@ function EvalCases() {
           </tbody>
         </table>
       </div>
-      <button className="mt-2 text-xs font-medium text-[#1A73E8] hover:underline flex items-center gap-1">
+      <button className="mt-2 text-xs font-medium hover:underline flex items-center gap-1" style={{ color: 'var(--color-accent)' }}>
         <span className="text-sm">+</span> Add eval case
       </button>
     </div>
@@ -347,25 +369,43 @@ function EvalCases() {
 // Test Activation panel
 // ---------------------------------------------------------------------------
 
-function TestActivation() {
+function TestActivation({ collapsible = false }: { collapsible?: boolean }) {
   const [testPrompt, setTestPrompt] = useState(
     'What are the KYC requirements for our Singapore clients?',
   );
   const [hasResult, setHasResult] = useState(true);
   const [manualActivate, setManualActivate] = useState(false);
+  const [collapsed, setCollapsed] = useState(collapsible);
 
   return (
-    <div className="border-t border-gray-200 bg-white">
+    <div className="border-t bg-white" style={{ borderColor: 'var(--color-border)' }}>
       <div className="px-5 py-3 flex items-center justify-between border-b border-gray-100">
-        <h3
-          className="text-sm font-semibold text-gray-900"
-          style={{ fontFamily: 'var(--font-ui)' }}
+        <button
+          onClick={() => collapsible && setCollapsed(!collapsed)}
+          className="flex items-center gap-2"
+          style={{ cursor: collapsible ? 'pointer' : 'default' }}
         >
-          Test Activation
-        </h3>
+          {collapsible && (
+            <span
+              className="text-[10px] transition-transform inline-block"
+              style={{
+                transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+                color: 'var(--color-text-tertiary)',
+              }}
+            >
+              &#9654;
+            </span>
+          )}
+          <h3
+            className="text-sm font-semibold"
+            style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}
+          >
+            Test Activation
+          </h3>
+        </button>
         <div className="flex items-center gap-3">
           {/* Manual activate toggle */}
-          <label className="flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer">
+          <label className="flex items-center gap-1.5 text-[11px] cursor-pointer" style={{ color: 'var(--color-text-secondary)' }}>
             <span>Activate manually</span>
             <button
               onClick={() => setManualActivate(!manualActivate)}
@@ -374,103 +414,108 @@ function TestActivation() {
               }`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform shadow-sm ${
+                className={`absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
                   manualActivate ? 'translate-x-4' : ''
                 }`}
+                style={{ boxShadow: 'var(--shadow-xs)' }}
               />
             </button>
           </label>
         </div>
       </div>
 
-      <div className="p-5">
-        {/* Input */}
-        <div className="flex gap-3 mb-4">
-          <input
-            type="text"
-            value={testPrompt}
-            onChange={(e) => setTestPrompt(e.target.value)}
-            placeholder="Enter a test prompt..."
-            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-all"
-            style={{ fontFamily: 'var(--font-body)' }}
-          />
-          <button
-            onClick={() => setHasResult(true)}
-            className="px-4 py-2 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90"
-            style={{ background: '#7C3AED' }}
-          >
-            Test Activation
-          </button>
-        </div>
-
-        {/* Results */}
-        {hasResult && (
-          <div className="space-y-3">
-            {/* Confidence bar */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-600 w-36 flex-shrink-0">
-                Activation confidence:
-              </span>
-              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: '94%', background: '#059669' }}
-                />
-              </div>
-              <span className="text-xs font-bold text-green-700 w-10 text-right">
-                94%
-              </span>
-            </div>
-
-            {/* Matched keywords */}
-            <div className="flex items-start gap-3">
-              <span className="text-xs font-medium text-gray-600 w-36 flex-shrink-0">
-                Matched on:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {['regulatory compliance', 'APAC markets', 'Singapore'].map(
-                  (kw) => (
-                    <span
-                      key={kw}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
-                    >
-                      {kw}
-                    </span>
-                  ),
-                )}
-              </div>
-            </div>
-
-            {/* Simulated response */}
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-1.5">
-                Simulated response
-              </p>
-              <p
-                className="text-sm text-gray-700 leading-relaxed"
-                style={{ fontFamily: 'var(--font-body)' }}
-              >
-                Based on MAS guidelines, KYC requirements for Singapore clients
-                include customer identification, verification of identity
-                documents, screening against sanctions lists, and ongoing
-                monitoring of transactions. Reference:{' '}
-                <Chip type="doc" name="mas-guidelines-2024" />
-              </p>
-            </div>
-
-            {/* Code execution trace */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
-              <span className="text-green-600 font-bold text-xs">&#10003;</span>
-              <span
-                className="text-xs text-green-800"
-                style={{ fontFamily: 'var(--font-mono)' }}
-              >
-                validate_kyc.py executed &rarr; SG jurisdiction &rarr; compliant
-              </span>
-            </div>
+      {!collapsed && (
+        <div className="p-5">
+          {/* Input */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <input
+              type="text"
+              value={testPrompt}
+              onChange={(e) => setTestPrompt(e.target.value)}
+              placeholder="Enter a test prompt..."
+              className="flex-1 px-3 py-2 text-sm rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition-all"
+              style={{ fontFamily: 'var(--font-body)', border: '1px solid var(--color-border)' }}
+            />
+            <button
+              onClick={() => setHasResult(true)}
+              className="px-4 py-2 text-xs font-medium text-white rounded-lg transition-colors hover:opacity-90 flex-shrink-0"
+              style={{ background: '#7C3AED' }}
+            >
+              Test Activation
+            </button>
           </div>
-        )}
-      </div>
+
+          {/* Results */}
+          {hasResult && (
+            <div className="space-y-3">
+              {/* Confidence bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                <span className="text-xs font-medium sm:w-36 flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
+                  Activation confidence:
+                </span>
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: '94%', background: '#059669' }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-green-700 w-10 text-right">
+                    94%
+                  </span>
+                </div>
+              </div>
+
+              {/* Matched keywords */}
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-3">
+                <span className="text-xs font-medium sm:w-36 flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }}>
+                  Matched on:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {['regulatory compliance', 'APAC markets', 'Singapore'].map(
+                    (kw) => (
+                      <span
+                        key={kw}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                      >
+                        {kw}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {/* Simulated response */}
+              <div className="rounded-lg bg-gray-50 p-3" style={{ border: '1px solid var(--color-border)' }}>
+                <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
+                  Simulated response
+                </p>
+                <p
+                  className="text-sm leading-relaxed"
+                  style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)' }}
+                >
+                  Based on MAS guidelines, KYC requirements for Singapore clients
+                  include customer identification, verification of identity
+                  documents, screening against sanctions lists, and ongoing
+                  monitoring of transactions. Reference:{' '}
+                  <Chip type="doc" name="mas-guidelines-2024" />
+                </p>
+              </div>
+
+              {/* Code execution trace */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200">
+                <span className="text-green-600 font-bold text-xs">&#10003;</span>
+                <span
+                  className="text-xs text-green-800"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  validate_kyc.py executed &rarr; SG jurisdiction &rarr; compliant
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -548,17 +593,17 @@ function Frontmatter() {
         <span className="text-[10px] font-semibold text-violet-500 uppercase tracking-wider">
           Frontmatter
         </span>
-        <span className="text-[10px] text-gray-400">(YAML)</span>
+        <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>(YAML)</span>
       </div>
 
       {/* Name */}
       <div>
-        <label className="block text-[11px] font-medium text-gray-500 mb-1">
+        <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
           name
         </label>
         <div
-          className="w-full px-3 py-1.5 text-sm border border-violet-200 rounded-md bg-white text-gray-900"
-          style={{ fontFamily: 'var(--font-mono)' }}
+          className="w-full px-3 py-1.5 text-sm border border-violet-200 rounded-md bg-white"
+          style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}
         >
           apac-compliance
         </div>
@@ -566,12 +611,12 @@ function Frontmatter() {
 
       {/* Description */}
       <div>
-        <label className="block text-[11px] font-medium text-gray-500 mb-1">
+        <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
           description
         </label>
         <div
-          className="w-full px-3 py-2 text-sm border border-violet-200 rounded-md bg-white text-gray-700 leading-relaxed"
-          style={{ fontFamily: 'var(--font-body)' }}
+          className="w-full px-3 py-2 text-sm border border-violet-200 rounded-md bg-white leading-relaxed"
+          style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)' }}
         >
           Use this skill when the agent handles regulatory compliance questions
           in APAC markets. Covers MAS, APRA, RBI, OJK, and FSC regulations.
@@ -579,28 +624,29 @@ function Frontmatter() {
       </div>
 
       {/* Version + Tags */}
-      <div className="flex gap-6">
+      <div className="flex flex-wrap gap-6">
         <div>
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
             version
           </label>
           <span
-            className="text-sm text-gray-800"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className="text-sm"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}
           >
             2.0.0
           </span>
         </div>
 
-        <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+        <div className="flex-1 min-w-0">
+          <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
             tags
           </label>
           <div className="flex flex-wrap gap-1.5">
             {tags.map((t) => (
               <span
                 key={t}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200"
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-100 border"
+                style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)' }}
               >
                 {t}
               </span>
@@ -610,25 +656,25 @@ function Frontmatter() {
       </div>
 
       {/* Input / Output schemas */}
-      <div className="flex gap-6">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
         <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
             input
           </label>
           <div
-            className="text-xs text-gray-600 bg-white rounded-md border border-violet-200 px-3 py-1.5"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className="text-xs bg-white rounded-md border border-violet-200 px-3 py-1.5"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}
           >
             jurisdiction: string, query: string
           </div>
         </div>
         <div className="flex-1">
-          <label className="block text-[11px] font-medium text-gray-500 mb-1">
+          <label className="block text-[11px] font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
             output
           </label>
           <div
-            className="text-xs text-gray-600 bg-white rounded-md border border-violet-200 px-3 py-1.5"
-            style={{ fontFamily: 'var(--font-mono)' }}
+            className="text-xs bg-white rounded-md border border-violet-200 px-3 py-1.5"
+            style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}
           >
             compliant: boolean, notes: string
           </div>
@@ -647,16 +693,17 @@ export function SkillEditor() {
   const [activation, setActivation] = useState<'pinned' | 'on-demand'>(
     'on-demand',
   );
+  const isMobile = useIsMobile();
 
   return (
     <div className="h-full bg-[#FAFAF9] flex flex-col">
       {/* --- Top Bar ---------------------------------------------------- */}
-      <header className="border-b border-gray-200 bg-white/90 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-[1440px] mx-auto px-5 py-3 flex items-center gap-4">
+      <header className="border-b bg-white/90 backdrop-blur-sm sticky top-0 z-50" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="w-full max-w-[1440px] mx-auto px-4 md:px-5 py-3 flex flex-wrap items-center gap-3 md:gap-4">
           {/* Skill name */}
           <h1
-            className="text-sm font-semibold text-gray-900"
-            style={{ fontFamily: 'var(--font-ui)' }}
+            className="text-sm font-semibold"
+            style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}
           >
             apac-compliance
           </h1>
@@ -666,17 +713,20 @@ export function SkillEditor() {
             v2.0.0
           </span>
 
-          <div className="flex-1" />
+          <div className="flex-1 min-w-0" />
 
-          {/* Scope selector */}
-          <ScopeSelector value={scope} onChange={setScope} />
-
-          {/* Activation toggle */}
-          <ActivationToggle value={activation} onChange={setActivation} />
+          {/* Scope selector + Activation toggle — wrap to next row on mobile */}
+          <div className="flex items-center gap-3 order-last md:order-none w-full md:w-auto">
+            <ScopeSelector value={scope} onChange={setScope} />
+            <ActivationToggle value={activation} onChange={setActivation} />
+          </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 ml-2">
-            <button className="text-xs font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-2">
+            <button
+              className="text-xs font-medium px-3 py-1.5 rounded-lg border hover:bg-gray-50 transition-colors hidden sm:block"
+              style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-border)' }}
+            >
               Install to Workspace
             </button>
             <button
@@ -689,19 +739,20 @@ export function SkillEditor() {
         </div>
 
         {/* Precedence indicator */}
-        <div className="max-w-[1440px] mx-auto px-5 pb-2 flex items-center gap-2">
-          <span className="text-[10px] text-gray-400">Precedence:</span>
+        <div className="w-full max-w-[1440px] mx-auto px-4 md:px-5 pb-2 flex items-center gap-2">
+          <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>Precedence:</span>
           {(['Workspace', 'User', 'Extension'] as const).map((level, i) => (
             <span key={level} className="flex items-center gap-1">
               {i > 0 && (
-                <span className="text-[10px] text-gray-300">&gt;</span>
+                <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>&gt;</span>
               )}
               <span
                 className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
                   level.toLowerCase() === scope
                     ? 'bg-violet-100 text-violet-700'
-                    : 'text-gray-400'
+                    : ''
                 }`}
+                style={level.toLowerCase() !== scope ? { color: 'var(--color-text-tertiary)' } : undefined}
               >
                 {level}
               </span>
@@ -712,22 +763,22 @@ export function SkillEditor() {
 
       {/* --- Main Content ------------------------------------------------ */}
       <div className="flex-1 flex flex-col max-w-[1440px] mx-auto w-full">
-        <div className="flex-1 flex min-h-0">
-          {/* -- Left Panel (60%): SKILL.md Editor ----------------------- */}
-          <div className="w-[60%] border-r border-gray-200 overflow-y-auto">
-            <div className="p-6 space-y-6">
+        <div className="flex-1 flex flex-col md:flex-row min-h-0">
+          {/* -- Left Panel: SKILL.md Editor ----------------------------- */}
+          <div className="w-full md:flex-[3] md:border-r overflow-y-auto" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="p-4 md:p-6 space-y-6">
               {/* Section 1: Frontmatter */}
               <Frontmatter />
 
               {/* Section 2: Body */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>
                     Skill Body
                   </span>
-                  <span className="text-[10px] text-gray-400">(Markdown + Smart Chips)</span>
+                  <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>(Markdown + Smart Chips)</span>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-5 relative">
+                <div className="rounded-xl bg-white p-4 md:p-5 relative" style={{ border: '1px solid var(--color-border)' }}>
                   {/* Violet left border accent */}
                   <div
                     className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full"
@@ -744,14 +795,14 @@ export function SkillEditor() {
             </div>
           </div>
 
-          {/* -- Right Panel (40%): Skill Resources ---------------------- */}
-          <div className="w-[40%] bg-white overflow-y-auto border-l border-gray-100">
+          {/* -- Right Panel: Skill Resources ---------------------------- */}
+          <div className="w-full md:flex-[2] bg-white overflow-y-auto border-t md:border-t-0 md:border-l" style={{ borderColor: 'var(--color-border)' }}>
             <ResourceBrowser />
           </div>
         </div>
 
         {/* -- Bottom Panel: Test Activation ----------------------------- */}
-        <TestActivation />
+        <TestActivation collapsible={isMobile} />
       </div>
     </div>
   );

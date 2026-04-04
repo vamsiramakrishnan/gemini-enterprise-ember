@@ -130,35 +130,34 @@ export function AgentPortfolio() {
   };
 
   return (
-    <div className="h-full bg-[#F9FAFB]">
+    <div className="page-container">
       {/* Header */}
       <header
-        className="bg-white px-6 py-3 sticky top-0 z-50"
-        style={{ borderBottom: '1px solid #E5E7EB' }}
+        className="page-header sticky top-0 z-50"
       >
         <div className="flex items-center justify-between">
           <div>
             <h1
-              className="font-semibold text-[#111827]"
-              style={{ fontSize: 13, fontFamily: 'var(--font-ui)' }}
+              className="font-semibold"
+              style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}
             >
               Agent Portfolio
             </h1>
-            <p className="text-[10px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-ui)' }}>
+            <p className="text-[10px]" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
               ACME Insurance — Enterprise Agent Fleet
             </p>
           </div>
-          <div className="text-[10px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-ui)' }}>
+          <div className="text-[10px] hidden sm:block" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
             {allAgents.length} agents across {TEAMS.length} teams
           </div>
         </div>
       </header>
 
-      <div className="flex h-[calc(100%-53px)]">
+      <div className="flex flex-1 min-h-0 relative">
         {/* Main Content */}
-        <div className={`flex-1 overflow-y-auto p-6 ${selectedAgent ? 'pr-3' : ''}`}>
+        <div className={`flex-1 overflow-y-auto p-4 md:p-6 ${selectedAgent ? 'md:pr-3' : ''}`}>
           {/* Summary Stats Row */}
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="grid-stats mb-6">
             <SummaryStatCard
               label="Total Agents"
               value={allAgents.length.toString()}
@@ -277,14 +276,14 @@ export function AgentPortfolio() {
           })}
         </div>
 
-        {/* Detail Sidebar */}
+        {/* Detail Sidebar — overlay on mobile, side panel on desktop */}
         {selectedAgent && (
           <div
-            className="w-80 bg-white overflow-y-auto shrink-0"
-            style={{ borderLeft: '1px solid #E5E7EB' }}
+            className="fixed inset-0 z-40 bg-white overflow-y-auto md:static md:inset-auto md:z-auto md:w-80 md:shrink-0"
+            style={{ borderLeft: '1px solid var(--color-border)' }}
           >
             {/* Sidebar Header */}
-            <div className="px-4 py-3" style={{ borderBottom: '1px solid #E5E7EB' }}>
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2.5">
                   <AgentIcon name={selectedAgent.name} />
@@ -401,7 +400,7 @@ function SummaryStatCard({ label, value, color }: { label: string; value: string
   return (
     <div
       className="bg-white rounded-lg px-4 py-3"
-      style={{ border: '1px solid #E5E7EB', boxShadow: '0 1px 2px 0 rgba(0,0,0,0.03)' }}
+      style={{ border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xs)' }}
     >
       <div
         className="font-semibold"
@@ -409,7 +408,7 @@ function SummaryStatCard({ label, value, color }: { label: string; value: string
       >
         {value}
       </div>
-      <div className="text-[10px] text-[#9CA3AF] mt-0.5" style={{ fontFamily: 'var(--font-ui)' }}>
+      <div className="text-[10px] mt-0.5" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
         {label}
       </div>
     </div>
@@ -420,10 +419,10 @@ function MetricCell({ label, value }: { label: string; value: string }) {
   return (
     <div
       className="rounded-lg px-3 py-2"
-      style={{ backgroundColor: '#F9FAFB', border: '1px solid #E5E7EB' }}
+      style={{ backgroundColor: 'var(--color-surface-1)', border: '1px solid var(--color-border)' }}
     >
-      <div className="text-[10px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-ui)' }}>{label}</div>
-      <div className="text-[16px] font-semibold text-[#111827] mt-0.5" style={{ fontFamily: 'var(--font-ui)' }}>{value}</div>
+      <div className="text-[10px]" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>{label}</div>
+      <div className="text-[16px] font-semibold mt-0.5" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}>{value}</div>
     </div>
   );
 }
