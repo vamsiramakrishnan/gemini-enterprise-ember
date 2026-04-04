@@ -111,9 +111,14 @@ function ConnectorCard({ connector }: { connector: ConnectorEntry }) {
                 {totalEntities.toLocaleString()} docs
               </span>
             )}
-            {connector.syncMode && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
-                {connector.syncMode}
+            {connector.syncMode === 'federated' && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">
+                ⚡ Real-time
+              </span>
+            )}
+            {connector.syncMode === 'ingested' && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">
+                🔄 Periodic sync
               </span>
             )}
             {timeSinceSync && (

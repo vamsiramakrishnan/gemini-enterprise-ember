@@ -580,6 +580,29 @@ function FlowGraph({
               </g>
             );
           })}
+
+          {/* Pattern detection badges */}
+          {patternBadges.map((badge, i) => {
+            const textLen = badge.label.length * 5.5 + 16;
+            return (
+              <g key={`pattern-badge-${i}`}>
+                <rect
+                  x={badge.x - textLen / 2} y={badge.y - 9}
+                  width={textLen} height={18} rx={9}
+                  fill="#EDE9FE" fillOpacity={0.85}
+                  stroke="#7C3AED" strokeWidth={0.5} strokeOpacity={0.3}
+                />
+                <text
+                  x={badge.x} y={badge.y + 4}
+                  textAnchor="middle" fill="#6D28D9"
+                  fontSize={9} fontWeight={600}
+                  style={{ fontFamily: 'var(--font-ui)' }}
+                >
+                  {badge.label}
+                </text>
+              </g>
+            );
+          })}
         </g>
       </svg>
 
@@ -788,6 +811,60 @@ function InspectorDetails({
         <div className="text-xs font-medium text-gray-500 mb-1">Description</div>
         <div className="text-xs text-gray-700 leading-relaxed">{chip.description}</div>
       </div>
+
+      {/* Skill Internal Topology */}
+      {chip.type === 'skill' && (
+        <div className="bg-violet-50 rounded-lg border border-violet-200 p-3 space-y-2">
+          <div className="text-[11px] font-semibold text-violet-700" style={{ fontFamily: 'var(--font-ui)' }}>
+            Internal Topology
+          </div>
+          {chip.name === 'apac-compliance' ? (
+            <svg viewBox="0 0 260 52" className="w-full" style={{ maxHeight: 52 }}>
+              {/* jurisdiction_check box */}
+              <rect x={4} y={8} width={100} height={36} rx={6}
+                fill="#F5F3FF" stroke="#7C3AED" strokeWidth={1.2} />
+              <text x={54} y={30} textAnchor="middle" fill="#6D28D9"
+                fontSize={8} fontWeight={600} style={{ fontFamily: 'var(--font-ui)' }}>
+                jurisdiction_check
+              </text>
+              {/* arrow */}
+              <line x1={108} y1={26} x2={148} y2={26}
+                stroke="#7C3AED" strokeWidth={1.2} markerEnd="url(#skill-arrow)" />
+              {/* compliance_advisor box */}
+              <rect x={152} y={8} width={104} height={36} rx={6}
+                fill="#F5F3FF" stroke="#7C3AED" strokeWidth={1.2} />
+              <text x={204} y={30} textAnchor="middle" fill="#6D28D9"
+                fontSize={8} fontWeight={600} style={{ fontFamily: 'var(--font-ui)' }}>
+                compliance_advisor
+              </text>
+              {/* arrow marker */}
+              <defs>
+                <marker id="skill-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#7C3AED" />
+                </marker>
+              </defs>
+            </svg>
+          ) : chip.name === 'customer-empathy' ? (
+            <svg viewBox="0 0 260 52" className="w-full" style={{ maxHeight: 52 }}>
+              <rect x={70} y={8} width={120} height={36} rx={6}
+                fill="#F5F3FF" stroke="#7C3AED" strokeWidth={1.2} />
+              <text x={130} y={30} textAnchor="middle" fill="#6D28D9"
+                fontSize={9} fontWeight={600} style={{ fontFamily: 'var(--font-ui)' }}>
+                empathy_advisor
+              </text>
+            </svg>
+          ) : (
+            <div className="text-[10px] text-violet-400 italic">
+              Single-agent skill
+            </div>
+          )}
+          <div className="text-[9px] text-violet-400">
+            {chip.name === 'apac-compliance'
+              ? 'jurisdiction_check >> compliance_advisor'
+              : 'Single agent topology'}
+          </div>
+        </div>
+      )}
 
       <button className="w-full text-left px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
         style={{ color: colors.bg }}>

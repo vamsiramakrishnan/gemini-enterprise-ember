@@ -677,7 +677,169 @@ function ConnectorCell() {
 }
 
 // ---------------------------------------------------------------------------
-// 7. Code Execution Cell (Escape Hatch)
+// 7. Schema Cell (with A2UI Preview)
+// ---------------------------------------------------------------------------
+
+const SCHEMA_JSON = `{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClaimsResponseV2",
+  "type": "object",
+  "required": ["claim_reference", "status", "estimated_processing_time", "summary"],
+  "properties": {
+    "claim_reference": {
+      "type": "string",
+      "pattern": "^CLM-[0-9]{4}-[0-9]{2}-[0-9]{5}$",
+      "description": "Unique claim reference number"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Under Review", "Approved", "Denied", "Escalated"],
+      "description": "Current claim status"
+    },
+    "estimated_processing_time": {
+      "type": "string",
+      "description": "Human-readable estimated processing duration"
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Brief summary of the claim assessment"
+    }
+  }
+}`;
+
+function SchemaCell() {
+  const [activeView, setActiveView] = useState<'json' | 'form'>('json');
+
+  return (
+    <Cell borderColor="#475569">
+      <div className="px-5 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3
+            className="text-sm font-semibold text-gray-900 flex items-center gap-2"
+            style={{ fontFamily: 'var(--font-ui)' }}
+          >
+            <span className="text-base">&#x1F4CB;</span> Schema: claims-response-v2
+            <Chip kind="schema" label="claims-response-v2" />
+          </h3>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">v2.0</span>
+        </div>
+
+        {/* Toggle bar */}
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 mb-4">
+          <button
+            onClick={() => setActiveView('json')}
+            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all ${
+              activeView === 'json'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            JSON Schema
+          </button>
+          <button
+            onClick={() => setActiveView('form')}
+            className={`text-xs font-medium px-3 py-1.5 rounded-md transition-all ${
+              activeView === 'form'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Preview as Form
+          </button>
+        </div>
+
+        {/* JSON Schema View */}
+        {activeView === 'json' && (
+          <div className="rounded-lg overflow-hidden border border-gray-200">
+            <div className="flex items-center justify-between px-3 py-1.5 bg-gray-100 border-b border-gray-200">
+              <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">JSON Schema</span>
+              <span className="text-[10px] text-gray-400">draft-07</span>
+            </div>
+            <pre
+              className="text-[11px] leading-relaxed px-4 py-3 bg-white text-gray-700 overflow-x-auto"
+              style={{ fontFamily: 'var(--font-mono)' }}
+            >
+              {SCHEMA_JSON}
+            </pre>
+          </div>
+        )}
+
+        {/* A2UI Form Preview */}
+        {activeView === 'form' && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div className="space-y-4">
+              {/* Claim Reference Number */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1" style={{ fontFamily: 'var(--font-ui)' }}>
+                  Claim Reference Number
+                </label>
+                <input
+                  type="text"
+                  readOnly
+                  value="CLM-2026-04-00847"
+                  className="w-full text-sm px-3 py-2 rounded-md border border-gray-300 bg-gray-100 text-gray-700 cursor-default"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1" style={{ fontFamily: 'var(--font-ui)' }}>
+                  Status
+                </label>
+                <select className="w-full text-sm px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 cursor-pointer">
+                  <option>Under Review</option>
+                  <option>Approved</option>
+                  <option>Denied</option>
+                  <option>Escalated</option>
+                </select>
+              </div>
+
+              {/* Estimated Processing Time */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1" style={{ fontFamily: 'var(--font-ui)' }}>
+                  Estimated Processing Time
+                </label>
+                <input
+                  type="text"
+                  defaultValue="3-5 business days"
+                  className="w-full text-sm px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700"
+                />
+              </div>
+
+              {/* Summary */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1" style={{ fontFamily: 'var(--font-ui)' }}>
+                  Summary
+                </label>
+                <textarea
+                  rows={3}
+                  defaultValue={"Water damage claim for residential property under policy POL-SG-001234. Coverage verified under home-comprehensive plan. No prior related claims in the last 12 months. Risk assessment: low."}
+                  className="w-full text-sm px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-700 resize-none"
+                  style={{ fontFamily: 'var(--font-body)' }}
+                />
+              </div>
+
+              {/* Submit button */}
+              <button className="text-sm font-medium text-white bg-[#1A73E8] hover:bg-[#1557B0] px-5 py-2 rounded-lg transition-colors">
+                Submit Response
+              </button>
+            </div>
+
+            {/* A2UI annotation */}
+            <p className="text-[10px] text-gray-400 mt-4 pt-3 border-t border-slate-200 italic" style={{ fontFamily: 'var(--font-body)' }}>
+              A2UI Surface &mdash; rendered from @schema definition. Agent output conforms to this structure.
+            </p>
+          </div>
+        )}
+      </div>
+    </Cell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 8. Code Execution Cell (Escape Hatch)
 // ---------------------------------------------------------------------------
 
 const SAMPLE_CODE = `import requests
@@ -815,7 +977,7 @@ export function NotebookView() {
                 <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
                   Claims Processing Agent
                 </h1>
-                <span className="text-[10px] text-gray-500">Notebook View &mdash; 7 cells</span>
+                <span className="text-[10px] text-gray-500">Notebook View &mdash; 8 cells</span>
               </div>
             </div>
           </div>
@@ -841,6 +1003,7 @@ export function NotebookView() {
         <TestCell />
         <SkillCell />
         <ConnectorCell />
+        <SchemaCell />
         <CodeExecutionCell />
 
         {/* Add cell button */}
