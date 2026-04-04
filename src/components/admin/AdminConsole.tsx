@@ -3,11 +3,11 @@ import { useState } from 'react';
 // ─── Types ──────────────────────────────────────────────────────────────
 type AdminTab = 'overview' | 'governance' | 'teams' | 'audit';
 
-const NAV_ITEMS: { id: AdminTab; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Overview', icon: '◉' },
-  { id: 'governance', label: 'Governance', icon: '◈' },
-  { id: 'teams', label: 'Teams & Access', icon: '◎' },
-  { id: 'audit', label: 'Audit Log', icon: '◇' },
+const TAB_ITEMS: { id: AdminTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'governance', label: 'Governance' },
+  { id: 'teams', label: 'Teams & Access' },
+  { id: 'audit', label: 'Audit Log' },
 ];
 
 // ─── Mock Data ──────────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ const ACTIVITY_FEED = [
   { text: 'Priya Sharma approved @connector(slack) for Claims Team', time: '4h ago', type: 'permission' as const },
   { text: '@guard(pii-redaction) blocked PII leak in Refund Processor', time: '6h ago', type: 'alert' as const },
   { text: 'Platform Team requested access to @tool(payment-processor)', time: '1d ago', type: 'request' as const },
-  { text: 'BigQuery connector sync paused for maintenance 2am–4am', time: '1d ago', type: 'maintenance' as const },
+  { text: 'BigQuery connector sync paused for maintenance 2am-4am', time: '1d ago', type: 'maintenance' as const },
 ];
 
 const GUARD_POLICIES = [
@@ -55,9 +55,12 @@ const AUDIT_LOG = [
   { time: '2026-04-02 10:00', actor: 'System', action: 'Guard violation', resource: '@guard(fraud-detection) → Claims Processing', result: 'blocked' as const },
 ];
 
-const ACCENT_MAP: Record<string, string> = {
-  deploy: 'border-l-blue-500', permission: 'border-l-green-500', alert: 'border-l-red-500',
-  request: 'border-l-yellow-500', maintenance: 'border-l-gray-400',
+const ACTIVITY_BORDER: Record<string, string> = {
+  deploy: '#2563EB',
+  permission: '#16A34A',
+  alert: '#E11D48',
+  request: '#9CA3AF',
+  maintenance: '#D97706',
 };
 
 // ─── Main Component ─────────────────────────────────────────────────────
@@ -65,40 +68,51 @@ export function AdminConsole() {
   const [tab, setTab] = useState<AdminTab>('overview');
 
   return (
-    <div className="h-full bg-[#FAFAF9] flex">
-      {/* Sidebar */}
-      <aside className="w-52 bg-[#1F2937] text-white flex flex-col sticky top-0 h-screen">
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#2563EB] flex items-center justify-center text-xs font-bold">A</div>
-            <div>
-              <div className="text-xs font-semibold">ACME Insurance</div>
-              <div className="text-[9px] text-gray-400">Admin Console</div>
-            </div>
-          </div>
+    <div className="h-full bg-[#F9FAFB] flex flex-col">
+      {/* Header */}
+      <div
+        className="px-6 pt-5 pb-3 bg-white"
+        style={{ borderBottom: '1px solid #E5E7EB', fontFamily: 'var(--font-ui)' }}
+      >
+        <div className="text-[13px] font-semibold" style={{ color: '#111827' }}>
+          Admin Console
         </div>
-        <nav className="flex-1 p-2">
-          {NAV_ITEMS.map(item => (
-            <button key={item.id} onClick={() => setTab(item.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all mb-0.5
-                ${tab === item.id ? 'bg-white/10 text-white border-l-2 border-blue-400' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'}`}>
-              <span className="text-sm">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="p-4 border-t border-gray-700 text-[9px] text-gray-500">
-          Gemini Enterprise v3.2
+        <div className="text-[10px]" style={{ color: '#9CA3AF' }}>
+          ACME Insurance
         </div>
-      </aside>
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6">
+      {/* Tab Bar */}
+      <div
+        className="px-6 bg-white flex gap-6"
+        style={{ borderBottom: '1px solid #E5E7EB' }}
+      >
+        {TAB_ITEMS.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setTab(item.id)}
+            className="relative pb-2.5 pt-3 transition-colors"
+            style={{
+              fontSize: '12px',
+              fontWeight: 500,
+              fontFamily: 'var(--font-ui)',
+              color: tab === item.id ? '#2563EB' : '#9CA3AF',
+              borderBottom: tab === item.id ? '2px solid #2563EB' : '2px solid transparent',
+              marginBottom: '-1px',
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto p-6">
         {tab === 'overview' && <OverviewTab />}
         {tab === 'governance' && <GovernanceTab />}
         {tab === 'teams' && <TeamsTab />}
         {tab === 'audit' && <AuditTab />}
-      </main>
+      </div>
     </div>
   );
 }
@@ -107,29 +121,35 @@ export function AdminConsole() {
 function OverviewTab() {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4" style={{ fontFamily: 'var(--font-ui)' }}>Overview</h2>
-
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Total Agents', value: '47', color: '#1A73E8' },
           { label: 'Active Users', value: '156', color: '#16A34A' },
           { label: 'API Calls Today', value: '245K', color: '#7C3AED' },
-          { label: 'Policy Violations', value: '3', color: '#E11D48', alert: true },
+          { label: 'Policy Violations', value: '3', color: '#E11D48' },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
-            <div className="text-[10px] text-gray-500">{s.label}</div>
-            <div className="text-2xl font-semibold flex items-center gap-1.5" style={{ color: s.color }}>
+          <div
+            key={s.label}
+            className="bg-white rounded-lg border border-gray-200 p-4"
+            style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+          >
+            <div className="text-[10px] text-gray-500 mb-1">{s.label}</div>
+            <div className="text-2xl font-semibold" style={{ color: s.color }}>
               {s.value}
-              {s.alert && <span className="text-xs text-amber-600">!</span>}
             </div>
           </div>
         ))}
       </div>
 
       {/* Agents by Status */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <h3 className="text-xs font-semibold text-gray-700 mb-3">Agents by Status</h3>
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4 mb-6"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      >
+        <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
+          Agents by Status
+        </h3>
         <div className="flex items-center gap-4">
           {[
             { label: 'Production', count: 12, color: '#16A34A', pct: 25 },
@@ -150,13 +170,24 @@ function OverviewTab() {
       </div>
 
       {/* Activity Feed */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h3 className="text-xs font-semibold text-gray-700 mb-3">Recent Activity</h3>
-        <div className="space-y-1">
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      >
+        <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
+          Recent Activity
+        </h3>
+        <div className="space-y-0.5">
           {ACTIVITY_FEED.map((a, i) => (
-            <div key={i} className={`flex items-start gap-3 py-2 border-l-2 pl-3 ${ACCENT_MAP[a.type] || 'border-l-gray-300'}`}>
-              <span className="text-[10px] text-gray-400 w-10 shrink-0">{a.time}</span>
-              <span className="text-xs text-gray-700">{a.text}</span>
+            <div
+              key={i}
+              className="flex items-start gap-3 py-2 pl-3"
+              style={{ borderLeft: `2px solid ${ACTIVITY_BORDER[a.type] || '#D1D5DB'}` }}
+            >
+              <div className="flex-1">
+                <div className="text-[12px] text-gray-700">{a.text}</div>
+                <div className="text-[10px]" style={{ color: '#9CA3AF' }}>{a.time}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -169,33 +200,44 @@ function OverviewTab() {
 function GovernanceTab() {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4" style={{ fontFamily: 'var(--font-ui)' }}>Governance</h2>
-
       {/* Guard Policies */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <h3 className="text-xs font-semibold text-gray-700 mb-3">Guard Policies</h3>
-        <table className="w-full text-xs">
+      <div
+        className="bg-white rounded-lg border border-gray-200 mb-6 overflow-hidden"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      >
+        <div className="px-4 pt-4 pb-3">
+          <h3 className="text-xs font-semibold text-gray-700" style={{ fontFamily: 'var(--font-ui)' }}>
+            Guard Policies
+          </h3>
+        </div>
+        <table className="w-full text-[12px]">
           <thead>
-            <tr className="border-b border-gray-100 text-[10px] text-gray-500 uppercase">
-              <th className="text-left py-2 pr-4">Guard</th>
-              <th className="text-left py-2 pr-4">Enforcement</th>
-              <th className="text-left py-2 pr-4">Scope</th>
-              <th className="text-right py-2">Violations</th>
+            <tr className="text-[10px] text-gray-500 uppercase" style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+              <th className="text-left py-2 px-4 font-medium">Guard</th>
+              <th className="text-left py-2 px-4 font-medium">Enforcement</th>
+              <th className="text-left py-2 px-4 font-medium">Scope</th>
+              <th className="text-right py-2 px-4 font-medium">Violations</th>
             </tr>
           </thead>
           <tbody>
             {GUARD_POLICIES.map((g, i) => (
-              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
-                <td className="py-2.5 pr-4">
-                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-500 text-white">{g.name}</span>
+              <tr key={i} className="hover:bg-gray-50/50" style={{ borderBottom: '1px solid #E5E7EB' }}>
+                <td className="py-2.5 px-4">
+                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-rose-500 text-white">
+                    {g.name}
+                  </span>
                 </td>
-                <td className="py-2.5 pr-4">
+                <td className="py-2.5 px-4">
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                    g.enforcement === 'Required' ? 'bg-red-100 text-red-700' : g.enforcement === 'Recommended' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'
-                  }`}>{g.enforcement}</span>
+                    g.enforcement === 'Required' ? 'bg-red-100 text-red-700'
+                    : g.enforcement === 'Recommended' ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {g.enforcement}
+                  </span>
                 </td>
-                <td className="py-2.5 pr-4 text-gray-600">{g.scope}</td>
-                <td className="py-2.5 text-right">
+                <td className="py-2.5 px-4 text-gray-600">{g.scope}</td>
+                <td className="py-2.5 px-4 text-right">
                   {g.violations > 0 ? (
                     <span className="text-red-600 font-medium">{g.violations} blocked</span>
                   ) : (
@@ -209,12 +251,17 @@ function GovernanceTab() {
       </div>
 
       {/* Model Policies */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <h3 className="text-xs font-semibold text-gray-700 mb-3">Model Access Policies</h3>
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4 mb-6"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      >
+        <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
+          Model Access Policies
+        </h3>
         <div className="space-y-2">
           {MODEL_POLICIES.map(p => (
-            <div key={p.team} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-              <span className="text-xs font-medium text-gray-700 w-40">{p.team}</span>
+            <div key={p.team} className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid #F3F4F6' }}>
+              <span className="text-[12px] font-medium text-gray-700 w-40">{p.team}</span>
               <div className="flex gap-1.5">
                 {p.models.map(m => (
                   <span key={m} className="text-[9px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">{m}</span>
@@ -226,8 +273,13 @@ function GovernanceTab() {
       </div>
 
       {/* Token Budgets */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h3 className="text-xs font-semibold text-gray-700 mb-3">Token Budgets (Monthly)</h3>
+      <div
+        className="bg-white rounded-lg border border-gray-200 p-4"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      >
+        <h3 className="text-xs font-semibold text-gray-700 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>
+          Token Budgets (Monthly)
+        </h3>
         {[
           { team: 'Claims Team', used: 12.4, budget: 20, pct: 62 },
           { team: 'Customer Support', used: 8.1, budget: 10, pct: 81 },
@@ -240,7 +292,13 @@ function GovernanceTab() {
               <span className="text-gray-500">{t.used}M / {t.budget}M tokens ({t.pct}%)</span>
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${t.pct > 80 ? 'bg-red-500' : t.pct > 60 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${t.pct}%` }} />
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${t.pct}%`,
+                  backgroundColor: t.pct > 80 ? '#EF4444' : t.pct > 60 ? '#EAB308' : '#22C55E',
+                }}
+              />
             </div>
           </div>
         ))}
@@ -253,26 +311,31 @@ function GovernanceTab() {
 function TeamsTab() {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-4" style={{ fontFamily: 'var(--font-ui)' }}>Teams & Access</h2>
       <div className="grid grid-cols-2 gap-4">
         {TEAMS_DATA.map(t => {
           const total = t.roles.admin + t.roles.editor + t.roles.invoker;
           return (
-            <div key={t.name} className="bg-white rounded-xl border border-gray-200 p-4">
+            <div
+              key={t.name}
+              className="bg-white rounded-lg border border-gray-200 p-4"
+              style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+            >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">{t.name}</h3>
-                <span className="text-[10px] text-gray-400">{t.members} members</span>
+                <h3 className="text-[12px] font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
+                  {t.name}
+                </h3>
+                <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{t.members} members</span>
               </div>
               <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                <div className="bg-gray-50 rounded-lg p-2">
+                <div className="bg-[#F9FAFB] rounded-lg p-2">
                   <div className="text-lg font-semibold text-gray-900">{t.agents}</div>
                   <div className="text-[9px] text-gray-400">Agents</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
+                <div className="bg-[#F9FAFB] rounded-lg p-2">
                   <div className="text-lg font-semibold text-gray-900">{t.connectors.length}</div>
                   <div className="text-[9px] text-gray-400">Connectors</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-2">
+                <div className="bg-[#F9FAFB] rounded-lg p-2">
                   <div className="text-lg font-semibold text-gray-900">{t.members}</div>
                   <div className="text-[9px] text-gray-400">Members</div>
                 </div>
@@ -286,9 +349,15 @@ function TeamsTab() {
                   <div className="bg-gray-300" style={{ width: `${(t.roles.invoker / total) * 100}%` }} />
                 </div>
                 <div className="flex gap-3 mt-1 text-[9px] text-gray-400">
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />Admin {t.roles.admin}</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Editor {t.roles.editor}</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-300" />Invoker {t.roles.invoker}</span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400" />Admin {t.roles.admin}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Editor {t.roles.editor}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />Invoker {t.roles.invoker}
+                  </span>
                 </div>
               </div>
               {/* Connectors */}
@@ -314,22 +383,37 @@ function AuditTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Audit Log</h2>
-        <div className="flex gap-1">
-          {['all', 'success', 'blocked', 'pending'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`text-[10px] px-2.5 py-1 rounded-full transition-all ${filter === f ? 'bg-[#1A73E8] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
+      {/* Filter Bar */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="text-[10px] text-gray-500 mr-2" style={{ fontFamily: 'var(--font-ui)' }}>Filter:</div>
+        {['all', 'success', 'blocked', 'pending'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className="transition-all"
+            style={{
+              fontSize: '10px',
+              fontFamily: 'var(--font-ui)',
+              padding: '3px 10px',
+              borderRadius: '9999px',
+              backgroundColor: filter === f ? '#2563EB' : '#F3F4F6',
+              color: filter === f ? '#FFFFFF' : '#6B7280',
+              fontWeight: 500,
+            }}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-xs">
+      {/* Audit Table */}
+      <div
+        className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+        style={{ boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+      >
+        <table className="w-full text-[12px]">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200 text-[10px] text-gray-500 uppercase">
+            <tr className="text-[10px] text-gray-500 uppercase font-medium" style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
               <th className="text-left py-2.5 px-4">Timestamp</th>
               <th className="text-left py-2.5 px-4">Actor</th>
               <th className="text-left py-2.5 px-4">Action</th>
@@ -339,17 +423,19 @@ function AuditTab() {
           </thead>
           <tbody>
             {filtered.map((a, i) => (
-              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
+              <tr key={i} className="hover:bg-gray-50/50" style={{ borderBottom: '1px solid #E5E7EB' }}>
                 <td className="py-2.5 px-4 text-gray-500 font-mono text-[10px]">{a.time}</td>
                 <td className="py-2.5 px-4 text-gray-700">{a.actor}</td>
                 <td className="py-2.5 px-4 text-gray-600">{a.action}</td>
                 <td className="py-2.5 px-4 text-gray-700 font-medium">{a.resource}</td>
                 <td className="py-2.5 px-4 text-right">
                   <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
-                    a.result === 'success' ? 'bg-green-100 text-green-700' :
-                    a.result === 'blocked' ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
-                  }`}>{a.result}</span>
+                    a.result === 'success' ? 'bg-green-100 text-green-700'
+                    : a.result === 'blocked' ? 'bg-red-100 text-red-700'
+                    : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {a.result}
+                  </span>
                 </td>
               </tr>
             ))}
