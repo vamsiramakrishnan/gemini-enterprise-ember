@@ -39,11 +39,11 @@ function SmartChip({ type, name, resolved }: { type: ChipType; name: string; res
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white cursor-pointer hover:opacity-90 transition-opacity"
-      style={{ background: colors.bg }}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity"
+      style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}` }}
       title={`@${type}(${name}) — click to inspect`}
     >
-      {icon} {name}
+      <span style={{ color: colors.accent }}>{icon}</span> {name}
     </span>
   );
 }
@@ -52,7 +52,7 @@ function SmartChip({ type, name, resolved }: { type: ChipType; name: string; res
 
 function GraphNodeBadge({ node }: { node: CompiledGraphNode }) {
   const chipColors = node.chipType ? CHIP_COLORS[node.chipType] : null;
-  const bg = chipColors?.bg || '#6B7280';
+  const bg = chipColors?.accent || '#6B7280';
 
   const typeLabel: Record<string, string> = {
     'trigger-entry': '▸ TRIGGER',

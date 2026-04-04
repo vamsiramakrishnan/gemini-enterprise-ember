@@ -112,7 +112,7 @@ function ChipChangePill({ change }: { change: ChipChange }) {
           width: 5,
           height: 5,
           borderRadius: '50%',
-          background: colors.bg,
+          background: colors.accent,
           flexShrink: 0,
         }}
       />
@@ -304,8 +304,9 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
                 fontSize: 10,
                 fontWeight: 500,
                 fontFamily: 'var(--font-ui)',
-                color: '#fff',
+                color: colors.text,
                 background: colors.bg,
+                border: `1px solid ${colors.border}`,
                 margin: '0 2px',
                 lineHeight: '18px',
                 boxShadow: glowColor
@@ -315,7 +316,7 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
                 textDecoration: line.type === 'removed' ? 'line-through' : undefined,
               }}
             >
-              {CHIP_ICONS[type]} {name}
+              <span style={{ color: colors.accent }}>{CHIP_ICONS[type]}</span> {name}
             </span>
           );
         }

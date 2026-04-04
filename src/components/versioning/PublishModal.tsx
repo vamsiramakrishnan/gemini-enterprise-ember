@@ -117,7 +117,7 @@ function ChipChangeBadge({ change }: { change: ChipChange }) {
       <span className="font-bold">{prefix}</span>
       <span
         className="w-2 h-2 rounded-full shrink-0"
-        style={{ background: colors.bg }}
+        style={{ background: colors.accent }}
       />
       <span>{icon}</span>
       <span>@{change.chipType}({change.chipName})</span>

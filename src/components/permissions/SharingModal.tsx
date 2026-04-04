@@ -60,10 +60,10 @@ export function SharingModal() {
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[10px] font-medium"
-                style={{ background: CHIP_COLORS.agent.bg }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+                style={{ background: CHIP_COLORS.agent.bg, color: CHIP_COLORS.agent.text, border: `1px solid ${CHIP_COLORS.agent.border}` }}
               >
-                {CHIP_ICONS.agent} Agent Playbook
+                <span style={{ color: CHIP_COLORS.agent.accent }}>{CHIP_ICONS.agent}</span> Agent Playbook
               </span>
               <span>v2.1 · Published</span>
             </div>
