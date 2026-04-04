@@ -37,7 +37,7 @@ function Chip({
         style={{ borderColor: '#DC2626', color: '#DC2626', background: '#FEF2F2' }}
         title={`Unresolved: @${type}(${name})`}
       >
-        {icon} @{type}({name}) ⚠️
+        {icon} @{type}({name})
       </span>
     );
   }
@@ -154,13 +154,13 @@ function ResourceBrowser() {
       files: [
         {
           name: 'validate_kyc.py',
-          icon: '\uD83D\uDC0D',
+          icon: 'PY',
           meta: 'Last audited: Mar 15, 2026',
           hasRunTest: true,
         },
         {
           name: 'format_disclosure.ts',
-          icon: '\uD83D\uDCD8',
+          icon: 'TS',
           meta: 'Last audited: Mar 10, 2026',
           hasRunTest: true,
         },
@@ -170,8 +170,8 @@ function ResourceBrowser() {
       name: 'references/',
       expanded: true,
       files: [
-        { name: 'mas-guidelines-2024.pdf', icon: '\uD83D\uDCD5', meta: '2.1 MB' },
-        { name: 'apra-standards.pdf', icon: '\uD83D\uDCD5', meta: '1.8 MB' },
+        { name: 'mas-guidelines-2024.pdf', icon: 'PDF', meta: '2.1 MB' },
+        { name: 'apra-standards.pdf', icon: 'PDF', meta: '1.8 MB' },
       ],
     },
     {
@@ -239,7 +239,7 @@ function ResourceBrowser() {
                     key={file.name}
                     className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-gray-50 transition-colors group"
                   >
-                    <span className="text-sm">{file.icon}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 tracking-wide" style={{ fontFamily: 'var(--font-mono)' }}>{file.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p
                         className="text-xs font-medium text-gray-800 truncate"

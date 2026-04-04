@@ -533,28 +533,28 @@ export function graphToMermaid(graph: CompiledGraph): string {
     const label = node.label.replace(/"/g, "'");
     switch (node.type) {
       case 'trigger-entry':
-        lines.push(`    ${node.id}(("⚡ ${label}"))`);
+        lines.push(`    ${node.id}(("${label}"))`);
         break;
       case 'grounding':
-        lines.push(`    ${node.id}[/"📄 ${label}"/]`);
+        lines.push(`    ${node.id}[/"${label}"/]`);
         break;
       case 'tool-call':
-        lines.push(`    ${node.id}["🔧 ${label}"]`);
+        lines.push(`    ${node.id}["${label}"]`);
         break;
       case 'connector-call':
-        lines.push(`    ${node.id}["🔗 ${label}"]`);
+        lines.push(`    ${node.id}["${label}"]`);
         break;
       case 'agent':
-        lines.push(`    ${node.id}["🤖 ${label}"]`);
+        lines.push(`    ${node.id}["${label}"]`);
         break;
       case 'decision':
         lines.push(`    ${node.id}{"${label}"}`);
         break;
       case 'gate':
-        lines.push(`    ${node.id}{{"🛡️ ${label}"}}`);
+        lines.push(`    ${node.id}{{"${label}"}}`);
         break;
       case 'output':
-        lines.push(`    ${node.id}[["📐 ${label}"]]`);
+        lines.push(`    ${node.id}[["${label}"]]`);
         break;
       case 'transform':
         lines.push(`    ${node.id}>"${label}"]`);

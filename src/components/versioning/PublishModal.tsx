@@ -380,9 +380,9 @@ export function PublishModal({ open, onClose, onPublish }: PublishModalProps) {
               <div className="flex gap-2 mb-3">
                 {(
                   [
-                    { key: 'draft', label: 'Draft only', icon: '📝', desc: 'Save without deploying' },
-                    { key: 'staging', label: 'Staging', icon: '🧪', desc: 'Deploy to staging environment' },
-                    { key: 'production', label: 'Production', icon: '🚀', desc: 'Deploy to production' },
+                    { key: 'draft', label: 'Draft only', icon: '○', desc: 'Save without deploying' },
+                    { key: 'staging', label: 'Staging', icon: '◐', desc: 'Deploy to staging environment' },
+                    { key: 'production', label: 'Production', icon: '●', desc: 'Deploy to production' },
                   ] as const
                 ).map((t) => {
                   const isSelected = deployTarget === t.key;

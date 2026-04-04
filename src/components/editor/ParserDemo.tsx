@@ -32,7 +32,7 @@ function SmartChip({ type, name, resolved }: { type: ChipType; name: string; res
         style={{ borderColor: '#DC2626', color: '#DC2626', background: '#FEF2F2' }}
         title={`Unresolved: @${type}(${name})`}
       >
-        {icon} @{type}({name}) ⚠️
+        {icon} @{type}({name})
       </span>
     );
   }
@@ -55,15 +55,15 @@ function GraphNodeBadge({ node }: { node: CompiledGraphNode }) {
   const bg = chipColors?.bg || '#6B7280';
 
   const typeLabel: Record<string, string> = {
-    'trigger-entry': '⚡ TRIGGER',
-    'agent': '🤖 AGENT',
-    'tool-call': '🔧 TOOL',
-    'connector-call': '🔗 CONNECTOR',
+    'trigger-entry': '▸ TRIGGER',
+    'agent': '◎ AGENT',
+    'tool-call': '⬡ TOOL',
+    'connector-call': '◈ CONNECTOR',
     'decision': '◆ DECISION',
-    'gate': '🛡️ GATE',
-    'grounding': '📄 DOC',
-    'output': '📐 OUTPUT',
-    'transform': '⚙️ TRANSFORM',
+    'gate': '△ GATE',
+    'grounding': '◇ DOC',
+    'output': '▢ OUTPUT',
+    'transform': '▣ TRANSFORM',
   };
 
   return (
@@ -331,7 +331,7 @@ export function ParserDemo() {
                       </h3>
                       {graph.skillRegions.map((region, i) => (
                         <div key={i} className="p-2 rounded-lg border text-xs" style={{ borderColor: region.color + '40', background: region.color + '10' }}>
-                          <span className="font-medium" style={{ color: region.color }}>✨ {region.label}</span>
+                          <span className="font-medium" style={{ color: region.color }}>✦ {region.label}</span>
                           <span className="text-gray-400 ml-2">affects {region.nodeIds.length} nodes</span>
                         </div>
                       ))}

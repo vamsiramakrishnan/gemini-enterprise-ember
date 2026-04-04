@@ -370,7 +370,7 @@ export function parsePlaybook(
 
 export function summarizePlaybook(parsed: ParsedPlaybook): string {
   const lines: string[] = [
-    `📋 Playbook: ${parsed.title}`,
+    `Playbook: ${parsed.title}`,
     `   ${parsed.stats.totalReferences} references (${parsed.stats.resolvedCount} resolved, ${parsed.stats.unresolvedCount} unresolved)`,
     `   ${parsed.stats.sectionCount} top-level sections`,
     `   ${parsed.conditionals.length} conditional rules`,
