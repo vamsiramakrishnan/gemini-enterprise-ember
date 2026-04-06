@@ -26,6 +26,7 @@ export interface ChipAutocompleteProps {
   onSelect: (chip: { type: string; name: string }) => void;
   position: { top: number; left: number };
   filterText?: string;
+  onCreateNew?: () => void;
 }
 
 // ─── Section definition ──────────────────────────────────────────────────
@@ -356,6 +357,7 @@ export function ChipAutocomplete({
   onSelect,
   position,
   filterText = '',
+  onCreateNew,
 }: ChipAutocompleteProps) {
   const [query, setQuery] = useState(filterText);
   const [collapsedSections, setCollapsedSections] = useState<Set<ChipType>>(new Set());
@@ -622,8 +624,8 @@ export function ChipAutocomplete({
           <button
             className="text-[11px] text-blue-600 hover:text-blue-700 font-medium transition-colors"
             onClick={() => {
-              // In a real app this would open a creation dialog
               onClose();
+              onCreateNew?.();
             }}
           >
             + Create new...

@@ -9,24 +9,35 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useTest, useNotifications, useConnectors } from '../../contexts/AppContext';
+import { useTest, useNotifications, useConnectors, useRegistry } from '../../contexts/AppContext';
 import type { SkillActivationResult } from '../../contexts/AppContext';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import type { ChipType } from '../../parser/types';
 
 // ---------------------------------------------------------------------------
 // Add Cell Divider — shown between cells on hover
 // ---------------------------------------------------------------------------
 
-const CELL_TYPES = [
-  { label: 'Playbook', icon: '\u{1F4C4}' },
-  { label: 'Tool', icon: '\u{1F527}' },
-  { label: 'Test', icon: '\u25B6' },
-  { label: 'Skill', icon: '\u2728' },
-  { label: 'Connector', icon: '\u{1F517}' },
-  { label: 'Schema', icon: '\u{1F4CB}' },
-  { label: 'Code', icon: '\u26A0\uFE0F' },
+type DynamicCellType = 'playbook' | 'tool' | 'test' | 'skill' | 'connector' | 'schema' | 'code';
+
+const CELL_TYPES: { label: string; icon: string; cellType: DynamicCellType; borderColor: string }[] = [
+  { label: 'Playbook', icon: '\u{1F4C4}', cellType: 'playbook', borderColor: '#0D9488' },
+  { label: 'Tool', icon: '\u{1F527}', cellType: 'tool', borderColor: '#4F46E5' },
+  { label: 'Test', icon: '\u25B6', cellType: 'test', borderColor: '#059669' },
+  { label: 'Skill', icon: '\u2728', cellType: 'skill', borderColor: '#7C3AED' },
+  { label: 'Connector', icon: '\u{1F517}', cellType: 'connector', borderColor: '#2563EB' },
+  { label: 'Schema', icon: '\u{1F4CB}', cellType: 'schema', borderColor: '#475569' },
+  { label: 'Code', icon: '\u26A0\uFE0F', cellType: 'code', borderColor: '#EA580C' },
 ];
 
-function AddCellDivider() {
+interface DynamicCell {
+  id: string;
+  cellType: DynamicCellType;
+  name: string;
+  createdAt: number;
+}
+
+function AddCellDivider({ onInsertCell }: { onInsertCell?: (cellType: DynamicCellType) => void }) {
   const { addNotification } = useNotifications();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -63,17 +74,231 @@ function AddCellDivider() {
               key={ct.label}
               onClick={() => {
                 setShowMenu(false);
-                addNotification({ type: 'info', title: 'Add cell', message: `${ct.label} cell would be inserted here` });
+                if (onInsertCell) {
+                  onInsertCell(ct.cellType);
+                } else {
+                  addNotification({ type: 'info', title: 'Add cell', message: `${ct.label} cell would be inserted here` });
+                }
               }}
               className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              <span>{ct.icon}</span> {ct.label}
+              <span className="w-4 flex items-center justify-center">{ct.icon}</span>
+              <span className="flex-1">{ct.label}</span>
+              <span className="w-2 h-2 rounded-full" style={{ background: ct.borderColor }} />
             </button>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic cell templates — rendered for newly inserted cells
+// ---------------------------------------------------------------------------
+
+function DynamicToolCell({ name, onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#4F46E5" headerLabel={`Tool: ${name || 'New Tool'}`}>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u{1F527}'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">{name || 'New Tool'}</h3>
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">DRAFT</span>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Endpoint URL</label>
+            <input className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50" placeholder="https://api.example.com/v1/..." />
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Description</label>
+            <textarea className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 resize-none" rows={2} placeholder="What does this tool do?" />
+          </div>
+          <div className="flex gap-2">
+            <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors">
+              Test
+            </button>
+            <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+              Deploy to Cloud Run
+            </button>
+          </div>
+        </div>
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicSkillCell({ name, onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#7C3AED" headerLabel={`Skill: ${name || 'New Skill'}`}>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u2728'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">{name || 'New Skill'}</h3>
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">DRAFT</span>
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">On-Demand</span>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Activation Description</label>
+            <textarea className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 resize-none" rows={2} placeholder="Use this skill when the agent handles..." />
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">Skill Instructions (SKILL.md body)</label>
+            <textarea
+              className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 resize-none font-mono"
+              rows={4}
+              placeholder={"# My Skill\n\n## Instructions\nWhen handling queries about...\nUse @doc(my-doc) for reference."}
+            />
+          </div>
+          <div className="flex gap-2">
+            <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors">
+              Test Activation
+            </button>
+            <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+              Publish to Registry
+            </button>
+          </div>
+        </div>
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicPlaybookCell({ onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#0D9488" headerLabel="Playbook Section">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u{1F4C4}'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">New Section</h3>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <textarea
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 resize-none"
+          rows={4}
+          style={{ fontFamily: 'var(--font-serif, "Source Serif 4", Georgia, serif)' }}
+          placeholder="Write your playbook instructions here... Use @tool(name), @connector(name), etc."
+        />
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicTestCell({ onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#059669" headerLabel="Test">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u25B6'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">Test Case</h3>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block mb-1">User Message</label>
+          <textarea className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 resize-none" rows={2} placeholder="Enter a test message..." />
+        </div>
+        <button className="mt-2 text-[10px] font-medium px-3 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors flex items-center gap-1">
+          {'\u25B6'} Run Test
+        </button>
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicConnectorCell({ name, onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#2563EB" headerLabel={`Connector: ${name || 'New Connector'}`}>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u{1F517}'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">{name || 'New Connector'}</h3>
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700">DRAFT</span>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <p className="text-xs text-gray-500">Configure this connector in the <a href="/connectors" className="text-blue-600 hover:underline">Connector Hub</a> to set up authentication, entities, and actions.</p>
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicSchemaCell({ name, onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#475569" headerLabel={`Schema: ${name || 'New Schema'}`}>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u{1F4CB}'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">{name || 'New Schema'}</h3>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <textarea
+          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50 resize-none font-mono"
+          rows={5}
+          placeholder={'{\n  "type": "object",\n  "properties": {\n    "field": { "type": "string" }\n  }\n}'}
+        />
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicCodeCell({ onRemove }: { name: string; onRemove: () => void }) {
+  return (
+    <Cell borderColor="#EA580C" warningStripe headerLabel="Code Execution">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{'\u26A0\uFE0F'}</span>
+            <h3 className="text-sm font-semibold text-gray-900">Unrestricted Code Execution</h3>
+            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-red-100 text-red-700">Dev Only</span>
+          </div>
+          <button onClick={onRemove} className="text-[10px] text-red-500 hover:text-red-700 font-medium">Remove</button>
+        </div>
+        <textarea
+          className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50 resize-none font-mono"
+          rows={5}
+          placeholder="# Write Python or TypeScript here to prototype..."
+        />
+        <div className="flex gap-2 mt-2">
+          <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+            {'\u25B6'} Run
+          </button>
+          <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors">
+            Convert to Tool
+          </button>
+          <button className="text-[10px] font-medium px-3 py-1 rounded-md bg-violet-50 text-violet-700 hover:bg-violet-100 transition-colors">
+            Convert to Skill
+          </button>
+        </div>
+      </div>
+    </Cell>
+  );
+}
+
+function DynamicCellRenderer({ cell, onRemove }: { cell: DynamicCell; onRemove: () => void }) {
+  switch (cell.cellType) {
+    case 'tool': return <DynamicToolCell name={cell.name} onRemove={onRemove} />;
+    case 'skill': return <DynamicSkillCell name={cell.name} onRemove={onRemove} />;
+    case 'playbook': return <DynamicPlaybookCell name={cell.name} onRemove={onRemove} />;
+    case 'test': return <DynamicTestCell name={cell.name} onRemove={onRemove} />;
+    case 'connector': return <DynamicConnectorCell name={cell.name} onRemove={onRemove} />;
+    case 'schema': return <DynamicSchemaCell name={cell.name} onRemove={onRemove} />;
+    case 'code': return <DynamicCodeCell name={cell.name} onRemove={onRemove} />;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1610,6 +1835,54 @@ function CodeExecutionCell() {
 // ---------------------------------------------------------------------------
 
 export function NotebookView() {
+  const { addNotification } = useNotifications();
+  const { createChip } = useRegistry();
+  const [dynamicCells, setDynamicCells] = useState<DynamicCell[]>([]);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
+  const [createWizardType, setCreateWizardType] = useState<ChipType | undefined>(undefined);
+
+  const cellTypeToChipType: Record<DynamicCellType, ChipType | null> = {
+    tool: 'tool',
+    skill: 'skill',
+    connector: 'connector',
+    schema: 'schema',
+    playbook: null,
+    test: null,
+    code: null,
+  };
+
+  const handleInsertCell = useCallback((cellType: DynamicCellType) => {
+    const chipType = cellTypeToChipType[cellType];
+    if (chipType) {
+      // For types with registry backing, open the wizard
+      setCreateWizardType(chipType);
+      setCreateWizardOpen(true);
+    } else {
+      // For playbook, test, code cells — insert directly
+      const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setDynamicCells((prev) => [...prev, { id, cellType, name: '', createdAt: Date.now() }]);
+      addNotification({ type: 'success', title: `${cellType} cell added`, message: 'New cell inserted at the bottom of the notebook.' });
+    }
+  }, [addNotification]);
+
+  const handleRemoveCell = useCallback((id: string) => {
+    setDynamicCells((prev) => prev.filter((c) => c.id !== id));
+    addNotification({ type: 'info', title: 'Cell removed' });
+  }, [addNotification]);
+
+  const handleWizardCreate = useCallback((partial: { type: ChipType; name: string }) => {
+    createChip(partial);
+    const cellType: DynamicCellType = partial.type === 'tool' ? 'tool'
+      : partial.type === 'skill' ? 'skill'
+      : partial.type === 'connector' ? 'connector'
+      : partial.type === 'schema' ? 'schema'
+      : 'playbook';
+    const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    setDynamicCells((prev) => [...prev, { id, cellType, name: partial.name, createdAt: Date.now() }]);
+  }, [createChip]);
+
+  const totalCells = 8 + dynamicCells.length;
+
   return (
     <div
       className="h-full"
@@ -1627,7 +1900,7 @@ export function NotebookView() {
               <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
                 Claims Processing Agent
               </h1>
-              <span className="text-[10px] text-gray-500">Notebook View &mdash; 8 cells</span>
+              <span className="text-[10px] text-gray-500">Notebook View &mdash; {totalCells} cells</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1647,28 +1920,49 @@ export function NotebookView() {
       {/* Notebook cells */}
       <div className="max-w-4xl mx-auto px-6 py-8 space-y-1">
         <TriggerCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <PlaybookCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <ToolCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <TestCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <SkillCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <ConnectorCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <SchemaCell />
-        <AddCellDivider />
+        <AddCellDivider onInsertCell={handleInsertCell} />
         <CodeExecutionCell />
+
+        {/* Dynamic cells */}
+        {dynamicCells.map((cell) => (
+          <div key={cell.id}>
+            <AddCellDivider onInsertCell={handleInsertCell} />
+            <DynamicCellRenderer cell={cell} onRemove={() => handleRemoveCell(cell.id)} />
+          </div>
+        ))}
 
         {/* Add cell button */}
         <div className="flex justify-center py-4">
-          <button className="text-xs font-medium text-gray-500 bg-white border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-700 px-6 py-2 rounded-lg transition-all flex items-center gap-1.5">
+          <button
+            onClick={() => {
+              setCreateWizardType(undefined);
+              setCreateWizardOpen(true);
+            }}
+            className="text-xs font-medium text-gray-500 bg-white border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-700 px-6 py-2 rounded-lg transition-all flex items-center gap-1.5"
+          >
             <span className="text-base">+</span> Add Cell
           </button>
         </div>
       </div>
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => { setCreateWizardOpen(false); setCreateWizardType(undefined); }}
+        onCreate={handleWizardCreate}
+        initialType={createWizardType}
+      />
     </div>
   );
 }

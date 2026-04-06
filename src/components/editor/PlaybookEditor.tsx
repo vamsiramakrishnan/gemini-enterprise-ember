@@ -17,6 +17,7 @@ import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types'
 import { usePlaybook, useNotifications, useRegistry } from '../../contexts/AppContext';
 import { PublishModal } from '../versioning/PublishModal';
 import { ChipAutocomplete } from '../chips/ChipAutocomplete';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 
 // ─── Responsive hook ────────────────────────────────────────────────────
 function useBreakpoint() {
@@ -477,6 +478,7 @@ function EditableDocumentTab({
                     onSelect={handleChipSelect}
                     position={autocompletePos}
                     filterText={autocompleteFilter}
+                    onCreateNew={() => setCreateWizardOpen(true)}
                   />
                 )}
               </div>
@@ -1627,6 +1629,7 @@ export function PlaybookEditor() {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
 
   const lineRefs = useRef<Map<number, HTMLElement>>(new Map());
 
@@ -2030,6 +2033,19 @@ export function PlaybookEditor() {
             config.reviewers.map(r => r.email),
             config.target === 'draft' ? 'draft' : config.target === 'staging' ? 'staging' : 'production',
           );
+        }}
+      />
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+        onCreate={(partial) => {
+          createChip(partial);
+          addNotification({
+            type: 'success',
+            title: `Created @${partial.type}(${partial.name})`,
+            message: 'New asset added to registry as draft. Reference it with @ in your playbook.',
+          });
         }}
       />
     </div>

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 
 // ─── Type Filter Chips ────────────────────────────────────────────────
 
@@ -731,7 +732,7 @@ export function RegistryCatalog() {
     selectChip(id);
   };
 
-  const handleCreate = (partial: { type: ChipType; name: string; description: string }) => {
+  const handleCreate = (partial: Partial<SmartChip> & { type: ChipType; name: string }) => {
     createChip(partial);
   };
 
@@ -990,10 +991,12 @@ export function RegistryCatalog() {
         </div>
       </div>
 
-      {/* Create Modal */}
-      {createModalOpen && (
-        <CreateModal onClose={closeCreateModal} onCreate={handleCreate} />
-      )}
+      {/* Create Asset Wizard */}
+      <CreateAssetWizard
+        isOpen={createModalOpen}
+        onClose={closeCreateModal}
+        onCreate={handleCreate}
+      />
     </div>
   );
 }
