@@ -18,6 +18,7 @@ import { usePlaybook, useNotifications, useRegistry } from '../../contexts/AppCo
 import { PublishModal } from '../versioning/PublishModal';
 import { ChipAutocomplete } from '../chips/ChipAutocomplete';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import { StructuredEditor } from './structured/StructuredEditor';
 
 // ─── Responsive hook ────────────────────────────────────────────────────
 function useBreakpoint() {
@@ -1641,6 +1642,7 @@ function StatusBar({
         </span>
         <span className="hidden md:inline">
           {activeTab === 'document' && 'Click any @reference to inspect \u00B7 Type @ to insert'}
+          {activeTab === 'structured' && 'Block editor \u00B7 / to insert \u00B7 Click skills to expand'}
           {activeTab === 'flow' && 'Compiled graph \u00B7 Click nodes to view source'}
           {activeTab === 'notebook' && 'Development mode'}
         </span>
@@ -1657,6 +1659,14 @@ function TabIcon({ tab, active }: { tab: string; active: boolean }) {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <rect x="3" y="2" width="10" height="12" rx="1.5" stroke={color} strokeWidth="1.2"/>
       <path d="M5.5 5.5h5M5.5 8h3.5M5.5 10.5h4" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+  if (tab === 'structured') return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="2" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="3" y="7" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="3" y="12" width="6" height="2" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="11" y="12" width="2" height="2" rx="1" fill={color} fillOpacity="0.4"/>
     </svg>
   );
   if (tab === 'flow') return (
@@ -1678,7 +1688,7 @@ function TabIcon({ tab, active }: { tab: string; active: boolean }) {
 
 // ─── Main Editor Component ──────────────────────────────────────────────
 
-type EditorTab = 'document' | 'flow' | 'notebook';
+type EditorTab = 'document' | 'structured' | 'flow' | 'notebook';
 type InspectorTab = 'details' | 'space';
 
 export function PlaybookEditor() {
@@ -1795,6 +1805,7 @@ export function PlaybookEditor() {
   // Tab descriptions for the subtle hint
   const tabHints: Record<EditorTab, string> = {
     document: 'Write your agent as a document',
+    structured: 'Build with blocks — / to insert',
     flow: 'See the compiled topology',
     notebook: 'Test and prototype',
   };
@@ -1807,6 +1818,7 @@ export function PlaybookEditor() {
         onClose={() => setCommandPaletteOpen(false)}
         onAction={(action) => {
           if (action === 'tab:document') setActiveTab('document');
+          else if (action === 'tab:structured') setActiveTab('structured');
           else if (action === 'tab:flow') setActiveTab('flow');
           else if (action === 'tab:notebook') setActiveTab('notebook');
           else if (action === 'publish') openPublishModal();
@@ -1904,7 +1916,7 @@ export function PlaybookEditor() {
 
         {/* Tab bar — the three lenses */}
         <div className="px-3 sm:px-5 flex items-center gap-0 overflow-x-auto" style={{ marginTop: -1 }}>
-          {(['document', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
+          {(['document', 'structured', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <button
@@ -1963,6 +1975,11 @@ export function PlaybookEditor() {
               lineRefs={lineRefs}
               onCreateNew={() => setCreateWizardOpen(true)}
             />
+            </div>
+          )}
+          {activeTab === 'structured' && (
+            <div key="tab-structured" className="tab-content-enter h-full">
+              <StructuredEditor content={content} onContentChange={setContent} />
             </div>
           )}
           {activeTab === 'flow' && (
