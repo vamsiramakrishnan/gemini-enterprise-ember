@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useRegistry } from '../../contexts/AppContext';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 
 // ─── Mock Data ──────────────────────────────────────────────────────────
 interface AgentEntry {
@@ -114,6 +116,8 @@ function StatusDot({ status }: { status: AgentEntry['status'] }) {
 export function AgentPortfolio() {
   const [selectedAgent, setSelectedAgent] = useState<AgentEntry | null>(null);
   const [collapsedTeams, setCollapsedTeams] = useState<Set<string>>(new Set());
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
+  const { createChip } = useRegistry();
 
   const allAgents = TEAMS.flatMap(t => t.agents);
   const activeCount = allAgents.filter(a => a.status === 'production').length;
@@ -147,8 +151,28 @@ export function AgentPortfolio() {
               ACME Insurance — Enterprise Agent Fleet
             </p>
           </div>
-          <div className="text-[10px] hidden sm:block" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
-            {allAgents.length} agents across {TEAMS.length} teams
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] hidden sm:block" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
+              {allAgents.length} agents across {TEAMS.length} teams
+            </span>
+            <button
+              onClick={() => setCreateWizardOpen(true)}
+              className="rounded-lg"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                padding: '6px 14px',
+                background: '#D97706',
+                color: '#fff',
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-ui)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >
+              + New Agent
+            </button>
           </div>
         </div>
       </header>
@@ -392,6 +416,13 @@ export function AgentPortfolio() {
           </div>
         )}
       </div>
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+        onCreate={(partial) => createChip(partial)}
+        initialType="agent"
+      />
     </div>
   );
 }
