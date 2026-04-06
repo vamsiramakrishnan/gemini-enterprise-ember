@@ -182,7 +182,7 @@ function renderPlaybookLine(
 }
 
 function EditableDocumentTab({
-  content, onContentChange, onChipClick, highlightedLines, selectedChipKey, lineRefs,
+  content, onContentChange, onChipClick, highlightedLines, selectedChipKey, lineRefs, onCreateNew,
 }: {
   content: string;
   onContentChange: (content: string) => void;
@@ -190,6 +190,7 @@ function EditableDocumentTab({
   highlightedLines: number[];
   selectedChipKey: string | null;
   lineRefs: React.MutableRefObject<Map<number, HTMLElement>>;
+  onCreateNew?: () => void;
 }) {
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
@@ -478,7 +479,7 @@ function EditableDocumentTab({
                     onSelect={handleChipSelect}
                     position={autocompletePos}
                     filterText={autocompleteFilter}
-                    onCreateNew={() => setCreateWizardOpen(true)}
+                    onCreateNew={onCreateNew}
                   />
                 )}
               </div>
@@ -1960,6 +1961,7 @@ export function PlaybookEditor() {
               highlightedLines={highlightedLines}
               selectedChipKey={selectedChipKey}
               lineRefs={lineRefs}
+              onCreateNew={() => setCreateWizardOpen(true)}
             />
             </div>
           )}

@@ -1054,7 +1054,7 @@ ${pyName} = VertexAiSearchTool(
 }
 
 function generateSchemaCode(
-  pyName: string,
+  _pyName: string,
   asset: AssetCodeRequest,
   _meta: Record<string, unknown>,
 ): AssetCodeResult {
