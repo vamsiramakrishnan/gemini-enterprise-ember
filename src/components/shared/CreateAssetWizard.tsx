@@ -10,9 +10,11 @@
  * with a type filter active, or from an unresolved chip).
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip } from '../../parser/types';
+import { getAdkFluentService } from '../../services/adk-fluent';
+import type { AssetCodeResult } from '../../services/adk-fluent';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -570,6 +572,7 @@ function TriggerForm({ state, onChange }: { state: TriggerFormState; onChange: (
 
 export function CreateAssetWizard({ isOpen, onClose, onCreate, initialType, initialName }: CreateAssetWizardProps) {
   const hasInitialType = !!initialType;
+  const totalSteps = hasInitialType ? 2 : 3;
   const [step, setStep] = useState(hasInitialType ? 1 : 0);
   const [selectedType, setSelectedType] = useState<ChipType>(initialType ?? 'tool');
   const [name, setName] = useState(initialName ?? '');
@@ -608,6 +611,34 @@ export function CreateAssetWizard({ isOpen, onClose, onCreate, initialType, init
     eventSource: '',
     eventType: '',
   });
+
+  // adk-fluent code preview
+  const [codePreview, setCodePreview] = useState<AssetCodeResult | null>(null);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  // Generate code when entering the review step
+  useEffect(() => {
+    if (!isOpen) return;
+    const isReviewStep = step === totalSteps - 1 && step !== (hasInitialType ? 0 : 1);
+    if (!isReviewStep || !name.trim()) {
+      setCodePreview(null);
+      return;
+    }
+
+    setCodeLoading(true);
+    const meta: Record<string, unknown> = {};
+    if (selectedType === 'agent') Object.assign(meta, { model: agentForm.model, systemPrompt: agentForm.systemPrompt, tools: agentForm.tools, delegatesTo: agentForm.delegatesTo, maxTurns: agentForm.maxTurns });
+    else if (selectedType === 'tool') Object.assign(meta, { toolType: toolForm.toolType, endpoint: toolForm.endpoint, parameters: toolForm.parameters, authMethod: toolForm.authMethod });
+    else if (selectedType === 'skill') Object.assign(meta, { scope: skillForm.scope, activationMode: skillForm.activationMode, frontmatter: { name: name.trim(), description: skillForm.frontmatterDescription }, body: skillForm.body, tags: skillForm.tags.split(',').map((s: string) => s.trim()).filter(Boolean) });
+    else if (selectedType === 'guard') Object.assign(meta, { guardKind: guardForm.guardKind, phase: guardForm.phase, threshold: guardForm.threshold });
+    else if (selectedType === 'trigger') Object.assign(meta, { triggerType: triggerForm.triggerType, cronExpression: triggerForm.cronExpression, queueName: triggerForm.queueName, eventSource: triggerForm.eventSource, eventType: triggerForm.eventType });
+
+    getAdkFluentService()
+      .generateAssetCode({ type: selectedType, name: name.trim(), description: description.trim(), metadata: meta })
+      .then((result) => { setCodePreview(result); setCodeLoading(false); })
+      .catch(() => setCodeLoading(false));
+  }, [step, isOpen, name, description, selectedType, agentForm, toolForm, skillForm, guardForm, triggerForm, hasInitialType]);
 
   const handleCreate = useCallback(() => {
     if (!name.trim()) return;
@@ -668,7 +699,6 @@ export function CreateAssetWizard({ isOpen, onClose, onCreate, initialType, init
   if (!isOpen) return null;
 
   const chipColor = CHIP_COLORS[selectedType];
-  const totalSteps = hasInitialType ? 2 : 3;
   const isLastStep = step === totalSteps - 1;
   const canProceed = step === 0 ? true : name.trim().length > 0;
 
@@ -902,6 +932,157 @@ export function CreateAssetWizard({ isOpen, onClose, onCreate, initialType, init
                 <span style={{ fontSize: 11, color: '#0369A1' }}>
                   This asset will be created as a <strong>draft</strong>. You can publish it from the Registry after testing.
                 </span>
+              </div>
+
+              {/* adk-fluent Code Preview */}
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={() => setShowCode((v) => !v)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    border: '1px solid #E5E7EB',
+                    background: showCode ? '#F9FAFB' : '#fff',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#374151',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>{showCode ? '\u25BE' : '\u25B8'}</span>
+                  <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)', color: '#7C3AED' }}>adk-fluent</span>
+                  <span>Python Code Preview</span>
+                  {codePreview && (
+                    <span style={{
+                      marginLeft: 'auto',
+                      fontSize: 9,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: '#ECFDF5',
+                      color: '#047857',
+                      fontWeight: 500,
+                    }}>
+                      {codePreview.dependencies.join(' + ')}
+                    </span>
+                  )}
+                </button>
+                {showCode && (
+                  <div style={{
+                    marginTop: 6,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: '1px solid #E5E7EB',
+                  }}>
+                    {codeLoading ? (
+                      <div style={{ padding: '20px', textAlign: 'center', fontSize: 11, color: '#9CA3AF' }}>
+                        Generating adk-fluent code...
+                      </div>
+                    ) : codePreview ? (
+                      <>
+                        {/* Expression one-liner */}
+                        <div style={{
+                          padding: '8px 12px',
+                          background: '#F9FAFB',
+                          borderBottom: '1px solid #E5E7EB',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Expression</span>
+                          <code style={{
+                            fontSize: 11,
+                            fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                            color: '#7C3AED',
+                            background: '#F5F3FF',
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                          }}>
+                            {codePreview.expression}
+                          </code>
+                        </div>
+                        {/* Full Python code */}
+                        <pre style={{
+                          margin: 0,
+                          padding: '12px',
+                          background: '#1E1E2E',
+                          color: '#CDD6F4',
+                          fontSize: 11,
+                          lineHeight: 1.6,
+                          fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                          overflowX: 'auto',
+                          maxHeight: 260,
+                          overflowY: 'auto',
+                        }}>
+                          {codePreview.python}
+                        </pre>
+                        {/* SKILL.md preview for skills */}
+                        {codePreview.skillMd && (
+                          <>
+                            <div style={{
+                              padding: '6px 12px',
+                              background: '#F5F3FF',
+                              borderTop: '1px solid #E5E7EB',
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: '#6D28D9',
+                              textTransform: 'uppercase',
+                            }}>
+                              SKILL.md
+                            </div>
+                            <pre style={{
+                              margin: 0,
+                              padding: '12px',
+                              background: '#1E1E2E',
+                              color: '#CDD6F4',
+                              fontSize: 11,
+                              lineHeight: 1.6,
+                              fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                              overflowX: 'auto',
+                              maxHeight: 200,
+                              overflowY: 'auto',
+                            }}>
+                              {codePreview.skillMd}
+                            </pre>
+                          </>
+                        )}
+                        {/* Playbook reference */}
+                        <div style={{
+                          padding: '8px 12px',
+                          background: '#F9FAFB',
+                          borderTop: '1px solid #E5E7EB',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 10,
+                          color: '#6B7280',
+                        }}>
+                          <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>Playbook ref</span>
+                          <code style={{
+                            fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+                            color: chipColor.text,
+                            background: chipColor.bg,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            border: `1px solid ${chipColor.border}`,
+                            fontSize: 11,
+                          }}>
+                            {codePreview.playbookRef}
+                          </code>
+                          <span style={{ marginLeft: 'auto', color: '#9CA3AF' }}>Use this reference in your playbook</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ padding: '12px', fontSize: 11, color: '#9CA3AF' }}>
+                        Code preview not available.
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

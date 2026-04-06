@@ -10,6 +10,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useTest, useNotifications, useConnectors, useRegistry } from '../../contexts/AppContext';
+import { getAdkFluentService } from '../../services/adk-fluent';
+import type { AssetCodeResult } from '../../services/adk-fluent';
 import type { SkillActivationResult } from '../../contexts/AppContext';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import type { ChipType } from '../../parser/types';
@@ -97,6 +99,61 @@ function AddCellDivider({ onInsertCell }: { onInsertCell?: (cellType: DynamicCel
 // Dynamic cell templates — rendered for newly inserted cells
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Inline adk-fluent code preview for notebook cells
+// ---------------------------------------------------------------------------
+
+function CellCodePreview({ type, name, description }: { type: string; name: string; description?: string }) {
+  const [code, setCode] = useState<AssetCodeResult | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || code) return;
+    setLoading(true);
+    getAdkFluentService()
+      .generateAssetCode({ type, name: name || 'unnamed', description: description || '', metadata: {} })
+      .then((r) => { setCode(r); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [open, code, type, name, description]);
+
+  return (
+    <div className="mt-2 border-t border-gray-100 pt-2">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+      >
+        <span>{open ? '\u25BE' : '\u25B8'}</span>
+        <span className="font-mono">adk-fluent</span> code
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-lg overflow-hidden border border-gray-200">
+          {loading ? (
+            <div className="px-3 py-2 text-[10px] text-gray-400">Generating...</div>
+          ) : code ? (
+            <>
+              <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <span className="text-[9px] font-semibold text-gray-500 uppercase">Expression</span>
+                <code className="text-[10px] font-mono text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded">{code.expression}</code>
+              </div>
+              <pre className="m-0 px-3 py-2 text-[10px] leading-relaxed font-mono text-gray-200 overflow-x-auto max-h-48 overflow-y-auto" style={{ background: '#1E1E2E' }}>
+                {code.python}
+              </pre>
+              <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-200 flex items-center gap-2 text-[9px] text-gray-500">
+                <span className="font-semibold uppercase">Ref</span>
+                <code className="font-mono text-[10px]">{code.playbookRef}</code>
+                <span className="ml-auto">{code.dependencies.join(', ')}</span>
+              </div>
+            </>
+          ) : (
+            <div className="px-3 py-2 text-[10px] text-gray-400">No preview available</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DynamicToolCell({ name, onRemove }: { name: string; onRemove: () => void }) {
   return (
     <Cell borderColor="#4F46E5" headerLabel={`Tool: ${name || 'New Tool'}`}>
@@ -126,6 +183,7 @@ function DynamicToolCell({ name, onRemove }: { name: string; onRemove: () => voi
               Deploy to Cloud Run
             </button>
           </div>
+          <CellCodePreview type="tool" name={name} />
         </div>
       </div>
     </Cell>
@@ -166,6 +224,7 @@ function DynamicSkillCell({ name, onRemove }: { name: string; onRemove: () => vo
               Publish to Registry
             </button>
           </div>
+          <CellCodePreview type="skill" name={name} />
         </div>
       </div>
     </Cell>
@@ -889,6 +948,9 @@ function ToolCell() {
             Deploy to Cloud Run
           </button>
         </div>
+
+        {/* adk-fluent code preview */}
+        <CellCodePreview type="tool" name="policy-lookup" description="Retrieve customer policy details from the ACME policy management system" />
       </div>
     </Cell>
   );
@@ -1365,6 +1427,9 @@ For Australian customers, consult @doc(apra-prudential-standards) and ensure res
             Publish to Registry
           </button>
         </div>
+
+        {/* adk-fluent code preview */}
+        <CellCodePreview type="skill" name="apac-compliance" description="APAC regulatory compliance skill" />
       </div>
     </Cell>
   );

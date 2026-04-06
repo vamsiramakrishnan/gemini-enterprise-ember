@@ -1049,6 +1049,69 @@ function ContextStrategyCard() {
 
 // ─── Inspector Sidebar ──────────────────────────────────────────────────
 
+function InspectorCodeExport({ chip }: { chip: SmartChip }) {
+  const [code, setCode] = React.useState<import('../../services/adk-fluent').AssetCodeResult | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const { addNotification } = useNotifications();
+
+  React.useEffect(() => {
+    if (!open || code) return;
+    setLoading(true);
+    import('../../services/adk-fluent').then(({ getAdkFluentService }) =>
+      getAdkFluentService()
+        .generateAssetCode({ type: chip.type, name: chip.name, description: chip.description, metadata: chip.metadata ?? {} })
+        .then((r) => { setCode(r); setLoading(false); })
+        .catch(() => setLoading(false))
+    );
+  }, [open, code, chip.type, chip.name, chip.description, chip.metadata]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        style={{ color: '#7C3AED' }}
+      >
+        <span className="font-mono text-[10px] font-semibold">adk-fluent</span>
+        <span style={{ color: '#374151' }}>{open ? 'Hide' : 'View'} Python Code</span>
+        <span className="ml-auto">{open ? '\u25BE' : '\u25B8'}</span>
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-lg overflow-hidden border border-gray-200">
+          {loading ? (
+            <div className="px-3 py-3 text-[10px] text-gray-400 text-center">Generating...</div>
+          ) : code ? (
+            <>
+              <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <code className="text-[10px] font-mono text-violet-700">{code.expression}</code>
+              </div>
+              <pre className="m-0 px-3 py-2 text-[10px] leading-relaxed font-mono overflow-x-auto max-h-48 overflow-y-auto" style={{ background: '#1E1E2E', color: '#CDD6F4' }}>
+                {code.python}
+              </pre>
+              <div className="px-2 py-1.5 bg-gray-50 border-t border-gray-200 flex items-center gap-1.5">
+                <button
+                  className="text-[9px] font-medium px-2 py-0.5 rounded bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+                  onClick={() => {
+                    navigator.clipboard.writeText(code.python).then(() => {
+                      addNotification({ type: 'success', title: 'Copied!', message: 'adk-fluent code copied to clipboard.' });
+                    });
+                  }}
+                >
+                  Copy Code
+                </button>
+                <span className="text-[9px] text-gray-400 ml-auto">{code.dependencies.join(', ')}</span>
+              </div>
+            </>
+          ) : (
+            <div className="px-3 py-2 text-[10px] text-gray-400">Not available</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InspectorDetails({
   chip, chipType, chipName, sourceLine, onGoToSource, onCreateChip,
 }: {
@@ -1211,6 +1274,9 @@ function InspectorDetails({
           </div>
         </div>
       )}
+
+      {/* adk-fluent Code Export */}
+      <InspectorCodeExport chip={chip} />
 
       <button className="w-full text-left px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
         style={{ color: colors.accent }}>

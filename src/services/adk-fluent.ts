@@ -49,6 +49,31 @@ export interface IAdkFluentService {
 
   /** Search the registry with a free-text query */
   searchRegistry(query: string): Promise<SmartChip[]>;
+
+  /** Generate adk-fluent Python code for a single asset from wizard form data */
+  generateAssetCode(asset: AssetCodeRequest): Promise<AssetCodeResult>;
+}
+
+// ─── Asset Code Generation Types ──────────────────────────────────────
+
+export interface AssetCodeRequest {
+  type: string;
+  name: string;
+  description: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface AssetCodeResult {
+  /** adk-fluent Python code */
+  python: string;
+  /** SKILL.md YAML (only for skills) */
+  skillMd?: string;
+  /** adk-fluent builder expression (one-liner) */
+  expression: string;
+  /** How to reference this in a playbook */
+  playbookRef: string;
+  /** pip install requirements */
+  dependencies: string[];
 }
 
 // ─── Result Types ──────────────────────────────────────────────────────
@@ -548,6 +573,528 @@ All interactions are subject to @guard(pii-redaction) and
         chip.description.toLowerCase().includes(lower) ||
         chip.type.toLowerCase().includes(lower),
     );
+  }
+
+  async generateAssetCode(asset: AssetCodeRequest): Promise<AssetCodeResult> {
+    await delay(60);
+
+    const pyName = asset.name.replace(/-/g, '_');
+    const meta = asset.metadata;
+
+    switch (asset.type) {
+      case 'agent':
+        return generateAgentCode(pyName, asset, meta);
+      case 'tool':
+        return generateToolCode(pyName, asset, meta);
+      case 'skill':
+        return generateSkillCode(pyName, asset, meta);
+      case 'guard':
+        return generateGuardCode(pyName, asset, meta);
+      case 'trigger':
+        return generateTriggerCode(pyName, asset, meta);
+      case 'connector':
+        return generateConnectorCode(pyName, asset, meta);
+      case 'doc':
+        return generateDocCode(pyName, asset, meta);
+      case 'schema':
+        return generateSchemaCode(pyName, asset, meta);
+      default:
+        return {
+          python: `# @${asset.type}(${asset.name})\n# TODO: Implement ${asset.type} "${asset.name}"`,
+          expression: `@${asset.type}(${asset.name})`,
+          playbookRef: `@${asset.type}(${asset.name})`,
+          dependencies: ['adk-fluent'],
+        };
+    }
+  }
+}
+
+// ─── Code Generators ──────────────────────────────────────────────────
+
+function generateAgentCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  meta: Record<string, unknown>,
+): AssetCodeResult {
+  const model = (meta.model as string) || 'gemini-2.5-pro';
+  const systemPrompt = (meta.systemPrompt as string) || asset.description || 'You are a helpful agent.';
+  const tools = (meta.tools as string[]) || [];
+  const delegatesTo = (meta.delegatesTo as string[]) || [];
+  const maxTurns = (meta.maxTurns as number) || 10;
+
+  const toolLines = tools.length > 0
+    ? `\n    .tool(${tools.map((t) => t.replace(/-/g, '_')).join(', ')})`
+    : '';
+  const delegateComment = delegatesTo.length > 0
+    ? `\n# Delegates to: ${delegatesTo.map((a) => `@agent(${a})`).join(', ')}`
+    : '';
+
+  const python = `"""
+${asset.description || `Agent: ${asset.name}`}
+"""
+from adk_fluent import Agent
+${delegateComment}
+
+${pyName} = (
+    Agent("${asset.name}", "${model}")
+    .instruct("""${systemPrompt}""")${toolLines}
+    .build()
+)
+
+# Run with:
+# result = ${pyName}.ask("your prompt here")
+# Max turns: ${maxTurns}
+`;
+
+  const expression = `Agent("${asset.name}", "${model}").instruct("...").build()`;
+
+  return {
+    python,
+    expression,
+    playbookRef: `@agent(${asset.name})`,
+    dependencies: ['adk-fluent'],
+  };
+}
+
+function generateToolCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  meta: Record<string, unknown>,
+): AssetCodeResult {
+  const toolType = (meta.toolType as string) || 'function';
+  const endpoint = (meta.endpoint as string) || '';
+  const authMethod = (meta.authMethod as string) || 'none';
+  const params = (meta.parameters as Array<{ name: string; type: string; required: boolean; description: string }>) || [];
+
+  let python: string;
+  let expression: string;
+  const deps = ['adk-fluent'];
+
+  if (toolType === 'mcp') {
+    python = `"""
+Tool: ${asset.name} (MCP Server)
+${asset.description}
+"""
+from adk_fluent.tools import MCPToolset
+from adk_fluent.auth import AuthCredential, APIKey
+
+${pyName} = MCPToolset(
+    server_params={
+        "url": "${endpoint || 'http://localhost:8080/mcp'}",
+    },${authMethod !== 'none' ? `\n    auth=AuthCredential(auth_type="${authMethod}"),` : ''}
+)
+
+# Register in tool catalog:
+# T.register("${asset.name}", ${pyName})
+`;
+    expression = `MCPToolset(server_params={"url": "${endpoint}"})`;
+
+  } else if (toolType === 'openapi') {
+    python = `"""
+Tool: ${asset.name} (OpenAPI)
+${asset.description}
+"""
+from adk_fluent.tools import OpenAPIToolset
+
+${pyName} = OpenAPIToolset(
+    spec_url="${endpoint || 'https://api.example.com/openapi.json'}",${authMethod !== 'none' ? `\n    auth_method="${authMethod}",` : ''}
+)
+
+# Register in tool catalog:
+# T.register("${asset.name}", ${pyName})
+`;
+    expression = `OpenAPIToolset(spec_url="${endpoint}")`;
+
+  } else {
+    // FunctionTool
+    const paramSignature = params.length > 0
+      ? params.map((p) => `${p.name}: ${pyTypeMap(p.type)}${p.required ? '' : ' = None'}`).join(', ')
+      : '';
+    const paramDocs = params.length > 0
+      ? '\n' + params.map((p) => `    ${p.name}: ${p.description || p.type}`).join('\n')
+      : '';
+
+    python = `"""
+Tool: ${asset.name} (FunctionTool)
+${asset.description}
+"""
+from adk_fluent.tools import FunctionTool
+
+def ${pyName}(${paramSignature}) -> dict:
+    """${asset.description || asset.name}${paramDocs ? `\\n\\n    Args:${paramDocs}` : ''}
+    """${endpoint ? `\n    # Endpoint: ${endpoint}` : ''}
+    # TODO: Implement tool logic
+    return {"status": "ok"}
+
+${pyName}_tool = FunctionTool(${pyName})
+
+# Register in tool catalog:
+# T.register("${asset.name}", ${pyName}_tool)
+`;
+    expression = `FunctionTool(${pyName})`;
+  }
+
+  return {
+    python,
+    expression,
+    playbookRef: `@tool(${asset.name})`,
+    dependencies: deps,
+  };
+}
+
+function generateSkillCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  meta: Record<string, unknown>,
+): AssetCodeResult {
+  const scope = (meta.scope as string) || 'workspace';
+  const activationMode = (meta.activationMode as string) || 'on-demand';
+  const frontmatter = (meta.frontmatter as { name: string; description: string }) || {
+    name: asset.name,
+    description: asset.description,
+  };
+  const body = (meta.body as string) || '';
+  const tags = (meta.tags as string[]) || [];
+
+  const skillMd = `---
+name: ${asset.name}
+description: >
+  ${frontmatter.description || asset.description}
+version: "0.1.0"
+tags: [${tags.join(', ')}]
+scope: ${scope}
+activation: ${activationMode}
+agents:
+  main:
+    model: gemini-2.5-pro
+    instruct: "${frontmatter.description || 'Process requests using this skill.'}"
+    tools: []
+    writes: result
+topology: main
+input:
+  query: string
+output:
+  result: string
+eval:
+  - prompt: "Test prompt for ${asset.name}"
+    expect_contains: "result"
+---
+
+${body || `# ${asset.name}\n\n## Instructions\n\nTODO: Add skill instructions here.\n`}`;
+
+  const python = `"""
+Skill: ${asset.name}
+${asset.description}
+
+Scope: ${scope} | Activation: ${activationMode}
+"""
+from adk_fluent import Skill
+
+${pyName} = Skill("skills/${asset.name}/SKILL.md")
+
+# Use in an agent:
+# agent = Agent("my-agent", "gemini-2.5-pro").skill(${pyName}).build()
+
+# Or compose with operators:
+# pipeline = ${pyName} >> other_skill
+`;
+
+  return {
+    python,
+    skillMd,
+    expression: `Skill("skills/${asset.name}/SKILL.md")`,
+    playbookRef: `@skill(${asset.name})`,
+    dependencies: ['adk-fluent'],
+  };
+}
+
+function generateGuardCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  meta: Record<string, unknown>,
+): AssetCodeResult {
+  const guardKind = (meta.guardKind as string) || 'pii';
+  const phase = (meta.phase as string) || 'post_model';
+  const threshold = (meta.threshold as string) || '';
+
+  let guardExpr: string;
+  switch (guardKind) {
+    case 'pii':
+      guardExpr = 'G.pii("redact", detector=G.dlp("my-project"))';
+      break;
+    case 'toxicity':
+      guardExpr = `G.toxicity(${threshold || '0.8'}, judge=G.llm_judge())`;
+      break;
+    case 'budget':
+      guardExpr = `G.budget(${threshold || '5000'})`;
+      break;
+    case 'json':
+      guardExpr = 'G.json()';
+      break;
+    case 'length':
+      guardExpr = `G.length(max=${threshold || '500'})`;
+      break;
+    case 'topic':
+      guardExpr = 'G.topic(deny=["politics", "religion"])';
+      break;
+    case 'grounded':
+      guardExpr = 'G.grounded("sources")';
+      break;
+    case 'output':
+      guardExpr = 'G.output(ResponseSchema)';
+      break;
+    default:
+      guardExpr = `G.custom("${asset.name}")`;
+  }
+
+  const python = `"""
+Guard: ${asset.name}
+${asset.description}
+
+Kind: G.${guardKind}() | Phase: ${phase}
+"""
+from adk_fluent import G
+
+${pyName} = ${guardExpr}
+
+# Apply to an agent:
+# agent = Agent("my-agent", "gemini-2.5-pro").guard(${pyName}).build()
+
+# Compose guards with | operator:
+# guards = ${pyName} | G.budget(5000) | G.json()
+
+# Phase: ${phase === 'pre_model' ? 'before_model_callback' : 'after_model_callback'}
+`;
+
+  return {
+    python,
+    expression: guardExpr,
+    playbookRef: `@guard(${asset.name})`,
+    dependencies: ['adk-fluent'],
+  };
+}
+
+function generateTriggerCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  meta: Record<string, unknown>,
+): AssetCodeResult {
+  const triggerType = (meta.triggerType as string) || 'chat';
+  const cronExpr = (meta.cronExpression as string) || '';
+  const queueName = (meta.queueName as string) || '';
+  const eventSource = (meta.eventSource as string) || '';
+  const eventType = (meta.eventType as string) || '';
+
+  let python: string;
+  let expression: string;
+  const deps = ['adk-fluent'];
+
+  switch (triggerType) {
+    case 'chat':
+      python = `"""
+Trigger: ${asset.name} (Chat — real-time streaming)
+${asset.description}
+"""
+from adk_fluent import Agent
+from adk_fluent.runners import StreamRunner
+
+agent = Agent("my-agent", "gemini-2.5-pro").instruct("...").build()
+
+# Start streaming chat server
+runner = StreamRunner(agent)
+runner.serve(port=8080)
+`;
+      expression = 'StreamRunner(agent)';
+      break;
+
+    case 'inbox':
+      python = `"""
+Trigger: ${asset.name} (Inbox — async queue)
+Queue: ${queueName || 'my-queue'}
+${asset.description}
+"""
+from adk_fluent import Agent
+from adk_fluent.connectors import PubSubToolset
+
+agent = Agent("my-agent", "gemini-2.5-pro").instruct("...").build()
+
+# Subscribe to Pub/Sub queue
+inbox = PubSubToolset(
+    project="my-project",
+    topic="${queueName || 'claims-queue'}",
+)
+
+# Process messages from the queue
+# Each message starts an Observe->Reason->Act loop
+`;
+      expression = `PubSubToolset(topic="${queueName}")`;
+      deps.push('google-cloud-pubsub');
+      break;
+
+    case 'event':
+      python = `"""
+Trigger: ${asset.name} (Event — from @connector(${eventSource || 'source'}))
+Event: ${eventType || 'event-type'}
+${asset.description}
+"""
+from google.cloud import eventarc_v1
+
+# Eventarc trigger from @connector(${eventSource || 'source'})
+# Event type: ${eventType || 'event-type'}
+# The connector is both the ear (trigger) and the hand (action)
+
+# Configuration in Eventarc:
+# gcloud eventarc triggers create ${pyName} \\
+#     --location=us-central1 \\
+#     --destination-run-service=my-agent-service \\
+#     --event-filters="type=${eventType || 'event-type'}"
+`;
+      expression = `Eventarc("${eventSource}:${eventType}")`;
+      deps.push('google-cloud-eventarc');
+      break;
+
+    case 'schedule':
+      python = `"""
+Trigger: ${asset.name} (Schedule — cron)
+Cron: ${cronExpr || '0 9 * * 1-5'}
+${asset.description}
+"""
+# Cloud Scheduler trigger
+# Cron: ${cronExpr || '0 9 * * 1-5'}
+
+# Configuration in Cloud Scheduler:
+# gcloud scheduler jobs create http ${pyName} \\
+#     --schedule="${cronExpr || '0 9 * * 1-5'}" \\
+#     --uri="https://my-agent-service.run.app/trigger" \\
+#     --time-zone="Asia/Singapore" \\
+#     --http-method=POST
+`;
+      expression = `CloudScheduler("${cronExpr || '0 9 * * 1-5'}")`;
+      deps.push('google-cloud-scheduler');
+      break;
+
+    default:
+      python = `"""
+Trigger: ${asset.name} (Webhook)
+${asset.description}
+"""
+# Custom webhook trigger
+# Endpoint: https://my-agent-service.run.app/webhook/${asset.name}
+`;
+      expression = `Webhook("${asset.name}")`;
+      break;
+  }
+
+  return {
+    python,
+    expression,
+    playbookRef: `@trigger(${asset.name})`,
+    dependencies: deps,
+  };
+}
+
+function generateConnectorCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  _meta: Record<string, unknown>,
+): AssetCodeResult {
+  const python = `"""
+Connector: ${asset.name}
+${asset.description}
+"""
+from adk_fluent.connectors import ApplicationIntegrationToolset
+
+${pyName} = ApplicationIntegrationToolset(
+    project="my-project",
+    location="us-central1",
+    integration="${asset.name}-v1",
+    triggers=["api_trigger/${asset.name}_search", "api_trigger/${asset.name}_create"],
+)
+
+# Use in an agent:
+# agent = Agent("my-agent", "gemini-2.5-pro").tool(${pyName}).build()
+`;
+
+  return {
+    python,
+    expression: `ApplicationIntegrationToolset(integration="${asset.name}-v1")`,
+    playbookRef: `@connector(${asset.name})`,
+    dependencies: ['adk-fluent'],
+  };
+}
+
+function generateDocCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  _meta: Record<string, unknown>,
+): AssetCodeResult {
+  const python = `"""
+Document: ${asset.name}
+${asset.description}
+"""
+from adk_fluent.search import VertexAiSearchTool
+
+${pyName} = VertexAiSearchTool(
+    data_store_specs=[{
+        "data_store_id": "${asset.name}",
+        "project": "my-project",
+    }]
+)
+
+# Use as grounding source:
+# agent = Agent("my-agent", "gemini-2.5-pro").grounding(${pyName}).build()
+`;
+
+  return {
+    python,
+    expression: `VertexAiSearchTool(data_store_id="${asset.name}")`,
+    playbookRef: `@doc(${asset.name})`,
+    dependencies: ['adk-fluent'],
+  };
+}
+
+function generateSchemaCode(
+  pyName: string,
+  asset: AssetCodeRequest,
+  _meta: Record<string, unknown>,
+): AssetCodeResult {
+  const className = asset.name
+    .split('-')
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join('');
+
+  const python = `"""
+Schema: ${asset.name}
+${asset.description}
+"""
+from pydantic import BaseModel, Field
+
+class ${className}(BaseModel):
+    """${asset.description || `Output schema for ${asset.name}`}"""
+    status: str = Field(description="Response status")
+    message: str = Field(description="Response message")
+    # TODO: Add fields
+
+# Constrain agent output with @ operator:
+# pipeline = agent @ ${className}
+`;
+
+  return {
+    python,
+    expression: `agent @ ${className}`,
+    playbookRef: `@schema(${asset.name})`,
+    dependencies: ['adk-fluent', 'pydantic'],
+  };
+}
+
+function pyTypeMap(tsType: string): string {
+  switch (tsType) {
+    case 'string': return 'str';
+    case 'number': return 'float';
+    case 'boolean': return 'bool';
+    case 'object': return 'dict';
+    case 'array': return 'list';
+    default: return 'str';
   }
 }
 
