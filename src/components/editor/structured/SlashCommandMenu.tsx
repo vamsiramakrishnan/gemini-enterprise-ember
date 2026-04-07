@@ -105,33 +105,33 @@ export function SlashCommandMenu({ isOpen, onClose, onSelect, position, filterTe
       style={{
         top: position.top,
         left: position.left,
-        width: 340,
-        maxHeight: 400,
-        background: '#fff',
-        border: '1px solid #E5E7EB',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-        backdropFilter: 'blur(8px)',
-        fontFamily: 'var(--font-ui)',
+        width: 360,
+        maxHeight: 420,
+        background: '#FFFFFF',
+        border: '1px solid #DADCE0',
+        boxShadow: '0 4px 24px rgba(60,64,67,0.15), 0 1px 6px rgba(60,64,67,0.08)',
+        borderRadius: 12,
+        fontFamily: 'var(--font-ui, "Google Sans", sans-serif)',
       }}
     >
       {/* Header */}
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#6B7280' }}>Insert block</span>
-        <span style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 'auto' }}>↑↓ navigate · ↵ select · esc close</span>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid #E8EAED', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: '#5F6368' }}>Insert block</span>
+        <span style={{ fontSize: 10, color: '#9AA0A6', marginLeft: 'auto' }}>↑↓ navigate · ↵ select · esc close</span>
       </div>
 
       {/* Scrollable list */}
-      <div style={{ overflowY: 'auto', maxHeight: 340 }}>
+      <div style={{ overflowY: 'auto', maxHeight: 360, padding: '4px 0' }}>
         {Object.entries(grouped).map(([category, items]) => (
           <div key={category}>
             {/* Category label */}
             <div style={{
-              padding: '6px 12px 2px',
-              fontSize: 10,
-              fontWeight: 600,
-              color: '#9CA3AF',
+              padding: '8px 16px 4px',
+              fontSize: 11,
+              fontWeight: 500,
+              color: '#9AA0A6',
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              letterSpacing: '0.04em',
               position: 'sticky',
               top: 0,
               background: '#fff',
@@ -151,52 +151,52 @@ export function SlashCommandMenu({ isOpen, onClose, onSelect, position, filterTe
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
+                    gap: 12,
                     width: '100%',
-                    padding: '7px 12px',
+                    padding: '8px 16px',
                     border: 'none',
                     cursor: 'pointer',
                     textAlign: 'left',
-                    background: isActive ? '#F3F4F6' : 'transparent',
-                    transition: 'background 80ms',
+                    background: isActive ? '#F1F3F4' : 'transparent',
+                    transition: 'background 100ms',
+                    borderRadius: 0,
                   }}
                 >
                   {/* Icon */}
                   <span style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 14,
-                    fontWeight: 600,
                     color: item.color,
-                    background: `${item.color}12`,
+                    background: `${item.color}10`,
                     flexShrink: 0,
                   }}>
                     {item.icon}
                   </span>
                   {/* Text */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 500, color: '#1F2937', lineHeight: 1.3 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#1F1F1F', lineHeight: 1.3 }}>
                       {item.label}
                     </div>
-                    <div style={{ fontSize: 10, color: '#9CA3AF', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontSize: 11, color: '#5F6368', lineHeight: 1.4, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.description}
                     </div>
                   </div>
                   {/* adk-fluent badge */}
                   {item.adkConstruct && (
                     <span style={{
-                      fontSize: 9,
-                      fontFamily: 'var(--font-mono, monospace)',
-                      color: '#A3A3A3',
-                      background: '#F9FAFB',
-                      padding: '2px 5px',
+                      fontSize: 10,
+                      fontFamily: 'var(--font-mono, "Roboto Mono", monospace)',
+                      color: '#9AA0A6',
+                      background: '#F1F3F4',
+                      padding: '2px 6px',
                       borderRadius: 4,
                       whiteSpace: 'nowrap',
-                      maxWidth: 100,
+                      maxWidth: 110,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       flexShrink: 0,

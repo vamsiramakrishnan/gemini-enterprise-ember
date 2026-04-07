@@ -1,14 +1,11 @@
 /**
  * StructuredEditor — Block-based agent playbook editor.
  *
- * Notion-style editing surface where each adk-fluent construct is a typed block,
- * grouped under semantic sections. Supports:
- * - Typed sections (Triggers, Skills, Knowledge, Systems, Process, etc.)
- * - Typed blocks (trigger, skill, tool, connector, guard, doc, schema, agent, etc.)
- * - Slash command (/) for inserting blocks
- * - Skill/Agent expansion (progressive disclosure)
- * - Source toggle (blocks ↔ markdown)
- * - Inline @-chip rendering in instruction blocks
+ * Google Cloud design language: clean surfaces, generous spacing,
+ * #4285F4 primary blue, warm neutrals, progressive disclosure.
+ *
+ * Every block maps 1:1 to an adk-fluent construct.
+ * Skills and agents expand inline for progressive disclosure.
  */
 
 import { useState, useMemo, useRef, useCallback } from 'react';
@@ -19,7 +16,6 @@ import {
   parsePlaybookToBlocks,
   createEmptyBlock,
   createEmptySection,
-  SECTION_META,
   BLOCK_META,
   type EditorSection,
   type EditorBlock,
@@ -27,13 +23,47 @@ import {
 import { SlashCommandMenu } from './SlashCommandMenu';
 import type { SlashCommandItem } from './SlashCommandMenu';
 
-// ─── Chip regex for inline rendering ──────────────────────────────────
+// ─── Google Cloud Design Tokens ──────────────────────────────────────
+const GC = {
+  // Surfaces
+  bg:          '#FEFBFF',
+  surface:     '#FFFFFF',
+  surfaceDim:  '#F8F9FA',
+  surfaceTint: '#F1F3F4',
+  // Text
+  textPrimary:   '#1F1F1F',
+  textSecondary: '#5F6368',
+  textTertiary:  '#9AA0A6',
+  textDisabled:  '#DADCE0',
+  // Brand
+  blue:    '#4285F4',
+  red:     '#EA4335',
+  yellow:  '#FBBC04',
+  green:   '#34A853',
+  // Borders
+  border:      '#DADCE0',
+  borderLight: '#E8EAED',
+  borderFocus: '#4285F4',
+  // Accents (refined from chip colors, harmonized with GC palette)
+  trigger:   '#E8710A',
+  skill:     '#8430CE',
+  tool:      '#4285F4',
+  connector: '#1A73E8',
+  guard:     '#EA4335',
+  doc:       '#1E8E3E',
+  schema:    '#5F6368',
+  agent:     '#F9AB00',
+  data:      '#1E8E3E',
+  code:      '#E8710A',
+};
+
+// ─── Chip regex ──────────────────────────────────────────────────────
 const CHIP_RE = /@(doc|tool|agent|guard|data|schema|connector|skill|trigger)\(([^)]+)\)/g;
 
 // ─── Mock skill expansion content ────────────────────────────────────
 const SKILL_EXPANSIONS: Record<string, { sections: { title: string; content: string }[]; meta: string }> = {
   'customer-empathy': {
-    meta: 'v1.3 · Workspace · Pinned',
+    meta: 'v1.3 \u00B7 Workspace \u00B7 Pinned',
     sections: [
       { title: 'Tone Guidelines', content: 'When a customer expresses frustration, acknowledge their feelings before addressing the issue. Use @doc(empathy-playbook) for response templates.' },
       { title: 'De-escalation', content: 'If sentiment score drops below 0.3, activate @guard(escalation-check) and consider routing to @agent(human-support).' },
@@ -41,7 +71,7 @@ const SKILL_EXPANSIONS: Record<string, { sections: { title: string; content: str
     ],
   },
   'apac-compliance': {
-    meta: 'v2.0 · Workspace · On-Demand',
+    meta: 'v2.0 \u00B7 Workspace \u00B7 On-Demand',
     sections: [
       { title: 'Regional Rules', content: 'When handling Singapore customers, reference @doc(mas-guidelines-2024) and apply @guard(pdpa-compliance).' },
       { title: 'Connected Data', content: 'Search @connector(salesforce) for customer jurisdiction data. Verify regulatory status via @tool(regtech-api).' },
@@ -58,9 +88,7 @@ function renderInlineChips(text: string, chips: SmartChip[]) {
   const re = new RegExp(CHIP_RE.source, 'g');
   let match;
   while ((match = re.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
     const chipType = match[1] as ChipType;
     const chipName = match[2];
     const colors = CHIP_COLORS[chipType];
@@ -72,39 +100,34 @@ function renderInlineChips(text: string, chips: SmartChip[]) {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 3,
-          padding: '1px 7px',
-          borderRadius: 4,
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: 12,
           fontSize: 12,
           fontWeight: 500,
-          fontFamily: 'var(--font-ui)',
-          background: resolved ? colors.bg : '#FEF2F2',
-          color: resolved ? colors.text : '#DC2626',
-          border: `1px ${resolved ? 'solid' : 'dashed'} ${resolved ? colors.border : '#FCA5A5'}`,
+          fontFamily: 'var(--font-ui, "Google Sans", sans-serif)',
+          background: resolved ? colors.bg : '#FCE8E6',
+          color: resolved ? colors.text : GC.red,
+          border: `1px ${resolved ? 'solid' : 'dashed'} ${resolved ? colors.border : '#F28B82'}`,
           cursor: 'pointer',
           whiteSpace: 'nowrap',
           verticalAlign: 'middle',
           lineHeight: '20px',
+          transition: 'box-shadow 150ms',
         }}
       >
-        <span style={{ fontSize: 10 }}>{icon}</span>
+        <span style={{ fontSize: 9, opacity: 0.7 }}>{icon}</span>
         {chipName}
       </span>
     );
     lastIndex = match.index + match[0].length;
   }
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts.length > 0 ? parts : [text];
 }
 
 // ─── Block Wrapper ────────────────────────────────────────────────────
-function BlockWrapper({
-  block,
-  children,
-  onDelete,
-}: {
+function BlockWrapper({ block, children, onDelete }: {
   block: EditorBlock;
   children: React.ReactNode;
   onDelete?: () => void;
@@ -118,75 +141,48 @@ function BlockWrapper({
       onMouseLeave={() => setHovered(false)}
       style={{
         position: 'relative',
-        borderLeft: `3px solid ${meta.color}`,
-        borderRadius: '0 6px 6px 0',
-        background: '#fff',
-        marginBottom: 2,
-        transition: 'box-shadow 150ms, border-color 150ms',
-        boxShadow: hovered ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+        borderLeft: `3px solid ${hovered ? meta.color : GC.borderLight}`,
+        borderRadius: '0 8px 8px 0',
+        background: GC.surface,
+        marginBottom: 4,
+        padding: '12px 16px',
+        transition: 'all 200ms ease',
+        boxShadow: hovered ? '0 1px 6px rgba(60,64,67,0.08)' : 'none',
       }}
     >
-      {/* Drag handle */}
-      {hovered && (
-        <span
-          style={{
-            position: 'absolute',
-            left: -20,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            fontSize: 11,
-            color: '#C4C4C4',
-            cursor: 'grab',
-            userSelect: 'none',
-          }}
-        >
-          ⋮⋮
-        </span>
-      )}
-      {/* Content */}
-      <div style={{ padding: '8px 12px' }}>
-        {children}
-      </div>
-      {/* adk-fluent expression badge */}
-      {block.adkExpression && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 4,
-            right: 8,
-            fontSize: 9,
-            fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-            color: '#C4C4C4',
-            maxWidth: 200,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
+      {/* Drag handle — appears on hover */}
+      <span style={{
+        position: 'absolute', left: -22, top: '50%', transform: 'translateY(-50%)',
+        fontSize: 10, color: GC.textDisabled, cursor: 'grab', userSelect: 'none',
+        opacity: hovered ? 1 : 0, transition: 'opacity 150ms',
+      }}>
+        ⋮⋮
+      </span>
+      {children}
+      {/* adk-fluent expression — only on hover */}
+      {block.adkExpression && hovered && (
+        <div style={{
+          marginTop: 6, fontSize: 10,
+          fontFamily: 'var(--font-mono, "Roboto Mono", monospace)',
+          color: GC.textTertiary, letterSpacing: '0.02em',
+        }}>
           {block.adkExpression}
         </div>
       )}
-      {/* Delete button */}
+      {/* Delete — only on hover */}
       {hovered && onDelete && (
         <button
           onClick={onDelete}
           style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            width: 18,
-            height: 18,
-            borderRadius: 4,
-            border: 'none',
-            background: '#F3F4F6',
-            color: '#9CA3AF',
-            fontSize: 11,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 1,
+            position: 'absolute', top: 8, right: 8,
+            width: 22, height: 22, borderRadius: 6,
+            border: `1px solid ${GC.borderLight}`, background: GC.surfaceDim,
+            color: GC.textTertiary, fontSize: 12, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            opacity: 0.7, transition: 'opacity 100ms',
           }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderColor = GC.red; e.currentTarget.style.color = GC.red; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.borderColor = GC.borderLight; e.currentTarget.style.color = GC.textTertiary; }}
         >
           ×
         </button>
@@ -200,9 +196,9 @@ function BlockWrapper({
 
 function InstructionBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip[] }) {
   return (
-    <div style={{ fontSize: 13, lineHeight: 1.7, fontFamily: 'var(--font-body, Georgia, serif)', color: '#374151' }}>
+    <div style={{ fontSize: 14, lineHeight: 1.75, fontFamily: 'var(--font-body, "Google Sans Text", Georgia, serif)', color: GC.textPrimary, letterSpacing: '-0.01em' }}>
       {block.content.split('\n').map((line, i) => (
-        <div key={i}>{renderInlineChips(line, chips)}</div>
+        <div key={i} style={{ minHeight: 24 }}>{renderInlineChips(line, chips)}</div>
       ))}
     </div>
   );
@@ -212,35 +208,30 @@ function TriggerBlockView({ block }: { block: EditorBlock }) {
   const name = block.chipRef?.name ?? 'unknown';
   const triggerType = name.includes(':') ? name.split(':')[0] : name;
   const detail = name.includes(':') ? name.split(':').slice(1).join(':') : '';
-  const typeIcons: Record<string, string> = {
-    chat: '💬', inbox: '📥', schedule: '🕐', webhook: '🔗',
-    jira: '🎫', drive: '📁', slack: '💬', gmail: '✉️',
+  const typeIcons: Record<string, string> = { chat: '💬', inbox: '📥', schedule: '🕐', webhook: '🔗', jira: '🎫', drive: '📁', slack: '💬', gmail: '✉️' };
+  const descriptions: Record<string, string> = {
+    chat: 'Real-time streaming conversation', inbox: `Async queue: ${detail}`, schedule: `Scheduled: ${detail}`,
+    jira: `Jira event: ${detail}`, drive: `Drive event: ${detail}`,
   };
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ fontSize: 18 }}>{typeIcons[triggerType] ?? '⚡'}</span>
-      <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#C2410C', fontFamily: 'var(--font-ui)' }}>
-          @trigger({name})
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10, background: '#FEF3E2',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+      }}>
+        {typeIcons[triggerType] ?? '⚡'}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>
+          {name}
         </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-          {triggerType === 'chat' && 'Real-time streaming conversation'}
-          {triggerType === 'inbox' && `Async queue: ${detail}`}
-          {triggerType === 'schedule' && `Cron: ${detail}`}
-          {triggerType === 'jira' && `Jira event: ${detail}`}
-          {triggerType === 'drive' && `Drive event: ${detail}`}
-          {!['chat', 'inbox', 'schedule', 'jira', 'drive'].includes(triggerType) && `Event trigger: ${name}`}
+        <div style={{ fontSize: 12, color: GC.textSecondary, fontFamily: 'var(--font-ui)', marginTop: 1 }}>
+          {descriptions[triggerType] ?? `Event trigger: ${name}`}
         </div>
       </div>
       <span style={{
-        marginLeft: 'auto',
-        fontSize: 10,
-        fontWeight: 500,
-        padding: '2px 8px',
-        borderRadius: 10,
-        background: '#ECFDF5',
-        color: '#059669',
-        fontFamily: 'var(--font-ui)',
+        fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 12,
+        background: '#E6F4EA', color: '#1E8E3E', fontFamily: 'var(--font-ui)',
       }}>
         Active
       </span>
@@ -254,51 +245,53 @@ function SkillBlockView({ block, chips, expanded, onToggle }: { block: EditorBlo
   const chip = chips.find(c => c.type === 'skill' && c.name === name);
   return (
     <div>
-      {/* Header */}
-      <div
-        onClick={onToggle}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}
-      >
-        <span style={{ fontSize: 12, color: '#7C3AED', transition: 'transform 150ms', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#6D28D9', fontFamily: 'var(--font-ui)' }}>
-          ✦ {name}
-        </span>
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+        {/* Expand chevron */}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transition: 'transform 200ms ease', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+          <path d="M6 4l4 4-4 4" stroke={GC.skill} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8, background: '#F3E8FF',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: GC.skill, flexShrink: 0,
+        }}>
+          ✦
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>{name}</div>
+          <div style={{ fontSize: 12, color: GC.textSecondary, fontFamily: 'var(--font-ui)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {chip?.description ? chip.description.slice(0, 60) : 'Reusable skill bundle'}
+          </div>
+        </div>
         {expansion && (
-          <span style={{ fontSize: 10, color: '#A78BFA', fontFamily: 'var(--font-ui)' }}>{expansion.meta}</span>
+          <span style={{ fontSize: 11, color: GC.textTertiary, fontFamily: 'var(--font-ui)', whiteSpace: 'nowrap' }}>{expansion.meta}</span>
         )}
-        <span style={{ fontSize: 10, color: '#C4B5FD', fontFamily: 'var(--font-ui)', marginLeft: 'auto' }}>
-          {chip?.description ? chip.description.slice(0, 50) + '...' : 'Reusable skill bundle'}
-        </span>
       </div>
-      {/* Expanded content — progressive disclosure */}
+      {/* Progressive disclosure — expanded skill content */}
       {expanded && expansion && (
         <div style={{
-          marginTop: 8,
-          marginLeft: 4,
-          paddingLeft: 12,
-          borderLeft: '2px solid #DDD6FE',
-          background: '#FDFAFF',
-          borderRadius: '0 6px 6px 0',
-          padding: '10px 12px 10px 16px',
+          marginTop: 12, marginLeft: 20, padding: '16px 20px',
+          borderLeft: `2px solid #E8DAFF`, background: '#FDFAFF',
+          borderRadius: '0 12px 12px 0',
         }}>
-          {/* Breadcrumb */}
-          <div style={{ fontSize: 10, color: '#A78BFA', marginBottom: 8, fontFamily: 'var(--font-ui)' }}>
-            Claims Agent › <span style={{ fontWeight: 600 }}>@skill({name})</span>
+          <div style={{ fontSize: 11, color: GC.textTertiary, marginBottom: 14, fontFamily: 'var(--font-ui)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: GC.textSecondary }}>Claims Agent</span>
+            <span style={{ color: GC.textDisabled }}>›</span>
+            <span style={{ fontWeight: 600, color: GC.skill }}>@skill({name})</span>
           </div>
-          {/* Nested sections */}
           {expansion.sections.map((sec, i) => (
-            <div key={i} style={{ marginBottom: i < expansion.sections.length - 1 ? 10 : 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#6D28D9', marginBottom: 3, fontFamily: 'var(--font-ui)' }}>
+            <div key={i} style={{ marginBottom: i < expansion.sections.length - 1 ? 16 : 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: GC.textPrimary, marginBottom: 4, fontFamily: 'var(--font-ui)' }}>
                 {sec.title}
               </div>
-              <div style={{ fontSize: 12, lineHeight: 1.6, color: '#4B5563', fontFamily: 'var(--font-body, Georgia, serif)' }}>
+              <div style={{ fontSize: 13, lineHeight: 1.7, color: GC.textSecondary, fontFamily: 'var(--font-body, Georgia, serif)' }}>
                 {renderInlineChips(sec.content, chips)}
               </div>
             </div>
           ))}
-          {/* Footer link */}
-          <div style={{ marginTop: 10, fontSize: 10, color: '#7C3AED', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>
-            Edit in Skill Editor →
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${GC.borderLight}` }}>
+            <span style={{ fontSize: 12, color: GC.blue, cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>
+              Edit in Skill Editor →
+            </span>
           </div>
         </div>
       )}
@@ -306,26 +299,27 @@ function SkillBlockView({ block, chips, expanded, onToggle }: { block: EditorBlo
   );
 }
 
-function ToolBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip[] }) {
+function SimpleRefBlock({ block, chips, icon, accentColor, bgColor }: {
+  block: EditorBlock; chips: SmartChip[];
+  icon: string; accentColor: string; bgColor: string;
+}) {
   const name = block.chipRef?.name ?? '';
-  const chip = chips.find(c => c.type === 'tool' && c.name === name);
+  const chipType = block.chipRef?.type;
+  const chip = chipType ? chips.find(c => c.type === chipType && c.name === name) : undefined;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#4F46E5' }}>⬡</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#4338CA', fontFamily: 'var(--font-ui)' }}>
-          @tool({name})
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-          {chip?.description ?? 'Function tool'}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: bgColor,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: accentColor, flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>{name}</div>
+        <div style={{ fontSize: 12, color: GC.textSecondary, fontFamily: 'var(--font-ui)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {chip?.description ?? BLOCK_META[block.type].description}
         </div>
       </div>
-      {chip?.healthStatus && (
-        <span style={{
-          width: 6, height: 6, borderRadius: '50%',
-          background: chip.healthStatus === 'healthy' ? '#10B981' : chip.healthStatus === 'degraded' ? '#F59E0B' : '#EF4444',
-        }} />
-      )}
     </div>
   );
 }
@@ -334,25 +328,30 @@ function ConnectorBlockView({ block, chips }: { block: EditorBlock; chips: Smart
   const name = block.chipRef?.name ?? '';
   const chip = chips.find(c => c.type === 'connector' && c.name === name);
   const meta = chip?.metadata as Record<string, unknown> | undefined;
+  const syncStatus = (meta?.syncStatus as string) ?? 'active';
   const entities = (meta?.entities as Array<{ name: string; enabled: boolean }>) ?? [];
   const enabledCount = entities.filter(e => e.enabled).length;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#2563EB' }}>◈</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#1D4ED8', fontFamily: 'var(--font-ui)' }}>
-          @connector({name})
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-          {chip?.description ?? 'Enterprise connector'}{enabledCount > 0 ? ` · ${enabledCount} entities` : ''}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: '#E8F0FE',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: GC.connector, flexShrink: 0,
+      }}>
+        ◈
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>{name}</div>
+        <div style={{ fontSize: 12, color: GC.textSecondary, fontFamily: 'var(--font-ui)', marginTop: 1 }}>
+          {chip?.description ?? 'Enterprise connector'}{enabledCount > 0 ? ` \u00B7 ${enabledCount} entities` : ''}
         </div>
       </div>
-      <span style={{
-        fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10,
-        background: '#EFF6FF', color: '#2563EB', fontFamily: 'var(--font-ui)',
-      }}>
-        {(meta?.syncStatus as string) ?? 'active'}
-      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: syncStatus === 'active' ? GC.green : syncStatus === 'error' ? GC.red : GC.yellow,
+        }} />
+        <span style={{ fontSize: 11, color: GC.textTertiary, fontFamily: 'var(--font-ui)' }}>{syncStatus}</span>
+      </div>
     </div>
   );
 }
@@ -361,52 +360,23 @@ function GuardBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip
   const name = block.chipRef?.name ?? '';
   const chip = chips.find(c => c.type === 'guard' && c.name === name);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#E11D48' }}>△</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#BE123C', fontFamily: 'var(--font-ui)' }}>
-          @guard({name})
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: '#FCE8E6',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: GC.guard, flexShrink: 0,
+      }}>
+        △
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>{name}</div>
+        <div style={{ fontSize: 12, color: GC.textSecondary, fontFamily: 'var(--font-ui)', marginTop: 1 }}>
           {chip?.description ?? 'Safety guard'}
         </div>
       </div>
-      <span style={{ fontSize: 10, color: '#E11D48', fontFamily: 'var(--font-ui)' }}>✓ pass / ✗ block</span>
-    </div>
-  );
-}
-
-function DocBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip[] }) {
-  const name = block.chipRef?.name ?? '';
-  const chip = chips.find(c => c.type === 'doc' && c.name === name);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#0D9488' }}>◇</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#0F766E', fontFamily: 'var(--font-ui)' }}>
-          @doc({name})
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-          {chip?.description ?? 'Knowledge source'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SchemaBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip[] }) {
-  const name = block.chipRef?.name ?? '';
-  const chip = chips.find(c => c.type === 'schema' && c.name === name);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#475569' }}>▢</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', fontFamily: 'var(--font-ui)' }}>
-          @schema({name})
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-          {chip?.description ?? 'Output schema'}
-        </div>
+      <div style={{ display: 'flex', gap: 8, fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+        <span style={{ color: GC.green }}>✓ pass</span>
+        <span style={{ color: GC.textDisabled }}>/</span>
+        <span style={{ color: GC.red }}>✗ block</span>
       </div>
     </div>
   );
@@ -417,32 +387,41 @@ function AgentBlockView({ block, chips, expanded, onToggle }: { block: EditorBlo
   const chip = chips.find(c => c.type === 'agent' && c.name === name);
   return (
     <div>
-      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
-        <span style={{ fontSize: 12, color: '#D97706', transition: 'transform 150ms', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
-        <span style={{ fontSize: 14, color: '#D97706' }}>◎</span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#B45309', fontFamily: 'var(--font-ui)' }}>
-            @agent({name})
-          </div>
-          <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
+      <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ transition: 'transform 200ms ease', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}>
+          <path d="M6 4l4 4-4 4" stroke={GC.agent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8, background: '#FEF7E0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: GC.agent, flexShrink: 0,
+        }}>
+          ◎
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>{name}</div>
+          <div style={{ fontSize: 12, color: GC.textSecondary, fontFamily: 'var(--font-ui)', marginTop: 1 }}>
             {chip?.description ?? 'Sub-agent delegation'}
           </div>
         </div>
       </div>
       {expanded && (
         <div style={{
-          marginTop: 8, marginLeft: 4, paddingLeft: 12,
-          borderLeft: '2px solid #FDE68A', background: '#FFFDF5',
-          borderRadius: '0 6px 6px 0', padding: '10px 12px 10px 16px',
+          marginTop: 12, marginLeft: 20, padding: '16px 20px',
+          borderLeft: `2px solid #FEEFC3`, background: '#FFFDF5',
+          borderRadius: '0 12px 12px 0',
         }}>
-          <div style={{ fontSize: 10, color: '#D97706', marginBottom: 6, fontFamily: 'var(--font-ui)' }}>
-            Claims Agent › <span style={{ fontWeight: 600 }}>@agent({name})</span>
+          <div style={{ fontSize: 11, color: GC.textTertiary, marginBottom: 8, fontFamily: 'var(--font-ui)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: GC.textSecondary }}>Claims Agent</span>
+            <span style={{ color: GC.textDisabled }}>›</span>
+            <span style={{ fontWeight: 600, color: GC.agent }}>@agent({name})</span>
           </div>
-          <div style={{ fontSize: 12, color: '#6B7280', fontFamily: 'var(--font-body, Georgia, serif)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 13, color: GC.textSecondary, fontFamily: 'var(--font-body, Georgia, serif)', lineHeight: 1.7 }}>
             {chip?.description ?? `Delegated agent handling specialized processing for ${name}.`}
           </div>
-          <div style={{ marginTop: 8, fontSize: 10, color: '#D97706', cursor: 'pointer', fontFamily: 'var(--font-ui)' }}>
-            Open Agent →
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${GC.borderLight}` }}>
+            <span style={{ fontSize: 12, color: GC.blue, cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 500 }}>
+              Open Agent →
+            </span>
           </div>
         </div>
       )}
@@ -452,9 +431,14 @@ function AgentBlockView({ block, chips, expanded, onToggle }: { block: EditorBlo
 
 function ConditionalBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip[] }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#DC2626', marginTop: 1 }}>◆</span>
-      <div style={{ fontSize: 12, lineHeight: 1.6, color: '#374151', fontFamily: 'var(--font-body, Georgia, serif)' }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8, background: '#FFF0F0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: GC.red, flexShrink: 0, marginTop: 2,
+      }}>
+        ◆
+      </div>
+      <div style={{ fontSize: 13, lineHeight: 1.7, color: GC.textPrimary, fontFamily: 'var(--font-body, Georgia, serif)' }}>
         {renderInlineChips(block.content, chips)}
       </div>
     </div>
@@ -464,14 +448,13 @@ function ConditionalBlockView({ block, chips }: { block: EditorBlock; chips: Sma
 function CodeBlockView({ block }: { block: EditorBlock }) {
   return (
     <div style={{
-      background: '#1E1E1E', borderRadius: 4, padding: '10px 12px',
-      fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-      fontSize: 11, lineHeight: 1.6, color: '#D4D4D4',
+      background: '#202124', borderRadius: 8, padding: '14px 16px',
+      fontFamily: 'var(--font-mono, "Roboto Mono", monospace)',
+      fontSize: 12, lineHeight: 1.7, color: '#E8EAED',
       overflow: 'auto', maxHeight: 200,
-      borderTop: '3px solid repeating-linear-gradient(90deg, #EA580C 0, #EA580C 8px, transparent 8px, transparent 16px)',
     }}>
-      <div style={{ fontSize: 9, color: '#EA580C', marginBottom: 6, fontFamily: 'var(--font-ui)', fontWeight: 600 }}>
-        ⚠️ CODE EXECUTION · Dev Only
+      <div style={{ fontSize: 10, color: GC.trigger, marginBottom: 8, fontFamily: 'var(--font-ui)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span>⚠</span> Code Execution · Dev Only
       </div>
       {block.content.split('\n').map((line, i) => (
         <div key={i} style={{ whiteSpace: 'pre' }}>{line}</div>
@@ -480,62 +463,30 @@ function CodeBlockView({ block }: { block: EditorBlock }) {
   );
 }
 
-function DataBlockView({ block, chips }: { block: EditorBlock; chips: SmartChip[] }) {
-  const name = block.chipRef?.name ?? '';
-  const chip = chips.find(c => c.type === 'data' && c.name === name);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ fontSize: 14, color: '#059669' }}>▣</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: '#047857', fontFamily: 'var(--font-ui)' }}>
-          @data({name})
-        </div>
-        <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'var(--font-ui)' }}>
-          {chip?.description ?? 'Data source'}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 // ─── Block Renderer (dispatch) ────────────────────────────────────────
-function BlockRenderer({
-  block,
-  chips,
-  expanded,
-  onToggle,
-  onDelete,
-}: {
-  block: EditorBlock;
-  chips: SmartChip[];
-  expanded: boolean;
-  onToggle: () => void;
-  onDelete: () => void;
+function BlockRenderer({ block, chips, expanded, onToggle, onDelete }: {
+  block: EditorBlock; chips: SmartChip[]; expanded: boolean; onToggle: () => void; onDelete: () => void;
 }) {
   const inner = (() => {
     switch (block.type) {
       case 'instruction':  return <InstructionBlockView block={block} chips={chips} />;
       case 'trigger':      return <TriggerBlockView block={block} />;
       case 'skill':        return <SkillBlockView block={block} chips={chips} expanded={expanded} onToggle={onToggle} />;
-      case 'tool':         return <ToolBlockView block={block} chips={chips} />;
+      case 'tool':         return <SimpleRefBlock block={block} chips={chips} icon="⬡" accentColor={GC.tool} bgColor="#E8F0FE" />;
       case 'connector':    return <ConnectorBlockView block={block} chips={chips} />;
       case 'guard':        return <GuardBlockView block={block} chips={chips} />;
-      case 'doc':          return <DocBlockView block={block} chips={chips} />;
-      case 'schema':       return <SchemaBlockView block={block} chips={chips} />;
+      case 'doc':          return <SimpleRefBlock block={block} chips={chips} icon="◇" accentColor={GC.doc} bgColor="#E6F4EA" />;
+      case 'schema':       return <SimpleRefBlock block={block} chips={chips} icon="▢" accentColor={GC.schema} bgColor={GC.surfaceTint} />;
       case 'agent':        return <AgentBlockView block={block} chips={chips} expanded={expanded} onToggle={onToggle} />;
       case 'conditional':  return <ConditionalBlockView block={block} chips={chips} />;
       case 'code':         return <CodeBlockView block={block} />;
-      case 'data':         return <DataBlockView block={block} chips={chips} />;
-      default:             return <div style={{ fontSize: 12, color: '#9CA3AF' }}>Unknown block type: {block.type}</div>;
+      case 'data':         return <SimpleRefBlock block={block} chips={chips} icon="▣" accentColor={GC.data} bgColor="#E6F4EA" />;
+      default:             return <div style={{ fontSize: 12, color: GC.textTertiary }}>Unknown block type: {block.type}</div>;
     }
   })();
 
-  return (
-    <BlockWrapper block={block} onDelete={onDelete}>
-      {inner}
-    </BlockWrapper>
-  );
+  return <BlockWrapper block={block} onDelete={onDelete}>{inner}</BlockWrapper>;
 }
 
 // ─── Add Block Divider ────────────────────────────────────────────────
@@ -547,18 +498,9 @@ function AddBlockDivider({ onAdd }: { onAdd: (pos: { top: number; left: number }
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        height: 16,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        cursor: 'default',
-      }}
+      style={{ height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
     >
-      {/* Line */}
-      <div style={{ height: 1, width: '100%', background: hovered ? '#E5E7EB' : 'transparent', transition: 'background 150ms' }} />
-      {/* Plus button */}
+      <div style={{ height: 1, width: '100%', background: hovered ? GC.borderLight : 'transparent', transition: 'background 200ms' }} />
       {hovered && (
         <button
           ref={btnRef}
@@ -567,24 +509,14 @@ function AddBlockDivider({ onAdd }: { onAdd: (pos: { top: number; left: number }
             if (rect) onAdd({ top: rect.bottom + 4, left: rect.left });
           }}
           style={{
-            position: 'absolute',
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
-            border: '1px solid #D1D5DB',
-            background: '#fff',
-            color: '#9CA3AF',
-            fontSize: 14,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 1,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            transition: 'all 100ms',
+            position: 'absolute', width: 22, height: 22, borderRadius: '50%',
+            border: `1px solid ${GC.border}`, background: GC.surface,
+            color: GC.textTertiary, fontSize: 15, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 1px 4px rgba(60,64,67,0.08)', transition: 'all 150ms',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#1A73E8'; e.currentTarget.style.color = '#1A73E8'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#D1D5DB'; e.currentTarget.style.color = '#9CA3AF'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = GC.blue; e.currentTarget.style.color = GC.blue; e.currentTarget.style.background = '#E8F0FE'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = GC.border; e.currentTarget.style.color = GC.textTertiary; e.currentTarget.style.background = GC.surface; }}
         >
           +
         </button>
@@ -594,101 +526,67 @@ function AddBlockDivider({ onAdd }: { onAdd: (pos: { top: number; left: number }
 }
 
 // ─── Section Component ────────────────────────────────────────────────
-function SectionComponent({
-  section,
-  chips,
-  expandedBlocks,
-  onToggleBlock,
-  onDeleteBlock,
-  onAddBlock,
-  onToggleCollapse,
-}: {
-  section: EditorSection;
-  chips: SmartChip[];
-  expandedBlocks: Set<string>;
+function SectionComponent({ section, chips, expandedBlocks, onToggleBlock, onDeleteBlock, onAddBlock, onToggleCollapse }: {
+  section: EditorSection; chips: SmartChip[]; expandedBlocks: Set<string>;
   onToggleBlock: (blockId: string) => void;
   onDeleteBlock: (sectionId: string, blockId: string) => void;
   onAddBlock: (sectionId: string, afterBlockId: string | null, pos: { top: number; left: number }) => void;
   onToggleCollapse: () => void;
 }) {
-  const meta = SECTION_META[section.type];
   const blockCount = section.blocks.length;
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 24 }}>
       {/* Section heading */}
       <div
         onClick={onToggleCollapse}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 0',
-          cursor: 'pointer',
-          userSelect: 'none',
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 0', cursor: 'pointer', userSelect: 'none',
         }}
       >
-        <span style={{
-          fontSize: 10,
-          color: section.collapsed ? '#9CA3AF' : meta.color,
-          transition: 'transform 150ms',
-          transform: section.collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-        }}>
-          ▶
-        </span>
-        <span style={{ fontSize: 13, color: meta.color }}>{meta.icon}</span>
-        <span style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: '#1F2937',
-          fontFamily: 'var(--font-ui)',
-        }}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ transition: 'transform 200ms ease', transform: section.collapsed ? 'rotate(0deg)' : 'rotate(90deg)', flexShrink: 0 }}>
+          <path d="M6 4l4 4-4 4" stroke={section.collapsed ? GC.textTertiary : GC.textSecondary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span style={{ fontSize: 14, fontWeight: 500, color: GC.textPrimary, fontFamily: 'var(--font-ui)' }}>
           {section.title}
         </span>
         <span style={{
-          fontSize: 10,
-          fontWeight: 500,
-          color: '#9CA3AF',
-          fontFamily: 'var(--font-ui)',
-          background: '#F3F4F6',
-          padding: '1px 6px',
-          borderRadius: 8,
+          fontSize: 11, fontWeight: 500, color: GC.textTertiary,
+          fontFamily: 'var(--font-ui)', background: GC.surfaceTint,
+          padding: '1px 8px', borderRadius: 10,
         }}>
           {blockCount}
         </span>
-        {meta.adkMapping && (
-          <span style={{
-            fontSize: 9,
-            fontFamily: 'var(--font-mono, monospace)',
-            color: '#C4C4C4',
-            marginLeft: 'auto',
-          }}>
-            {meta.adkMapping}
+        {/* Collapsed summary */}
+        {section.collapsed && blockCount > 0 && (
+          <span style={{ fontSize: 12, color: GC.textTertiary, fontFamily: 'var(--font-ui)', marginLeft: 4 }}>
+            {section.blocks.slice(0, 3).map(b => b.chipRef?.name ?? '').filter(Boolean).join(', ')}
+            {blockCount > 3 ? `, +${blockCount - 3} more` : ''}
           </span>
         )}
       </div>
 
-      {/* Section blocks */}
+      {/* Section blocks — with generous spacing */}
       {!section.collapsed && (
-        <div style={{ paddingLeft: 8 }}>
+        <div style={{ paddingLeft: 12, marginTop: 4 }}>
           {section.blocks.map((block) => (
             <div key={block.id}>
               <BlockRenderer
-                block={block}
-                chips={chips}
+                block={block} chips={chips}
                 expanded={expandedBlocks.has(block.id)}
                 onToggle={() => onToggleBlock(block.id)}
                 onDelete={() => onDeleteBlock(section.id, block.id)}
               />
-              <AddBlockDivider
-                onAdd={(pos) => onAddBlock(section.id, block.id, pos)}
-              />
+              <AddBlockDivider onAdd={(pos) => onAddBlock(section.id, block.id, pos)} />
             </div>
           ))}
           {blockCount === 0 && (
-            <AddBlockDivider
-              onAdd={(pos) => onAddBlock(section.id, null, pos)}
-            />
+            <div style={{ padding: '12px 16px', border: `1px dashed ${GC.border}`, borderRadius: 8, textAlign: 'center' }}>
+              <span style={{ fontSize: 12, color: GC.textTertiary, fontFamily: 'var(--font-ui)' }}>
+                No blocks yet — click + or type / to add
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -701,21 +599,14 @@ function SectionComponent({
 function SourceView({ content }: { content: string }) {
   return (
     <div style={{
-      background: '#1E1E1E',
-      borderRadius: 8,
-      padding: 16,
-      fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-      fontSize: 12,
-      lineHeight: 1.7,
-      color: '#D4D4D4',
-      overflow: 'auto',
-      flex: 1,
-      whiteSpace: 'pre-wrap',
-      minHeight: 0,
+      background: '#202124', borderRadius: 12, padding: 20,
+      fontFamily: 'var(--font-mono, "Roboto Mono", monospace)',
+      fontSize: 12, lineHeight: 1.8, color: '#E8EAED',
+      overflow: 'auto', flex: 1, whiteSpace: 'pre-wrap', minHeight: 0,
     }}>
       {content.split('\n').map((line, i) => (
         <div key={i} style={{ display: 'flex' }}>
-          <span style={{ width: 32, textAlign: 'right', color: '#555', fontSize: 11, marginRight: 12, flexShrink: 0, userSelect: 'none' }}>
+          <span style={{ width: 36, textAlign: 'right', color: '#5F6368', fontSize: 11, marginRight: 16, flexShrink: 0, userSelect: 'none' }}>
             {i + 1}
           </span>
           <span>{line || ' '}</span>
@@ -737,19 +628,14 @@ export function StructuredEditor({ content }: StructuredEditorProps) {
   const [sections, setSections] = useState<EditorSection[]>([]);
   const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
   const [slashMenu, setSlashMenu] = useState<{
-    open: boolean;
-    position: { top: number; left: number };
-    sectionId: string;
-    afterBlockId: string | null;
+    open: boolean; position: { top: number; left: number };
+    sectionId: string; afterBlockId: string | null;
   }>({ open: false, position: { top: 0, left: 0 }, sectionId: '', afterBlockId: null });
 
-  // Parse content into blocks on mount
   useMemo(() => {
-    const parsed = parsePlaybookToBlocks(content);
-    setSections(parsed);
+    setSections(parsePlaybookToBlocks(content));
   }, [content]);
 
-  // Toggle block expansion (for skills/agents)
   const toggleBlock = useCallback((blockId: string) => {
     setExpandedBlocks(prev => {
       const next = new Set(prev);
@@ -758,42 +644,29 @@ export function StructuredEditor({ content }: StructuredEditorProps) {
     });
   }, []);
 
-  // Toggle section collapse
   const toggleSection = useCallback((sectionId: string) => {
-    setSections(prev => prev.map(s =>
-      s.id === sectionId ? { ...s, collapsed: !s.collapsed } : s
-    ));
+    setSections(prev => prev.map(s => s.id === sectionId ? { ...s, collapsed: !s.collapsed } : s));
   }, []);
 
-  // Delete block
   const deleteBlock = useCallback((sectionId: string, blockId: string) => {
     setSections(prev => prev.map(s =>
-      s.id === sectionId
-        ? { ...s, blocks: s.blocks.filter(b => b.id !== blockId) }
-        : s
+      s.id === sectionId ? { ...s, blocks: s.blocks.filter(b => b.id !== blockId) } : s
     ));
   }, []);
 
-  // Open slash command
   const openSlashMenu = useCallback((sectionId: string, afterBlockId: string | null, pos: { top: number; left: number }) => {
     setSlashMenu({ open: true, position: pos, sectionId, afterBlockId });
   }, []);
 
-  // Handle slash command selection
   const handleSlashSelect = useCallback((item: SlashCommandItem) => {
     if (item.action.type === 'insert-block') {
       const newBlock = createEmptyBlock(item.action.blockType);
       newBlock.content = `New ${BLOCK_META[item.action.blockType].label} block`;
-      if (newBlock.chipRef) {
-        newBlock.chipRef.name = `new-${item.action.blockType}`;
-      }
+      if (newBlock.chipRef) newBlock.chipRef.name = `new-${item.action.blockType}`;
       newBlock.adkExpression = item.adkConstruct ?? '';
-
       setSections(prev => prev.map(s => {
         if (s.id !== slashMenu.sectionId) return s;
-        if (slashMenu.afterBlockId === null) {
-          return { ...s, blocks: [...s.blocks, newBlock] };
-        }
+        if (slashMenu.afterBlockId === null) return { ...s, blocks: [...s.blocks, newBlock] };
         const idx = s.blocks.findIndex(b => b.id === slashMenu.afterBlockId);
         const blocks = [...s.blocks];
         blocks.splice(idx + 1, 0, newBlock);
@@ -811,23 +684,21 @@ export function StructuredEditor({ content }: StructuredEditorProps) {
     setSlashMenu(prev => ({ ...prev, open: false }));
   }, [slashMenu]);
 
+  const totalBlocks = sections.reduce((n, s) => n + s.blocks.length, 0);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#FAFAF9', position: 'relative' }}>
-      {/* View toggle */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: GC.bg, position: 'relative' }}>
+      {/* Toolbar */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '8px 16px',
-        borderBottom: '1px solid #F3F4F6',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 20px', borderBottom: `1px solid ${GC.borderLight}`,
+        background: GC.surface,
       }}>
-        <div style={{ fontSize: 11, color: '#6B7280', fontFamily: 'var(--font-ui)' }}>
-          {sections.length} sections · {sections.reduce((n, s) => n + s.blocks.length, 0)} blocks
+        <div style={{ fontSize: 12, color: GC.textTertiary, fontFamily: 'var(--font-ui)' }}>
+          {sections.length} sections · {totalBlocks} blocks
         </div>
         <div style={{
-          display: 'flex',
-          borderRadius: 6,
-          border: '1px solid #E5E7EB',
+          display: 'flex', borderRadius: 8, border: `1px solid ${GC.border}`,
           overflow: 'hidden',
         }}>
           {(['blocks', 'source'] as const).map(mode => (
@@ -835,65 +706,46 @@ export function StructuredEditor({ content }: StructuredEditorProps) {
               key={mode}
               onClick={() => setViewMode(mode)}
               style={{
-                fontSize: 11,
-                fontWeight: 500,
-                padding: '4px 12px',
-                border: 'none',
-                cursor: 'pointer',
+                fontSize: 12, fontWeight: 500, padding: '5px 14px',
+                border: 'none', cursor: 'pointer',
                 fontFamily: 'var(--font-ui)',
-                background: viewMode === mode ? '#1F2937' : '#fff',
-                color: viewMode === mode ? '#fff' : '#6B7280',
+                background: viewMode === mode ? GC.blue : GC.surface,
+                color: viewMode === mode ? '#fff' : GC.textSecondary,
                 transition: 'all 150ms',
               }}
             >
-              {mode === 'blocks' ? '⊞ Blocks' : '</> Source'}
+              {mode === 'blocks' ? 'Blocks' : 'Source'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Content area */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px 32px', minHeight: 0 }}>
+      {/* Content */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px 48px', minHeight: 0 }}>
         {viewMode === 'blocks' ? (
-          <>
-            {/* Dot pattern background */}
-            <div style={{
-              backgroundImage: 'radial-gradient(circle, #E5E7EB 0.5px, transparent 0.5px)',
-              backgroundSize: '16px 16px',
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              opacity: 0.4,
-              zIndex: 0,
-            }} />
-            <div style={{ position: 'relative', zIndex: 1, maxWidth: 720, margin: '0 auto' }}>
-              {sections.map(section => (
-                <SectionComponent
-                  key={section.id}
-                  section={section}
-                  chips={chips}
-                  expandedBlocks={expandedBlocks}
-                  onToggleBlock={toggleBlock}
-                  onDeleteBlock={deleteBlock}
-                  onAddBlock={openSlashMenu}
-                  onToggleCollapse={() => toggleSection(section.id)}
-                />
-              ))}
-              {/* Add section at end */}
-              <AddBlockDivider
-                onAdd={(pos) => {
-                  const lastSec = sections[sections.length - 1];
-                  openSlashMenu(lastSec?.id ?? '', null, pos);
-                }}
+          <div style={{ maxWidth: 760, margin: '0 auto' }}>
+            {sections.map(section => (
+              <SectionComponent
+                key={section.id} section={section} chips={chips}
+                expandedBlocks={expandedBlocks}
+                onToggleBlock={toggleBlock}
+                onDeleteBlock={deleteBlock}
+                onAddBlock={openSlashMenu}
+                onToggleCollapse={() => toggleSection(section.id)}
               />
-            </div>
-          </>
+            ))}
+            <AddBlockDivider
+              onAdd={(pos) => {
+                const lastSec = sections[sections.length - 1];
+                openSlashMenu(lastSec?.id ?? '', null, pos);
+              }}
+            />
+          </div>
         ) : (
           <SourceView content={content} />
         )}
       </div>
 
-      {/* Slash command menu */}
       <SlashCommandMenu
         isOpen={slashMenu.open}
         onClose={() => setSlashMenu(prev => ({ ...prev, open: false }))}
@@ -901,16 +753,13 @@ export function StructuredEditor({ content }: StructuredEditorProps) {
         position={slashMenu.position}
       />
 
-      {/* Keyboard shortcut hint */}
+      {/* Bottom hint */}
       <div style={{
-        position: 'absolute',
-        bottom: 8,
-        right: 16,
-        fontSize: 10,
-        color: '#C4C4C4',
-        fontFamily: 'var(--font-ui)',
+        position: 'absolute', bottom: 10, left: 0, right: 0,
+        textAlign: 'center', fontSize: 11, color: GC.textDisabled,
+        fontFamily: 'var(--font-ui)', pointerEvents: 'none',
       }}>
-        / to insert · @ to reference · {viewMode === 'blocks' ? 'Source' : 'Blocks'}: Cmd+D
+        Type / to insert a block · @ to reference an asset · Cmd+D to toggle view
       </div>
     </div>
   );
