@@ -1,9 +1,10 @@
 /**
  * SlashCommandMenu — Notion-style "/" command palette for inserting blocks.
  *
- * Triggered by typing "/" in an instruction block or in the add-block affordance.
- * Categories: Blocks | Sections | Patterns | Advanced
+ * Design: Calm, informative, fast. Every item teaches what it does.
+ * The menu feels like an extension of your thought — not an interruption.
  *
+ * Categories: Blocks | Sections | Patterns | Advanced
  * Maps to adk-fluent constructs — each item shows the Python expression it generates.
  */
 
@@ -18,11 +19,11 @@ interface SlashCommandMenuProps {
   filterText?: string;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  blocks: 'Blocks',
-  sections: 'Sections',
-  patterns: 'Patterns',
-  advanced: 'Advanced',
+const CATEGORY_LABELS: Record<string, { label: string; hint: string }> = {
+  blocks:   { label: 'Blocks',   hint: 'Individual adk-fluent constructs' },
+  sections: { label: 'Sections', hint: 'Semantic groupings for your playbook' },
+  patterns: { label: 'Patterns', hint: 'Pre-built multi-agent workflows' },
+  advanced: { label: 'Advanced', hint: 'Power user features' },
 };
 
 export function SlashCommandMenu({ isOpen, onClose, onSelect, position, filterText = '' }: SlashCommandMenuProps) {
@@ -101,114 +102,150 @@ export function SlashCommandMenu({ isOpen, onClose, onSelect, position, filterTe
   return (
     <div
       ref={menuRef}
-      className="fixed z-[9999] rounded-xl overflow-hidden"
+      className="se-slash-menu"
       style={{
+        position: 'fixed',
+        zIndex: 9999,
         top: position.top,
         left: position.left,
-        width: 360,
-        maxHeight: 420,
+        width: 380,
+        maxHeight: 440,
         background: '#FFFFFF',
-        border: '1px solid #DADCE0',
-        boxShadow: '0 4px 24px rgba(60,64,67,0.15), 0 1px 6px rgba(60,64,67,0.08)',
-        borderRadius: 12,
+        border: '1px solid #E8EAED',
+        boxShadow: '0 8px 28px rgba(60,64,67,0.12), 0 2px 8px rgba(60,64,67,0.06)',
+        borderRadius: 14,
         fontFamily: 'var(--font-ui, "Google Sans", sans-serif)',
+        overflow: 'hidden',
+        animation: 'se-scaleIn 150ms ease-out',
       }}
     >
       {/* Header */}
-      <div style={{ padding: '10px 16px', borderBottom: '1px solid #E8EAED', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#5F6368' }}>Insert block</span>
-        <span style={{ fontSize: 10, color: '#9AA0A6', marginLeft: 'auto' }}>↑↓ navigate · ↵ select · esc close</span>
+      <div style={{
+        padding: '10px 16px', borderBottom: '1px solid #F1F3F4',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#5F6368', letterSpacing: '0.02em' }}>
+          Insert block
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: '#9AA0A6', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <kbd style={{ padding: '0px 3px', borderRadius: 3, border: '1px solid #E8EAED', background: '#F8F9FA', fontSize: 9 }}>↑↓</kbd>
+            <kbd style={{ padding: '0px 3px', borderRadius: 3, border: '1px solid #E8EAED', background: '#F8F9FA', fontSize: 9 }}>↵</kbd>
+            <kbd style={{ padding: '0px 3px', borderRadius: 3, border: '1px solid #E8EAED', background: '#F8F9FA', fontSize: 9 }}>esc</kbd>
+          </span>
+        </div>
       </div>
 
       {/* Scrollable list */}
-      <div style={{ overflowY: 'auto', maxHeight: 360, padding: '4px 0' }}>
-        {Object.entries(grouped).map(([category, items]) => (
-          <div key={category}>
-            {/* Category label */}
-            <div style={{
-              padding: '8px 16px 4px',
-              fontSize: 11,
-              fontWeight: 500,
-              color: '#9AA0A6',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              position: 'sticky',
-              top: 0,
-              background: '#fff',
-              zIndex: 1,
-            }}>
-              {CATEGORY_LABELS[category] ?? category}
-            </div>
-            {items.map((item) => {
-              const idx = globalIndex++;
-              const isActive = idx === activeIndex;
-              return (
-                <button
-                  key={item.id}
-                  ref={el => { if (el) itemRefs.current.set(idx, el); }}
-                  onClick={() => onSelect(item)}
-                  onMouseEnter={() => setActiveIndex(idx)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    width: '100%',
-                    padding: '8px 16px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    background: isActive ? '#F1F3F4' : 'transparent',
-                    transition: 'background 100ms',
-                    borderRadius: 0,
-                  }}
-                >
-                  {/* Icon */}
-                  <span style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 14,
-                    color: item.color,
-                    background: `${item.color}10`,
-                    flexShrink: 0,
-                  }}>
-                    {item.icon}
-                  </span>
-                  {/* Text */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#1F1F1F', lineHeight: 1.3 }}>
-                      {item.label}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#5F6368', lineHeight: 1.4, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.description}
-                    </div>
-                  </div>
-                  {/* adk-fluent badge */}
-                  {item.adkConstruct && (
+      <div style={{ overflowY: 'auto', maxHeight: 380, padding: '4px 0' }}>
+        {Object.entries(grouped).map(([category, items]) => {
+          const catMeta = CATEGORY_LABELS[category];
+          return (
+            <div key={category}>
+              {/* Category label */}
+              <div style={{
+                padding: '10px 16px 4px',
+                display: 'flex', alignItems: 'baseline', gap: 8,
+                position: 'sticky', top: 0, background: '#fff', zIndex: 1,
+              }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, color: '#9AA0A6',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>
+                  {catMeta?.label ?? category}
+                </span>
+                <span style={{ fontSize: 10, color: '#DADCE0', fontWeight: 400 }}>
+                  {catMeta?.hint ?? ''}
+                </span>
+              </div>
+              {items.map((item) => {
+                const idx = globalIndex++;
+                const isActive = idx === activeIndex;
+                return (
+                  <button
+                    key={item.id}
+                    ref={el => { if (el) itemRefs.current.set(idx, el); }}
+                    onClick={() => onSelect(item)}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      width: '100%',
+                      padding: '8px 16px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      background: isActive ? '#F1F3F4' : 'transparent',
+                      transition: 'background 100ms',
+                      borderRadius: 0,
+                    }}
+                  >
+                    {/* Icon */}
                     <span style={{
-                      fontSize: 10,
-                      fontFamily: 'var(--font-mono, "Roboto Mono", monospace)',
-                      color: '#9AA0A6',
-                      background: '#F1F3F4',
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      whiteSpace: 'nowrap',
-                      maxWidth: 110,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 15,
+                      color: item.color,
+                      background: `${item.color}10`,
                       flexShrink: 0,
+                      transition: 'transform 150ms',
+                      transform: isActive ? 'scale(1.05)' : 'scale(1)',
                     }}>
-                      {item.adkConstruct}
+                      {item.icon}
                     </span>
-                  )}
-                </button>
-              );
-            })}
+                    {/* Text */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 13, fontWeight: 500, lineHeight: 1.3,
+                        color: isActive ? '#1F1F1F' : '#3C4043',
+                      }}>
+                        {item.label}
+                      </div>
+                      <div style={{
+                        fontSize: 11, color: '#5F6368', lineHeight: 1.4, marginTop: 1,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        {item.description}
+                      </div>
+                    </div>
+                    {/* adk-fluent construct badge */}
+                    {item.adkConstruct && (
+                      <span style={{
+                        fontSize: 9,
+                        fontFamily: 'var(--font-mono, "Roboto Mono", monospace)',
+                        color: isActive ? '#5F6368' : '#9AA0A6',
+                        background: isActive ? '#E8EAED' : '#F8F9FA',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        whiteSpace: 'nowrap',
+                        maxWidth: 120,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flexShrink: 0,
+                        transition: 'all 100ms',
+                      }}>
+                        {item.adkConstruct}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+
+        {/* No results state */}
+        {flatItems.length === 0 && (
+          <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: '#5F6368', marginBottom: 4 }}>No matching blocks</div>
+            <div style={{ fontSize: 11, color: '#9AA0A6' }}>Try a different search term</div>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
