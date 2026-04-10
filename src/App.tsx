@@ -1,13 +1,15 @@
-import { BrowserRouter, Routes, Route, NavLink, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { PlaybookEditor } from './components/editor/PlaybookEditor';
 import { RegistryCatalog } from './components/registry/RegistryCatalog';
 import { ConnectorHub } from './components/connectors/ConnectorHub';
 import { VersionHistory } from './components/versioning/VersionHistory';
 import { LiveAuthoring } from './components/live/LiveAuthoring';
 import { SharingModal } from './components/permissions/SharingModal';
+import { HomePage } from './components/dashboard/HomePage';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
-import { AppProvider, useNotifications } from './contexts/AppContext';
+import { AppProvider, useNotifications, useRegistry } from './contexts/AppContext';
 import { NotificationToast } from './components/shared/NotificationToast';
+import { CreateAssetWizard } from './components/shared/CreateAssetWizard';
 
 const NotebookView = lazy(() => import('./components/notebook/NotebookView').then(m => ({ default: m.NotebookView })));
 const SkillEditor = lazy(() => import('./components/skills/SkillEditor').then(m => ({ default: m.SkillEditor })));
@@ -17,6 +19,15 @@ const AdminConsole = lazy(() => import('./components/admin/AdminConsole').then(m
 const CostCalculator = lazy(() => import('./components/shared/CostCalculator').then(m => ({ default: m.CostCalculator })));
 
 // ─── SVG Icon Components (16x16 viewBox) ──────────────────────────────
+
+function IconHome() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="shrink-0">
+      <path d="M3 8l5-5 5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M4.5 7v5.5a1 1 0 001 1h5a1 1 0 001-1V7" stroke="currentColor" strokeWidth="1.3"/>
+    </svg>
+  );
+}
 
 function IconEditor() {
   return (
@@ -141,6 +152,7 @@ function IconClose() {
 }
 
 const ICON_MAP: Record<string, React.FC> = {
+  home: IconHome,
   editor: IconEditor,
   splitView: IconSplitView,
   notebook: IconNotebook,
@@ -165,6 +177,7 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
+  { path: '/', label: 'Home', icon: 'home' },
   { path: '/editor', label: 'Editor', icon: 'editor', section: 'Build' },
   { path: '/split-view', label: 'Split View', icon: 'splitView' },
   { path: '/notebook', label: 'Notebook', icon: 'notebook' },
@@ -197,10 +210,12 @@ function SidebarContent({
   collapsed,
   onToggle,
   onNavigate,
+  onCreateNew,
 }: {
   collapsed: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
+  onCreateNew?: () => void;
 }) {
   const location = useLocation();
 
@@ -240,8 +255,29 @@ function SidebarContent({
         </button>
       </div>
 
+      {/* Create New Button */}
+      <div className="px-2 pt-3 pb-1">
+        <button
+          onClick={onCreateNew}
+          className="w-full flex items-center justify-center gap-2 rounded-lg transition-all duration-150"
+          style={{
+            padding: collapsed ? '8px 0' : '8px 12px',
+            background: 'var(--color-accent)',
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+          title="Create new asset"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+            <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          {!collapsed && <span>Create New</span>}
+        </button>
+      </div>
+
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto py-2 px-2">
         {NAV.map((item, i) => {
           const isActive = location.pathname === item.path;
           const showSection = item.section && !collapsed;
@@ -333,7 +369,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const location = useLocation();
+  const { createChip } = useRegistry();
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -341,6 +379,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const openCreateWizard = useCallback(() => setCreateWizardOpen(true), []);
 
   // Mobile layout
   if (isMobile) {
@@ -357,6 +396,16 @@ function Shell({ children }: { children: React.ReactNode }) {
           <span className="ml-1.5 text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>
             Agent Builder
           </span>
+          <button
+            onClick={openCreateWizard}
+            className="ml-auto p-1.5 rounded-lg"
+            style={{ background: 'var(--color-accent)', color: '#fff' }}
+            title="Create new asset"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
 
         {/* Overlay */}
@@ -379,13 +428,19 @@ function Shell({ children }: { children: React.ReactNode }) {
               <IconClose />
             </button>
           </div>
-          <SidebarContent collapsed={false} onToggle={closeMobile} onNavigate={closeMobile} />
+          <SidebarContent collapsed={false} onToggle={closeMobile} onNavigate={closeMobile} onCreateNew={openCreateWizard} />
         </aside>
 
         {/* Main content */}
         <main key={location.pathname} className="flex-1 overflow-auto page-enter">
           {children}
         </main>
+
+        <CreateAssetWizard
+          isOpen={createWizardOpen}
+          onClose={() => setCreateWizardOpen(false)}
+          onCreate={(partial) => createChip(partial)}
+        />
       </div>
     );
   }
@@ -400,11 +455,17 @@ function Shell({ children }: { children: React.ReactNode }) {
           borderRight: '1px solid var(--color-border)',
         }}
       >
-        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+        <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} onCreateNew={openCreateWizard} />
       </aside>
       <main key={location.pathname} className="flex-1 overflow-auto page-enter">
         {children}
       </main>
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+        onCreate={(partial) => createChip(partial)}
+      />
     </div>
   );
 }
@@ -431,7 +492,7 @@ export default function App() {
       <AppProvider>
         <Suspense fallback={<Shell><Loading /></Shell>}>
           <Routes>
-            <Route path="/" element={<Navigate to="/editor" replace />} />
+            <Route path="/" element={<Shell><HomePage /></Shell>} />
             <Route path="/editor" element={<Shell><PlaybookEditor /></Shell>} />
             <Route path="/split-view" element={<Shell><LiveSplitView /></Shell>} />
             <Route path="/notebook" element={<Shell><NotebookView /></Shell>} />

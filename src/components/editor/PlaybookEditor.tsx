@@ -17,6 +17,8 @@ import type { ChipType, SmartChip, CompiledGraphNode } from '../../parser/types'
 import { usePlaybook, useNotifications, useRegistry } from '../../contexts/AppContext';
 import { PublishModal } from '../versioning/PublishModal';
 import { ChipAutocomplete } from '../chips/ChipAutocomplete';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import { StructuredEditor } from './structured/StructuredEditor';
 
 // ─── Responsive hook ────────────────────────────────────────────────────
 function useBreakpoint() {
@@ -181,7 +183,7 @@ function renderPlaybookLine(
 }
 
 function EditableDocumentTab({
-  content, onContentChange, onChipClick, highlightedLines, selectedChipKey, lineRefs,
+  content, onContentChange, onChipClick, highlightedLines, selectedChipKey, lineRefs, onCreateNew,
 }: {
   content: string;
   onContentChange: (content: string) => void;
@@ -189,6 +191,7 @@ function EditableDocumentTab({
   highlightedLines: number[];
   selectedChipKey: string | null;
   lineRefs: React.MutableRefObject<Map<number, HTMLElement>>;
+  onCreateNew?: () => void;
 }) {
   const [editingLine, setEditingLine] = useState<number | null>(null);
   const [editText, setEditText] = useState('');
@@ -477,6 +480,7 @@ function EditableDocumentTab({
                     onSelect={handleChipSelect}
                     position={autocompletePos}
                     filterText={autocompleteFilter}
+                    onCreateNew={onCreateNew}
                   />
                 )}
               </div>
@@ -1047,6 +1051,69 @@ function ContextStrategyCard() {
 
 // ─── Inspector Sidebar ──────────────────────────────────────────────────
 
+function InspectorCodeExport({ chip }: { chip: SmartChip }) {
+  const [code, setCode] = React.useState<import('../../services/adk-fluent').AssetCodeResult | null>(null);
+  const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const { addNotification } = useNotifications();
+
+  React.useEffect(() => {
+    if (!open || code) return;
+    setLoading(true);
+    import('../../services/adk-fluent').then(({ getAdkFluentService }) =>
+      getAdkFluentService()
+        .generateAssetCode({ type: chip.type, name: chip.name, description: chip.description, metadata: chip.metadata ?? {} })
+        .then((r) => { setCode(r); setLoading(false); })
+        .catch(() => setLoading(false))
+    );
+  }, [open, code, chip.type, chip.name, chip.description, chip.metadata]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        style={{ color: '#7C3AED' }}
+      >
+        <span className="font-mono text-[10px] font-semibold">adk-fluent</span>
+        <span style={{ color: '#374151' }}>{open ? 'Hide' : 'View'} Python Code</span>
+        <span className="ml-auto">{open ? '\u25BE' : '\u25B8'}</span>
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-lg overflow-hidden border border-gray-200">
+          {loading ? (
+            <div className="px-3 py-3 text-[10px] text-gray-400 text-center">Generating...</div>
+          ) : code ? (
+            <>
+              <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <code className="text-[10px] font-mono text-violet-700">{code.expression}</code>
+              </div>
+              <pre className="m-0 px-3 py-2 text-[10px] leading-relaxed font-mono overflow-x-auto max-h-48 overflow-y-auto" style={{ background: '#1E1E2E', color: '#CDD6F4' }}>
+                {code.python}
+              </pre>
+              <div className="px-2 py-1.5 bg-gray-50 border-t border-gray-200 flex items-center gap-1.5">
+                <button
+                  className="text-[9px] font-medium px-2 py-0.5 rounded bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
+                  onClick={() => {
+                    navigator.clipboard.writeText(code.python).then(() => {
+                      addNotification({ type: 'success', title: 'Copied!', message: 'adk-fluent code copied to clipboard.' });
+                    });
+                  }}
+                >
+                  Copy Code
+                </button>
+                <span className="text-[9px] text-gray-400 ml-auto">{code.dependencies.join(', ')}</span>
+              </div>
+            </>
+          ) : (
+            <div className="px-3 py-2 text-[10px] text-gray-400">Not available</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InspectorDetails({
   chip, chipType, chipName, sourceLine, onGoToSource, onCreateChip,
 }: {
@@ -1209,6 +1276,9 @@ function InspectorDetails({
           </div>
         </div>
       )}
+
+      {/* adk-fluent Code Export */}
+      <InspectorCodeExport chip={chip} />
 
       <button className="w-full text-left px-3 py-2 text-xs rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
         style={{ color: colors.accent }}>
@@ -1572,6 +1642,7 @@ function StatusBar({
         </span>
         <span className="hidden md:inline">
           {activeTab === 'document' && 'Click any @reference to inspect \u00B7 Type @ to insert'}
+          {activeTab === 'structured' && 'Block editor \u00B7 / to insert \u00B7 Click skills to expand'}
           {activeTab === 'flow' && 'Compiled graph \u00B7 Click nodes to view source'}
           {activeTab === 'notebook' && 'Development mode'}
         </span>
@@ -1588,6 +1659,14 @@ function TabIcon({ tab, active }: { tab: string; active: boolean }) {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <rect x="3" y="2" width="10" height="12" rx="1.5" stroke={color} strokeWidth="1.2"/>
       <path d="M5.5 5.5h5M5.5 8h3.5M5.5 10.5h4" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+    </svg>
+  );
+  if (tab === 'structured') return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="2" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="3" y="7" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="3" y="12" width="6" height="2" rx="1" stroke={color} strokeWidth="1.2"/>
+      <rect x="11" y="12" width="2" height="2" rx="1" fill={color} fillOpacity="0.4"/>
     </svg>
   );
   if (tab === 'flow') return (
@@ -1609,7 +1688,7 @@ function TabIcon({ tab, active }: { tab: string; active: boolean }) {
 
 // ─── Main Editor Component ──────────────────────────────────────────────
 
-type EditorTab = 'document' | 'flow' | 'notebook';
+type EditorTab = 'document' | 'structured' | 'flow' | 'notebook';
 type InspectorTab = 'details' | 'space';
 
 export function PlaybookEditor() {
@@ -1627,6 +1706,7 @@ export function PlaybookEditor() {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
 
   const lineRefs = useRef<Map<number, HTMLElement>>(new Map());
 
@@ -1725,6 +1805,7 @@ export function PlaybookEditor() {
   // Tab descriptions for the subtle hint
   const tabHints: Record<EditorTab, string> = {
     document: 'Write your agent as a document',
+    structured: 'Build with blocks — / to insert',
     flow: 'See the compiled topology',
     notebook: 'Test and prototype',
   };
@@ -1737,6 +1818,7 @@ export function PlaybookEditor() {
         onClose={() => setCommandPaletteOpen(false)}
         onAction={(action) => {
           if (action === 'tab:document') setActiveTab('document');
+          else if (action === 'tab:structured') setActiveTab('structured');
           else if (action === 'tab:flow') setActiveTab('flow');
           else if (action === 'tab:notebook') setActiveTab('notebook');
           else if (action === 'publish') openPublishModal();
@@ -1834,7 +1916,7 @@ export function PlaybookEditor() {
 
         {/* Tab bar — the three lenses */}
         <div className="px-3 sm:px-5 flex items-center gap-0 overflow-x-auto" style={{ marginTop: -1 }}>
-          {(['document', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
+          {(['document', 'structured', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
             const isActive = activeTab === tab;
             return (
               <button
@@ -1891,7 +1973,13 @@ export function PlaybookEditor() {
               highlightedLines={highlightedLines}
               selectedChipKey={selectedChipKey}
               lineRefs={lineRefs}
+              onCreateNew={() => setCreateWizardOpen(true)}
             />
+            </div>
+          )}
+          {activeTab === 'structured' && (
+            <div key="tab-structured" className="tab-content-enter h-full">
+              <StructuredEditor content={content} onContentChange={setContent} />
             </div>
           )}
           {activeTab === 'flow' && (
@@ -2030,6 +2118,19 @@ export function PlaybookEditor() {
             config.reviewers.map(r => r.email),
             config.target === 'draft' ? 'draft' : config.target === 'staging' ? 'staging' : 'production',
           );
+        }}
+      />
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+        onCreate={(partial) => {
+          createChip(partial);
+          addNotification({
+            type: 'success',
+            title: `Created @${partial.type}(${partial.name})`,
+            message: 'New asset added to registry as draft. Reference it with @ in your playbook.',
+          });
         }}
       />
     </div>

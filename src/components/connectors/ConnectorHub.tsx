@@ -6,8 +6,9 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { useConnectors, useNotifications } from '../../contexts/AppContext';
+import { useConnectors, useNotifications, useRegistry } from '../../contexts/AppContext';
 import type { ConnectorEntry } from '../../data/connectors';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 
 // ─── SVG Icons ───────────────────────────────────────────────────────
 
@@ -517,8 +518,10 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
 
 export function ConnectorHub() {
   const [search, setSearch] = useState('');
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const { connectors, actionCount, selectConnector, toggleConnector, syncConnector, testQuery } = useConnectors();
   const { addNotification } = useNotifications();
+  const { createChip } = useRegistry();
 
   const filterBySearch = useCallback((list: ConnectorEntry[]) => {
     if (!search.trim()) return list;
@@ -539,7 +542,7 @@ export function ConnectorHub() {
   const activeSystemCount = connectors.filter((c) => c.status === 'active').length;
 
   const handleAddConnector = () => {
-    addNotification({ type: 'info', title: 'Open Gemini Enterprise Console', message: 'Configure new connectors in the admin console' });
+    setCreateWizardOpen(true);
   };
 
   const handleOpenConsole = () => {
@@ -666,6 +669,13 @@ export function ConnectorHub() {
           They are <em>cached, governed expansions</em> of the omnipotent code execution space.
         </div>
       </div>
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+        onCreate={(partial) => createChip(partial)}
+        initialType="connector"
+      />
     </div>
   );
 }

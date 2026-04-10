@@ -11,9 +11,10 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useNotifications } from '../../contexts/AppContext';
+import { useNotifications, useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType } from '../../parser/types';
+import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 
 // ---------------------------------------------------------------------------
 // SVG icon helpers (no emoji, no HTML entities)
@@ -768,10 +769,12 @@ function Frontmatter() {
 
 export function SkillEditor() {
   const { addNotification } = useNotifications();
+  const { createChip } = useRegistry();
   const [scope, setScope] = useState<Scope>('workspace');
   const [activation, setActivation] = useState<'pinned' | 'on-demand'>(
     'on-demand',
   );
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
 
   const handleUploadResource = useCallback(() => {
     addNotification({ type: 'info', title: 'Upload', message: 'File picker would open here' });
@@ -836,6 +839,13 @@ export function SkillEditor() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 ml-2">
+            <button
+              onClick={() => setCreateWizardOpen(true)}
+              className="text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-[#F5F3FF]"
+              style={{ color: '#7C3AED', borderColor: '#DDD6FE' }}
+            >
+              + New Skill
+            </button>
             <button
               onClick={handleInstallToWorkspace}
               className="text-[11px] font-medium px-3 py-1.5 rounded-lg border transition-colors hover:bg-[#F9FAFB]"
@@ -922,6 +932,13 @@ export function SkillEditor() {
         {/* -- Bottom Panel: Test Activation ------------------------------- */}
         <TestActivation onRunTest={handleRunSkillActivation} />
       </div>
+
+      <CreateAssetWizard
+        isOpen={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+        onCreate={(partial) => createChip(partial)}
+        initialType="skill"
+      />
     </div>
   );
 }
