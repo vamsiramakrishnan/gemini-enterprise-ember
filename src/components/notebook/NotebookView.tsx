@@ -960,7 +960,7 @@ function ToolCell() {
 // 4. Test Cell (Loop Iteration Visualizer)
 // ---------------------------------------------------------------------------
 
-interface LoopIteration {
+interface MockIteration {
   id: number;
   observe: string;
   reason: string;
@@ -969,7 +969,7 @@ interface LoopIteration {
   timing: string;
 }
 
-const ITERATIONS: LoopIteration[] = [
+const ITERATIONS: MockIteration[] = [
   {
     id: 1,
     observe: 'Customer: "I need to file a claim for water damage. Policy POL-SG-001234"',

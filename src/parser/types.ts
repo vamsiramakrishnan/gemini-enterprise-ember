@@ -311,19 +311,12 @@ export interface TopologyExpression {
 // Currently mocked; replace implementations when adk-fluent SDK is available.
 
 export interface AdkFluentService {
-  // Compile playbook to IR
   compileToIR(content: string): Promise<IRNode>;
-  // Compile IR to native ADK objects (returns opaque handle)
   compileToADK(ir: IRNode, config?: ExecutionConfig): Promise<string>;
-  // Execute a test prompt against a compiled agent
-  executeTest(agentId: string, prompt: string): Promise<TestExecutionResult>;
-  // Stream execution events
-  streamExecution(agentId: string, prompt: string): AsyncIterable<AgentEvent>;
-  // Validate playbook references against registry
-  validateReferences(content: string): Promise<ValidationResult>;
-  // Export IR as Mermaid diagram
+  executeTest(agentId: string, prompt: string): Promise<{ iterations: unknown[]; totalDuration: number; tokenCount: number; finalResponse: string }>;
+  streamExecution(agentId: string, prompt: string): AsyncIterable<{ type: string; timestamp: number; data: Record<string, unknown> }>;
+  validateReferences(content: string): Promise<{ valid: boolean; errors: Array<{ line: number; message: string }>; warnings: Array<{ line: number; message: string }> }>;
   toMermaid(ir: IRNode): string;
-  // Get IR from topology expression string
   parseTopology(expr: string): IRNode;
 }
 
@@ -334,37 +327,8 @@ export interface ExecutionConfig {
   middlewares?: string[];
 }
 
-export interface TestExecutionResult {
-  iterations: LoopIteration[];
-  totalDuration: number;
-  tokenCount: number;
-  finalResponse: string;
-}
-
-export interface LoopIteration {
-  index: number;
-  observe: string;
-  reason: { playbookExcerpt: string; confidence: number; skillActivated?: string };
-  act: { chipRef: string; parameters: Record<string, unknown>; duration: number };
-  result: string;
-  guardChecks: Array<{ guard: string; passed: boolean; detail?: string }>;
-  decision: 'loop' | 'respond';
-  decisionReason?: string;
-}
-
-export interface AgentEvent {
-  type: 'thought' | 'tool_call' | 'tool_result' | 'guard_check' | 'response' | 'state_delta';
-  timestamp: number;
-  data: Record<string, unknown>;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: Array<{ line: number; message: string; chipRef?: string }>;
-  warnings: Array<{ line: number; message: string }>;
-  resolvedChips: number;
-  unresolvedChips: number;
-}
+// Note: LoopIteration, TestResult, GuardCheck types live in contexts/TestContext.tsx
+// (the only consumer). AgentEvent/ValidationResult were unused — removed.
 
 // ─── Parsed Playbook (output of the parser) ────────────────────────────
 
@@ -479,28 +443,8 @@ export interface VersionDiff {
   suggestedBumpReason: string;
 }
 
-// ─── Chip Color System ─────────────────────────────────────────────────
+// ─── Chip Color & Icon System ─────────────────────────────────────────
+// Single source of truth lives in config/chipConfig.ts.
+// Re-exported here for backward compatibility — all existing imports work.
 
-export const CHIP_COLORS: Record<ChipType, { bg: string; text: string; border: string; accent: string; tint: string }> = {
-  doc:       { bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4', accent: '#0D9488', tint: '#CCFBF1' },
-  tool:      { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE', accent: '#4F46E5', tint: '#E0E7FF' },
-  agent:     { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', accent: '#D97706', tint: '#FEF3C7' },
-  guard:     { bg: '#FFF1F2', text: '#BE123C', border: '#FECDD3', accent: '#E11D48', tint: '#FFE4E6' },
-  data:      { bg: '#ECFDF5', text: '#047857', border: '#A7F3D0', accent: '#059669', tint: '#D1FAE5' },
-  schema:    { bg: '#F8FAFC', text: '#334155', border: '#CBD5E1', accent: '#475569', tint: '#E2E8F0' },
-  connector: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', accent: '#2563EB', tint: '#DBEAFE' },
-  skill:     { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE', accent: '#7C3AED', tint: '#EDE9FE' },
-  trigger:   { bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA', accent: '#EA580C', tint: '#FFEDD5' },
-};
-
-export const CHIP_ICONS: Record<ChipType, string> = {
-  doc:       '◇',
-  tool:      '⬡',
-  agent:     '◎',
-  guard:     '△',
-  data:      '▣',
-  schema:    '▢',
-  connector: '◈',
-  skill:     '✦',
-  trigger:   '▸',
-};
+export { CHIP_COLORS, CHIP_ICONS } from '../config/chipConfig';

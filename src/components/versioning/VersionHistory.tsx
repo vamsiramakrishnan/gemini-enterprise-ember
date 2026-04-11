@@ -18,106 +18,80 @@ import { VERSIONS, DIFF_V21_V22, DIFF_SUMMARY } from '../../data/versions';
 import type { VersionEntry, DiffLineEntry } from '../../data/versions';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipChange, VersionStatus } from '../../parser/types';
+import { statusColors, colors } from '../../constants/colors';
+import { Button } from '../../ui/Button';
+import { Badge } from '../../ui/Badge';
+import { Card } from '../../ui/Card';
 
 /* ─── Constants ─────────────────────────────────────────────────────── */
 
 const STATUS_BORDER_COLORS: Record<VersionStatus, string> = {
-  production:    '#16A34A',
-  staging:       '#2563EB',
-  draft:         '#EAB308',
-  deprecated:    '#9CA3AF',
-  'rolled-back': '#DC2626',
-};
-
-const STATUS_STYLES: Record<VersionStatus, { bg: string; text: string; label: string }> = {
-  draft:          { bg: '#FEF9C3', text: '#854D0E', label: 'DRAFT' },
-  staging:        { bg: '#DBEAFE', text: '#1E40AF', label: 'STAGING' },
-  production:     { bg: '#DCFCE7', text: '#166534', label: 'LIVE' },
-  'rolled-back':  { bg: '#FEE2E2', text: '#991B1B', label: 'ROLLED BACK' },
-  deprecated:     { bg: '#F3F4F6', text: 'var(--color-text-secondary)', label: 'DEPRECATED' },
+  production:    'var(--color-success)',
+  staging:       'var(--color-accent)',
+  draft:         'var(--color-draft)',
+  deprecated:    'var(--color-text-tertiary)',
+  'rolled-back': 'var(--color-unresolved)',
 };
 
 const ACTION_STYLES = {
-  added:    { prefix: '+', bg: '#DCFCE7', text: '#166534', border: '#BBF7D0' },
-  removed:  { prefix: '\u2212', bg: '#FEE2E2', text: '#991B1B', border: '#FECACA' },
+  added:    { prefix: '+', bg: statusColors.production.bg, text: statusColors.production.text, border: '#BBF7D0' },
+  removed:  { prefix: '\u2212', bg: statusColors.unresolved.bg, text: statusColors.unresolved.text, border: '#FECACA' },
   modified: { prefix: '~', bg: '#FEF3C7', text: '#92400E', border: '#FDE68A' },
 };
 
-/* ─── Status Badge ──────────────────────────────────────────────────── */
+/* ─── Version Status Badge (maps to StatusBadge) ───────────────────── */
 
 function VersionStatusBadge({ status }: { status: VersionStatus }) {
-  const s = STATUS_STYLES[status];
+  const label =
+    status === 'production'  ? 'LIVE' :
+    status === 'rolled-back' ? 'ROLLED BACK' :
+    status.toUpperCase();
+
+  const c = statusColors[status] ?? statusColors.draft;
+
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontSize: 10,
-        fontWeight: 700,
-        fontFamily: 'var(--font-ui)',
-        letterSpacing: '0.03em',
-        padding: '1px 6px',
-        borderRadius: 3,
-        background: s.bg,
-        color: s.text,
-        lineHeight: '16px',
-      }}
+    <Badge
+      bg={c.bg}
+      color={c.text}
+      size="xs"
+      dot={status === 'production' ? 'var(--color-success)' : undefined}
     >
-      {status === 'production' && (
-        <span
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: '50%',
-            background: '#16A34A',
-            animation: 'pulse 2s infinite',
-          }}
-        />
-      )}
-      {s.label}
-    </span>
+      {label}
+    </Badge>
   );
 }
 
 /* ─── Chip Change Pill ──────────────────────────────────────────────── */
 
 function ChipChangePill({ change }: { change: ChipChange }) {
-  const colors = CHIP_COLORS[change.chipType];
+  const chipColors = CHIP_COLORS[change.chipType];
   const icon = CHIP_ICONS[change.chipType];
   const a = ACTION_STYLES[change.action];
 
   return (
-    <span
-      title={change.detail || `${change.action} @${change.chipType}(${change.chipName})`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 3,
-        padding: '1px 7px',
-        borderRadius: 9999,
-        fontSize: 10,
-        fontWeight: 500,
-        fontFamily: 'var(--font-ui)',
-        background: a.bg,
-        color: a.text,
-        border: `1px solid ${a.border}`,
-        lineHeight: '16px',
-        whiteSpace: 'nowrap',
-      }}
+    <Badge
+      bg={a.bg}
+      color={a.text}
+      variant="outline"
+      size="xs"
+      className="!rounded-full"
+      icon={
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+          <span style={{ fontWeight: 700 }}>{a.prefix}</span>
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: chipColors.accent,
+              flexShrink: 0,
+            }}
+          />
+        </span>
+      }
     >
-      <span style={{ fontWeight: 700 }}>{a.prefix}</span>
-      <span
-        style={{
-          width: 5,
-          height: 5,
-          borderRadius: '50%',
-          background: colors.accent,
-          flexShrink: 0,
-        }}
-      />
       {icon} @{change.chipType}({change.chipName})
-    </span>
+    </Badge>
   );
 }
 
@@ -155,12 +129,12 @@ function TimelineEntry({
         borderRadius: 4,
         cursor: 'pointer',
         transition: 'background 150ms ease, border-color 150ms ease',
-        background: selected ? '#EFF6FF' : 'transparent',
-        outline: selected ? '1px solid #2563EB' : '1px solid transparent',
+        background: selected ? 'var(--color-accent-light)' : 'transparent',
+        outline: selected ? `1px solid var(--color-accent)` : '1px solid transparent',
         marginBottom: 2,
       }}
       onMouseEnter={(e) => {
-        if (!selected) e.currentTarget.style.background = '#F9FAFB';
+        if (!selected) e.currentTarget.style.background = 'var(--color-surface-1)';
       }}
       onMouseLeave={(e) => {
         if (!selected) e.currentTarget.style.background = 'transparent';
@@ -172,7 +146,7 @@ function TimelineEntry({
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: 'var(--color-text-primary)',
+            color: colors.textPrimary,
             fontFamily: 'var(--font-ui)',
           }}
         >
@@ -180,7 +154,7 @@ function TimelineEntry({
         </span>
         <VersionStatusBadge status={version.status} />
         {version.reviewStatus === 'approved' && (
-          <span style={{ fontSize: 10, color: '#16A34A', fontFamily: 'var(--font-ui)' }}>
+          <span style={{ fontSize: 10, color: 'var(--color-success)', fontFamily: 'var(--font-ui)' }}>
             Approved
           </span>
         )}
@@ -198,7 +172,7 @@ function TimelineEntry({
           alignItems: 'center',
           gap: 5,
           fontSize: 10,
-          color: 'var(--color-text-tertiary)',
+          color: colors.textTertiary,
           fontFamily: 'var(--font-ui)',
           marginBottom: 6,
         }}
@@ -208,7 +182,7 @@ function TimelineEntry({
             width: 16,
             height: 16,
             borderRadius: '50%',
-            background: '#D1D5DB',
+            background: 'var(--color-border-strong)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -221,7 +195,7 @@ function TimelineEntry({
           {version.author.name[0]}
         </span>
         <span>{version.author.name}</span>
-        <span style={{ color: '#D1D5DB' }}>/</span>
+        <span style={{ color: 'var(--color-border-strong)' }}>/</span>
         <span>{timeAgo}</span>
       </div>
 
@@ -229,7 +203,7 @@ function TimelineEntry({
       <p
         style={{
           fontSize: 11,
-          color: 'var(--color-text-secondary)',
+          color: colors.textSecondary,
           fontFamily: 'var(--font-ui)',
           lineHeight: '15px',
           margin: 0,
@@ -261,14 +235,14 @@ const LINE_BG: Record<DiffLineEntry['type'], string> = {
   added:     '#F0FDF4',
   removed:   '#FEF2F2',
   modified:  '#FFFBEB',
-  unchanged: '#FFFFFF',
+  unchanged: 'var(--color-surface-0)',
 };
 
 const LINE_TEXT: Record<DiffLineEntry['type'], string> = {
-  added:     '#166534',
-  removed:   '#991B1B',
+  added:     statusColors.production.text,
+  removed:   statusColors.unresolved.text,
   modified:  '#92400E',
-  unchanged: 'var(--color-text-secondary)',
+  unchanged: colors.textSecondary,
 };
 
 const LINE_PREFIX: Record<DiffLineEntry['type'], string> = {
@@ -286,11 +260,11 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
       if (chipMatch) {
         const type = chipMatch[1] as keyof typeof CHIP_COLORS;
         const name = chipMatch[2];
-        const colors = CHIP_COLORS[type];
-        if (colors) {
+        const chipColors = CHIP_COLORS[type];
+        if (chipColors) {
           const glowColor =
-            line.chipAction === 'added'   ? '#22C55E' :
-            line.chipAction === 'removed' ? '#EF4444' :
+            line.chipAction === 'added'   ? 'var(--color-success)' :
+            line.chipAction === 'removed' ? 'var(--color-unresolved)' :
             undefined;
           return (
             <span
@@ -304,19 +278,19 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
                 fontSize: 10,
                 fontWeight: 500,
                 fontFamily: 'var(--font-ui)',
-                color: colors.text,
-                background: colors.bg,
-                border: `1px solid ${colors.border}`,
+                color: chipColors.text,
+                background: chipColors.bg,
+                border: `1px solid ${chipColors.border}`,
                 margin: '0 2px',
                 lineHeight: '18px',
                 boxShadow: glowColor
-                  ? `0 0 0 2px ${glowColor}40, 0 0 6px ${glowColor}25`
+                  ? `0 0 0 2px color-mix(in srgb, ${glowColor} 25%, transparent), 0 0 6px color-mix(in srgb, ${glowColor} 15%, transparent)`
                   : undefined,
                 opacity: line.type === 'removed' ? 0.5 : 1,
                 textDecoration: line.type === 'removed' ? 'line-through' : undefined,
               }}
             >
-              <span style={{ color: colors.accent }}>{CHIP_ICONS[type]}</span> {name}
+              <span style={{ color: chipColors.accent }}>{CHIP_ICONS[type]}</span> {name}
             </span>
           );
         }
@@ -341,9 +315,9 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
         alignItems: 'baseline',
         gap: 0,
         fontSize: 12,
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        fontFamily: 'var(--font-mono)',
         background: LINE_BG[line.type],
-        borderBottom: '1px solid #F9FAFB',
+        borderBottom: `1px solid var(--color-surface-1)`,
         minHeight: 26,
         lineHeight: '22px',
       }}
@@ -355,7 +329,7 @@ function DiffLine({ line, lineNum }: { line: DiffLineEntry; lineNum: number }) {
           textAlign: 'right',
           paddingRight: 8,
           fontSize: 10,
-          color: '#D1D5DB',
+          color: 'var(--color-border-strong)',
           flexShrink: 0,
           userSelect: 'none',
         }}
@@ -403,16 +377,16 @@ function CollapsedUnchanged({ count, onExpand }: { count: number; onExpand: () =
         justifyContent: 'center',
         padding: '4px 0',
         fontSize: 10,
-        color: 'var(--color-text-tertiary)',
+        color: colors.textTertiary,
         fontFamily: 'var(--font-ui)',
         background: '#FAFAFA',
-        borderTop: '1px solid #F3F4F6',
-        borderBottom: '1px solid #F3F4F6',
+        borderTop: `1px solid var(--color-surface-2)`,
+        borderBottom: `1px solid var(--color-surface-2)`,
         cursor: 'pointer',
         userSelect: 'none',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-tertiary)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.color = colors.textSecondary; }}
+      onMouseLeave={(e) => { e.currentTarget.style.color = colors.textTertiary; }}
     >
       Show {count} unchanged line{count !== 1 ? 's' : ''}
     </div>
@@ -444,13 +418,7 @@ function SummaryPanel({
       }}
     >
       {/* Version info card */}
-      <div
-        style={{
-          padding: 12,
-          border: '1px solid var(--color-border)',
-          borderRadius: 6,
-        }}
-      >
+      <Card padding="sm">
         <div
           style={{
             display: 'flex',
@@ -463,7 +431,7 @@ function SummaryPanel({
             style={{
               fontSize: 13,
               fontWeight: 600,
-              color: 'var(--color-text-primary)',
+              color: colors.textPrimary,
               fontFamily: 'var(--font-ui)',
             }}
           >
@@ -477,7 +445,7 @@ function SummaryPanel({
             alignItems: 'center',
             gap: 6,
             fontSize: 10,
-            color: 'var(--color-text-tertiary)',
+            color: colors.textTertiary,
             fontFamily: 'var(--font-ui)',
             marginBottom: 6,
           }}
@@ -487,7 +455,7 @@ function SummaryPanel({
               width: 18,
               height: 18,
               borderRadius: '50%',
-              background: '#D1D5DB',
+              background: 'var(--color-border-strong)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -505,24 +473,18 @@ function SummaryPanel({
           style={{
             margin: 0,
             fontSize: 11,
-            color: 'var(--color-text-secondary)',
+            color: colors.textSecondary,
             fontFamily: 'var(--font-ui)',
             lineHeight: '15px',
           }}
         >
           {selected.changeSummary}
         </p>
-      </div>
+      </Card>
 
       {/* Diff stats */}
       {selectedVersion === '2.2.0' && (
-        <div
-          style={{
-            padding: 12,
-            border: '1px solid var(--color-border)',
-            borderRadius: 6,
-          }}
-        >
+        <Card padding="sm">
           <h3
             className="text-section-label"
             style={{
@@ -532,30 +494,24 @@ function SummaryPanel({
             Diff Stats
           </h3>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, fontFamily: 'var(--font-ui)' }}>
-            <span style={{ color: '#166534' }}>+{diffStats.added} added</span>
-            <span style={{ color: '#991B1B' }}>{diffStats.removed > 0 ? `\u2212${diffStats.removed}` : '0'} removed</span>
+            <span style={{ color: statusColors.production.text }}>+{diffStats.added} added</span>
+            <span style={{ color: statusColors.unresolved.text }}>{diffStats.removed > 0 ? `\u2212${diffStats.removed}` : '0'} removed</span>
           </div>
           <div
             style={{
               marginTop: 6,
               fontSize: 10,
-              color: 'var(--color-text-tertiary)',
+              color: colors.textTertiary,
               fontFamily: 'var(--font-ui)',
             }}
           >
             {diffStats.unchanged} unchanged lines
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Chip changes */}
-      <div
-        style={{
-          padding: 12,
-          border: '1px solid var(--color-border)',
-          borderRadius: 6,
-        }}
-      >
+      <Card padding="sm">
         <h3
           className="text-section-label"
           style={{
@@ -572,7 +528,7 @@ function SummaryPanel({
                 <span
                   style={{
                     fontSize: 10,
-                    color: 'var(--color-text-tertiary)',
+                    color: colors.textTertiary,
                     fontFamily: 'var(--font-ui)',
                     marginLeft: 20,
                   }}
@@ -583,91 +539,49 @@ function SummaryPanel({
             </div>
           ))}
           {diffChipChanges.length === 0 && (
-            <p style={{ margin: 0, fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)' }}>
+            <p style={{ margin: 0, fontSize: 10, color: colors.textTertiary, fontFamily: 'var(--font-ui)' }}>
               No chip changes in this version.
             </p>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Actions */}
-      <div
-        style={{
-          padding: 12,
-          border: '1px solid var(--color-border)',
-          borderRadius: 6,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 6,
-        }}
-      >
-        <button
+      <Card padding="sm" className="flex flex-col gap-1.5">
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full"
           onClick={() => openPublishModal()}
-          style={{
-            width: '100%',
-            padding: '7px 0',
-            borderRadius: 5,
-            border: 'none',
-            background: '#1A73E8',
-            color: '#FFFFFF',
-            fontSize: 11,
-            fontWeight: 600,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-          }}
         >
           Publish v{selected.version}
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
           onClick={() => {
             restoreVersion(selected.version);
             addNotification({ type: 'success', title: `Restored to v${selected.version}` });
           }}
-          style={{
-            width: '100%',
-            padding: '7px 0',
-            borderRadius: 5,
-            border: '1px solid var(--color-border)',
-            background: '#F9FAFB',
-            color: '#374151',
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-          }}
         >
           Restore This Version
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
           onClick={() => {
             addNotification({ type: 'info', title: 'Fork created', message: `Forked from v${selected.version} as a new draft` });
           }}
-          style={{
-            width: '100%',
-            padding: '7px 0',
-            borderRadius: 5,
-            border: '1px solid var(--color-border)',
-            background: '#F9FAFB',
-            color: '#374151',
-            fontSize: 11,
-            fontWeight: 500,
-            fontFamily: 'var(--font-ui)',
-            cursor: 'pointer',
-          }}
         >
           Fork From Here
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {/* Review status */}
       {selected.reviewStatus && (
-        <div
-          style={{
-            padding: 12,
-            border: '1px solid var(--color-border)',
-            borderRadius: 6,
-          }}
-        >
+        <Card padding="sm">
           <h3
             className="text-section-label"
             style={{
@@ -678,7 +592,7 @@ function SummaryPanel({
           </h3>
           <div style={{ fontSize: 11, fontFamily: 'var(--font-ui)' }}>
             {selected.reviewStatus === 'approved' && (
-              <span style={{ color: '#16A34A', fontWeight: 600 }}>Approved</span>
+              <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>Approved</span>
             )}
             {selected.reviewStatus === 'pending' && (
               <span style={{ color: '#D97706', fontWeight: 600 }}>Pending review</span>
@@ -687,23 +601,18 @@ function SummaryPanel({
           {selected.reviewers && (
             <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {selected.reviewers.map((r) => (
-                <span
+                <Badge
                   key={r}
-                  style={{
-                    fontSize: 10,
-                    padding: '1px 6px',
-                    borderRadius: 3,
-                    background: '#F3F4F6',
-                    color: 'var(--color-text-secondary)',
-                    fontFamily: 'var(--font-ui)',
-                  }}
+                  bg="var(--color-surface-2)"
+                  color="var(--color-text-secondary)"
+                  size="xs"
                 >
                   {r.split('@')[0]}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -789,7 +698,7 @@ export function VersionHistory() {
               margin: 0,
               fontSize: 13,
               fontWeight: 600,
-              color: 'var(--color-text-primary)',
+              color: colors.textPrimary,
               fontFamily: 'var(--font-ui)',
             }}
           >
@@ -799,7 +708,7 @@ export function VersionHistory() {
             style={{
               margin: 0,
               fontSize: 10,
-              color: 'var(--color-text-tertiary)',
+              color: colors.textTertiary,
               fontFamily: 'var(--font-ui)',
               marginTop: 1,
             }}
@@ -807,18 +716,13 @@ export function VersionHistory() {
             Claims Processing Agent — {VERSIONS.length} versions
           </p>
         </div>
-        <div
-          style={{
-            fontSize: 11,
-            color: 'var(--color-text-secondary)',
-            fontFamily: 'var(--font-ui)',
-            padding: '3px 10px',
-            borderRadius: 4,
-            background: '#F3F4F6',
-          }}
+        <Badge
+          bg="var(--color-surface-2)"
+          color="var(--color-text-secondary)"
+          size="md"
         >
           v{compareFrom.version} → v{selected.version}
-        </div>
+        </Badge>
       </header>
 
       {/* ── Three-Panel Layout ──────────────────────────────────────── */}
@@ -867,7 +771,7 @@ export function VersionHistory() {
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '8px 16px',
-              borderBottom: '1px solid #F3F4F6',
+              borderBottom: `1px solid var(--color-surface-2)`,
               flexShrink: 0,
             }}
           >
@@ -875,7 +779,7 @@ export function VersionHistory() {
               style={{
                 fontSize: 11,
                 fontWeight: 600,
-                color: '#374151',
+                color: colors.textPrimary,
                 fontFamily: 'var(--font-ui)',
               }}
             >
@@ -887,7 +791,7 @@ export function VersionHistory() {
                 alignItems: 'center',
                 gap: 12,
                 fontSize: 10,
-                color: 'var(--color-text-tertiary)',
+                color: colors.textTertiary,
                 fontFamily: 'var(--font-ui)',
               }}
             >
@@ -933,7 +837,7 @@ export function VersionHistory() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: 48,
-                  color: 'var(--color-text-tertiary)',
+                  color: colors.textTertiary,
                   fontSize: 12,
                   fontFamily: 'var(--font-ui)',
                   textAlign: 'center',
@@ -941,7 +845,7 @@ export function VersionHistory() {
                 }}
               >
                 <p style={{ margin: 0 }}>Select v2.2.0 to view the pre-computed chip-aware diff.</p>
-                <p style={{ margin: '4px 0 0', color: '#D1D5DB', fontSize: 11 }}>
+                <p style={{ margin: '4px 0 0', color: 'var(--color-border-strong)', fontSize: 11 }}>
                   In the full product, diffs are computed for any version pair.
                 </p>
               </div>
@@ -953,8 +857,8 @@ export function VersionHistory() {
             <div
               style={{
                 padding: '8px 16px',
-                borderTop: '1px solid var(--color-border)',
-                background: '#F0F9FF',
+                borderTop: `1px solid var(--color-border)`,
+                background: 'var(--color-accent-light)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
@@ -963,30 +867,27 @@ export function VersionHistory() {
                 flexShrink: 0,
               }}
             >
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  padding: '1px 8px',
-                  borderRadius: 3,
-                  background: '#DBEAFE',
-                  color: '#1E40AF',
-                }}
+              <Badge
+                bg={statusColors.staging.bg}
+                color={statusColors.staging.text}
+                size="xs"
               >
                 {DIFF_SUMMARY.suggestedBump.toUpperCase()}
-              </span>
-              <span style={{ color: 'var(--color-text-secondary)' }}>{DIFF_SUMMARY.suggestedBumpReason}</span>
+              </Badge>
+              <span style={{ color: colors.textSecondary }}>{DIFF_SUMMARY.suggestedBumpReason}</span>
             </div>
           )}
 
           {/* Mobile/tablet: toggle button for summary panel */}
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             className="vh-aside-toggle"
             onClick={() => setShowMobileSummary((prev) => !prev)}
           >
             {showMobileSummary ? 'Hide' : 'Show'} Change Summary
             <span style={{ fontSize: 14 }}>{showMobileSummary ? '\u25B2' : '\u25BC'}</span>
-          </button>
+          </Button>
 
           {/* Mobile/tablet: collapsible summary */}
           {showMobileSummary && (
@@ -995,7 +896,7 @@ export function VersionHistory() {
               style={{
                 flexDirection: 'column',
                 overflowY: 'auto',
-                borderTop: '1px solid var(--color-border)',
+                borderTop: `1px solid var(--color-border)`,
                 maxHeight: 400,
               }}
             >

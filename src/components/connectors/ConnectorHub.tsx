@@ -9,6 +9,10 @@ import { useState, useMemo, useCallback } from 'react';
 import { useConnectors, useNotifications, useRegistry } from '../../contexts/AppContext';
 import type { ConnectorEntry } from '../../data/connectors';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import { Button } from '../../ui/Button';
+import { Card } from '../../ui/Card';
+import { Badge } from '../../ui/Badge';
+import { TextInput } from '../../ui/Input';
 
 // ─── SVG Icons ───────────────────────────────────────────────────────
 
@@ -101,8 +105,17 @@ function getConnectorVisual(id: string, product: string) {
   const abbr = words.length > 1
     ? (words[0][0] + words[1][0]).toUpperCase()
     : product.substring(0, 2).toUpperCase();
-  return { abbr, bg: '#F3F4F6', fg: '#6B7280' };
+  return { abbr, bg: 'var(--color-surface-2)', fg: 'var(--color-text-secondary)' };
 }
+
+// ─── Status badge config ─────────────────────────────────────────────
+
+const STATUS_CONFIGS: Record<string, { dotColor: string; textColor: string; bgColor: string; label: string }> = {
+  active: { dotColor: '#059669', textColor: '#059669', bgColor: '#ECFDF5', label: 'Active' },
+  available: { dotColor: 'var(--color-text-tertiary)', textColor: 'var(--color-text-secondary)', bgColor: 'var(--color-surface-2)', label: 'Available' },
+  draft: { dotColor: '#D97706', textColor: '#D97706', bgColor: '#FFFBEB', label: 'Configuring' },
+  error: { dotColor: '#DC2626', textColor: '#DC2626', bgColor: '#FEF2F2', label: 'Error' },
+};
 
 // ─── Action Summary Bar ──────────────────────────────────────────────
 
@@ -122,38 +135,6 @@ function ActionSummary({ actionCount, systemCount }: { actionCount: number; syst
   );
 }
 
-// ─── Status Badge ────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: ConnectorEntry['status'] }) {
-  const configs: Record<string, { dotColor: string; textColor: string; bgColor: string; label: string }> = {
-    active: { dotColor: '#059669', textColor: '#059669', bgColor: '#ECFDF5', label: 'Active' },
-    available: { dotColor: '#9CA3AF', textColor: '#6B7280', bgColor: '#F3F4F6', label: 'Available' },
-    draft: { dotColor: '#D97706', textColor: '#D97706', bgColor: '#FFFBEB', label: 'Configuring' },
-    error: { dotColor: '#DC2626', textColor: '#DC2626', bgColor: '#FEF2F2', label: 'Error' },
-  };
-
-  const config = configs[status];
-
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-      style={{ fontSize: 10, fontWeight: 500, color: config.textColor, background: config.bgColor }}
-    >
-      <span
-        style={{
-          width: 5,
-          height: 5,
-          borderRadius: '50%',
-          background: config.dotColor,
-          display: 'inline-block',
-          flexShrink: 0,
-        }}
-      />
-      {config.label}
-    </span>
-  );
-}
-
 // ─── Sync Mode Badge ─────────────────────────────────────────────────
 
 function SyncModeBadge({ mode }: { mode?: 'federated' | 'ingested' }) {
@@ -161,18 +142,16 @@ function SyncModeBadge({ mode }: { mode?: 'federated' | 'ingested' }) {
 
   if (mode === 'federated') {
     return (
-      <span className="inline-flex items-center gap-1" style={{ fontSize: 10, color: '#2563EB' }}>
-        <LightningIcon className="text-[#2563EB]" />
+      <Badge color="var(--color-accent)" size="xs" icon={<LightningIcon />}>
         Real-time
-      </span>
+      </Badge>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1" style={{ fontSize: 10, color: '#9CA3AF' }}>
-      <RefreshIcon className="text-[#9CA3AF]" />
+    <Badge color="var(--color-text-tertiary)" size="xs" icon={<RefreshIcon />}>
       Periodic sync
-    </span>
+    </Badge>
   );
 }
 
@@ -205,31 +184,27 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
     return `${Math.floor(mins / 1440)}d ago`;
   }, [connector.lastSync]);
 
+  const statusConfig = STATUS_CONFIGS[connector.status];
+
   return (
-    <div
-      className="rounded-lg border bg-white transition-all cursor-pointer"
+    <Card
+      variant={expanded ? 'default' : 'interactive'}
+      padding="none"
       style={{
-        borderColor: expanded ? 'var(--color-accent)' : 'var(--color-border)',
-        boxShadow: expanded
-          ? '0 1px 3px 0 rgba(37, 99, 235, 0.08)'
-          : 'var(--shadow-xs)',
+        borderColor: expanded ? 'var(--color-accent)' : undefined,
+        boxShadow: expanded ? '0 1px 3px 0 rgba(37, 99, 235, 0.08)' : undefined,
         opacity: connector.status === 'available' ? 0.72 : 1,
         fontFamily: 'var(--font-ui)',
+        transition: 'all 150ms ease',
       }}
       onMouseEnter={(e) => {
-        if (!expanded) {
-          e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.08)';
-        }
         if (connector.status === 'available') {
-          e.currentTarget.style.opacity = '1';
+          (e.currentTarget as HTMLElement).style.opacity = '1';
         }
       }}
       onMouseLeave={(e) => {
-        if (!expanded) {
-          e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.03)';
-        }
         if (connector.status === 'available') {
-          e.currentTarget.style.opacity = '0.72';
+          (e.currentTarget as HTMLElement).style.opacity = '0.72';
         }
       }}
       onClick={() => { setExpanded(!expanded); onSelect(connector.id); }}
@@ -256,31 +231,39 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
           {/* Name + status */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, lineHeight: 1.3 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3 }}>
                 {connector.product}
               </h3>
-              <StatusBadge status={connector.status} />
+              <Badge
+                dot={statusConfig.dotColor}
+                color={statusConfig.textColor}
+                bg={statusConfig.bgColor}
+                size="xs"
+                className="rounded-full"
+              >
+                {statusConfig.label}
+              </Badge>
             </div>
             {/* Meta line: sync mode + entity/action counts */}
             {connector.status === 'active' && (
               <div className="flex items-center gap-2 mt-0.5">
                 <SyncModeBadge mode={connector.syncMode} />
                 {(enabledEntities > 0 || enabledActions > 0) && (
-                  <span style={{ fontSize: 10, color: '#9CA3AF' }}>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
                     {enabledEntities > 0 && `${enabledEntities} entities`}
                     {enabledEntities > 0 && enabledActions > 0 && ' / '}
                     {enabledActions > 0 && `${enabledActions} actions`}
                   </span>
                 )}
                 {timeSinceSync && (
-                  <span style={{ fontSize: 10, color: '#9CA3AF' }}>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
                     Synced {timeSinceSync}
                   </span>
                 )}
               </div>
             )}
             {connector.status === 'available' && (
-              <span style={{ fontSize: 10, color: '#2563EB', fontWeight: 500 }}>
+              <span style={{ fontSize: 10, color: 'var(--color-accent)', fontWeight: 500 }}>
                 Connect to get started
               </span>
             )}
@@ -288,13 +271,13 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
 
           {/* Expand indicator */}
           {connector.status === 'active' && (
-            <ChevronIcon expanded={expanded} className="text-[#9CA3AF] flex-shrink-0" />
+            <ChevronIcon expanded={expanded} className="text-[var(--color-text-tertiary)] flex-shrink-0" />
           )}
         </div>
 
         {/* Referenced count */}
         {connector.referencedInPlaybooks > 0 && connector.status !== 'available' && (
-          <div className="mt-2 ml-[42px]" style={{ fontSize: 10, color: '#9CA3AF' }}>
+          <div className="mt-2 ml-[42px]" style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
             Referenced in {connector.referencedInPlaybooks} playbook{connector.referencedInPlaybooks > 1 ? 's' : ''}
           </div>
         )}
@@ -302,13 +285,16 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
 
       {/* Expanded detail */}
       {expanded && connector.status === 'active' && (
-        <div className="px-3 pb-3 border-t border-[#F3F4F6] pt-3 space-y-3 ml-[42px]">
+        <div
+          className="px-3 pb-3 pt-3 space-y-3 ml-[42px]"
+          style={{ borderTop: '1px solid var(--color-surface-2)' }}
+        >
           {/* Entities */}
           {connector.entities.length > 0 && (
             <div>
               <h4
                 className="mb-1.5"
-                style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
               >
                 Entities
               </h4>
@@ -321,8 +307,8 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
                         style={{
                           width: 14,
                           height: 14,
-                          border: e.enabled ? '1px solid #2563EB' : '1px solid #D1D5DB',
-                          background: e.enabled ? '#2563EB' : 'transparent',
+                          border: e.enabled ? '1px solid var(--color-accent)' : '1px solid #D1D5DB',
+                          background: e.enabled ? 'var(--color-accent)' : 'transparent',
                           color: '#fff',
                         }}
                       >
@@ -331,7 +317,7 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
                       <span style={{ color: '#374151' }}>{e.name}</span>
                     </div>
                     {e.count > 0 && (
-                      <span style={{ color: '#9CA3AF', fontSize: 10 }}>{e.count.toLocaleString()}</span>
+                      <span style={{ color: 'var(--color-text-tertiary)', fontSize: 10 }}>{e.count.toLocaleString()}</span>
                     )}
                   </div>
                 ))}
@@ -344,7 +330,7 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
             <div>
               <h4
                 className="mb-1.5"
-                style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
               >
                 Actions
               </h4>
@@ -357,7 +343,7 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
                       fontSize: 10,
                       padding: '2px 8px',
                       background: a.enabled ? '#EFF6FF' : '#F9FAFB',
-                      color: a.enabled ? '#2563EB' : '#9CA3AF',
+                      color: a.enabled ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
                       textDecoration: a.enabled ? 'none' : 'line-through',
                     }}
                   >
@@ -369,7 +355,7 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
           )}
 
           {/* Auth & region */}
-          <div className="flex flex-wrap gap-3" style={{ fontSize: 10, color: '#9CA3AF' }}>
+          <div className="flex flex-wrap gap-3" style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
             <span>Auth: {connector.authMethod}</span>
             {connector.authUser && <span>User: {connector.authUser}</span>}
             {connector.region && <span>Region: {connector.region}</span>}
@@ -377,24 +363,20 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               className="hover:underline"
-              style={{ fontSize: 10, color: '#2563EB', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              style={{ fontSize: 10, padding: 0 }}
               onClick={(e) => { e.stopPropagation(); onOpenConsole(); }}
             >
               Open in Gemini Enterprise Console
-            </button>
-            <button
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                padding: '3px 8px',
-                borderRadius: 6,
-                border: '1px solid #E5E7EB',
-                background: syncing ? '#F3F4F6' : '#fff',
-                color: syncing ? '#9CA3AF' : '#374151',
-                cursor: syncing ? 'not-allowed' : 'pointer',
-              }}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={syncing}
+              style={{ fontSize: 10, padding: '3px 8px' }}
               onClick={(e) => {
                 e.stopPropagation();
                 if (syncing) return;
@@ -404,46 +386,44 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
               }}
             >
               {syncing ? 'Syncing...' : 'Sync Now'}
-            </button>
-            <button
-              style={{
-                fontSize: 10,
-                fontWeight: 500,
-                padding: '3px 8px',
-                borderRadius: 6,
-                border: '1px solid #E5E7EB',
-                background: '#fff',
-                color: connector.status === 'active' ? '#DC2626' : '#059669',
-                cursor: 'pointer',
-              }}
+            </Button>
+            <Button
+              variant={connector.status === 'active' ? 'danger' : 'primary'}
+              size="sm"
+              style={{ fontSize: 10, padding: '3px 8px' }}
               onClick={(e) => {
                 e.stopPropagation();
                 onToggle(connector.id, connector.status !== 'active');
               }}
             >
               {connector.status === 'active' ? 'Disconnect' : 'Connect'}
-            </button>
+            </Button>
           </div>
 
           {/* Mini query tester */}
           <div style={{ marginTop: 4 }}>
             <h4
               className="mb-1.5"
-              style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}
             >
               Query Tester
             </h4>
             <div className="flex gap-2">
-              <input
-                type="text"
+              <TextInput
+                inputSize="sm"
                 value={queryInput}
                 onChange={(e) => setQueryInput(e.target.value)}
                 placeholder={`Search ${connector.product}...`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex-1 px-2 py-1.5 text-[11px] border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-300"
-                style={{ borderColor: '#E5E7EB', fontFamily: 'var(--font-ui)' }}
+                className="flex-1"
+                style={{ fontSize: 11 }}
               />
-              <button
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!queryInput.trim() || queryLoading}
+                loading={queryLoading}
+                style={{ fontSize: 10, padding: '3px 10px' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!queryInput.trim() || queryLoading) return;
@@ -461,20 +441,9 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
                   }, 400 + Math.random() * 600);
                   onTestQuery(connector.id, queryInput);
                 }}
-                disabled={!queryInput.trim() || queryLoading}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 500,
-                  padding: '3px 10px',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: queryInput.trim() && !queryLoading ? '#2563EB' : '#93C5FD',
-                  color: '#fff',
-                  cursor: queryInput.trim() && !queryLoading ? 'pointer' : 'not-allowed',
-                }}
               >
                 {queryLoading ? 'Querying...' : 'Test'}
-              </button>
+              </Button>
             </div>
             {queryResults && (
               <div className="mt-2 space-y-1">
@@ -488,7 +457,7 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -501,7 +470,7 @@ function SectionHeader({ label, count }: { label: string; count: number }) {
       style={{
         fontSize: 10,
         fontWeight: 600,
-        color: '#9CA3AF',
+        color: 'var(--color-text-tertiary)',
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
         fontFamily: 'var(--font-ui)',
@@ -579,24 +548,13 @@ export function ConnectorHub() {
             {activeCount} active connection{activeCount !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="md"
           onClick={handleAddConnector}
-          className="rounded-lg"
-          style={{
-            fontSize: 12,
-            fontWeight: 500,
-            padding: '6px 14px',
-            background: 'var(--color-accent)',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-ui)',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-accent-hover)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--color-accent)'; }}
         >
           Add Connector
-        </button>
+        </Button>
       </header>
 
       <div className="page-body space-y-5">
@@ -605,29 +563,13 @@ export function ConnectorHub() {
 
         {/* Search */}
         <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
-          <input
-            type="text"
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
+          <TextInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search connectors by name, description, or action..."
-            className="w-full rounded-lg border focus:outline-none"
-            style={{
-              padding: '8px 12px 8px 34px',
-              fontSize: 12,
-              border: '1px solid #E5E7EB',
-              background: '#fff',
-              color: '#111827',
-              fontFamily: 'var(--font-ui)',
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#2563EB';
-              e.currentTarget.style.boxShadow = '0 0 0 1px #2563EB';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#E5E7EB';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
+            inputSize="sm"
+            style={{ paddingLeft: 34 }}
           />
         </div>
 

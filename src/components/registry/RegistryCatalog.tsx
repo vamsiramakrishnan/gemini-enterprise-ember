@@ -3,6 +3,10 @@
  *
  * Grid/list browser with type filters, search, and sort. Each card shows
  * type, name, version, status, owner, usage count, and description.
+ *
+ * Refactored to use shared UI primitives (Card, Badge, StatusBadge, Button,
+ * TextInput, Select, EmptyState) and CSS custom-property design tokens
+ * instead of hardcoded hex colors and inline style objects.
  */
 
 import { useState, useMemo } from 'react';
@@ -11,6 +15,9 @@ import { useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import { Button, Card, Badge, StatusBadge, TextInput, Select, EmptyState as SharedEmptyState } from '../../ui';
+import { CHIP_ACCENTS } from '../../config/chipConfig';
+import { statusColors } from '../../constants/colors';
 
 // ─── Type Filter Chips ────────────────────────────────────────────────
 
@@ -24,35 +31,42 @@ function TypeFilter({
   onChange: (t: ChipType | 'all') => void;
 }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+    <div className="flex flex-wrap gap-1.5">
       {ALL_TYPES.map((t) => {
         const isActive = t === active;
         const chipColor = t === 'all' ? null : CHIP_COLORS[t as ChipType];
-        const activeBg = chipColor ? chipColor.bg : '#374151';
-        const activeText = chipColor ? chipColor.text : '#fff';
-        const activeBorder = chipColor ? chipColor.border : '#374151';
         const icon = t === 'all' ? null : CHIP_ICONS[t as ChipType];
+
+        if (isActive && chipColor) {
+          return (
+            <Badge
+              key={t}
+              bg={chipColor.bg}
+              color={chipColor.text}
+              variant="outline"
+              size="sm"
+              icon={icon ? <span className="text-[10px]">{icon}</span> : undefined}
+              className="cursor-pointer"
+            >
+              <span onClick={() => onChange(t)}>@{t}</span>
+            </Badge>
+          );
+        }
+
         return (
           <button
             key={t}
             onClick={() => onChange(t)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '3px 10px',
-              borderRadius: 9999,
-              fontSize: 11,
-              fontWeight: 500,
-              fontFamily: 'var(--font-ui)',
-              border: isActive && chipColor ? `1px solid ${activeBorder}` : '1px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 150ms ease',
-              background: isActive ? activeBg : '#F3F4F6',
-              color: isActive ? activeText : '#6B7280',
-            }}
+            className={[
+              'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full',
+              'text-[11px] font-medium border border-transparent',
+              'cursor-pointer transition-colors duration-150',
+              isActive
+                ? 'bg-gray-700 text-white'
+                : 'bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]',
+            ].join(' ')}
           >
-            {icon && <span style={{ fontSize: 10 }}>{icon}</span>}
+            {icon && <span className="text-[10px]">{icon}</span>}
             {t === 'all' ? 'All' : `@${t}`}
           </button>
         );
@@ -91,76 +105,34 @@ function sortChips(chips: SmartChip[], key: SortKey): SmartChip[] {
   }
 }
 
-// ─── Status Dot ──────────────────────────────────────────────────────
-
-const STATUS_DOT: Record<string, { color: string; label: string }> = {
-  resolved:   { color: '#22C55E', label: 'Published' },
-  draft:      { color: '#EAB308', label: 'Draft' },
-  unresolved: { color: '#EF4444', label: 'Missing' },
-  deprecated: { color: '#9CA3AF', label: 'Deprecated' },
-};
-
-function StatusDot({ status }: { status: string }) {
-  const cfg = STATUS_DOT[status] || STATUS_DOT.deprecated;
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        fontSize: 10,
-        fontFamily: 'var(--font-ui)',
-        color: '#9CA3AF',
-      }}
-      title={cfg.label}
-    >
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: '50%',
-          background: cfg.color,
-          flexShrink: 0,
-        }}
-      />
-      {cfg.label}
-    </span>
-  );
-}
-
 // ─── Connector Meta Display ───────────────────────────────────────────
 
+/** Raw hex needed because Badge computes transparent bg from color string */
+const SYNC_RAW: Record<string, string> = {
+  active: CHIP_ACCENTS.data,      // #059669
+  syncing: CHIP_ACCENTS.agent,    // #D97706
+  error: CHIP_ACCENTS.guard,      // #E11D48
+  paused: CHIP_ACCENTS.schema,    // #475569
+};
+
 function ConnectorMeta({ meta }: { meta: ConnectorMetadata }) {
-  const syncColors: Record<string, string> = {
-    active: '#059669',
-    syncing: '#D97706',
-    error: '#DC2626',
-    paused: '#9CA3AF',
-  };
   return (
-    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-      <span
-        style={{
-          fontSize: 10,
-          padding: '1px 6px',
-          borderRadius: 4,
-          fontWeight: 500,
-          fontFamily: 'var(--font-ui)',
-          background: (syncColors[meta.syncStatus] || '#9CA3AF') + '18',
-          color: syncColors[meta.syncStatus] || '#9CA3AF',
-        }}
+    <div className="mt-2 flex flex-wrap gap-1">
+      <Badge
+        color={SYNC_RAW[meta.syncStatus] || SYNC_RAW.paused}
+        size="xs"
       >
         {meta.syncStatus === 'active' ? 'Active' : meta.syncStatus}
-      </span>
-      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#F3F4F6', color: '#6B7280', fontFamily: 'var(--font-ui)' }}>
+      </Badge>
+      <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
         {meta.entities.filter(e => e.enabled).length} entities
-      </span>
-      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#F3F4F6', color: '#6B7280', fontFamily: 'var(--font-ui)' }}>
+      </Badge>
+      <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
         {meta.actions.filter(a => a.enabled).length} actions
-      </span>
-      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#F3F4F6', color: '#6B7280', fontFamily: 'var(--font-ui)' }}>
+      </Badge>
+      <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
         {meta.syncMode}
-      </span>
+      </Badge>
     </div>
   );
 }
@@ -169,17 +141,17 @@ function ConnectorMeta({ meta }: { meta: ConnectorMetadata }) {
 
 function SkillMeta({ meta }: { meta: SkillMetadata }) {
   return (
-    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 500, background: '#EDE9FE', color: '#6D28D9', fontFamily: 'var(--font-ui)' }}>
+    <div className="mt-2 flex flex-wrap gap-1">
+      <Badge color={CHIP_ACCENTS.skill} size="xs">
         {meta.scope}
-      </span>
-      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#F5F3FF', color: '#7C3AED', fontFamily: 'var(--font-ui)' }}>
+      </Badge>
+      <Badge color={CHIP_ACCENTS.skill} size="xs">
         {meta.activationMode}
-      </span>
+      </Badge>
       {meta.resources.scripts.length > 0 && (
-        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#F3F4F6', color: '#6B7280', fontFamily: 'var(--font-ui)' }}>
+        <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
           {meta.resources.scripts.length} scripts
-        </span>
+        </Badge>
       )}
     </div>
   );
@@ -189,32 +161,26 @@ function SkillMeta({ meta }: { meta: SkillMetadata }) {
 
 function TriggerMeta({ meta }: { meta: TriggerMetadata }) {
   return (
-    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 500, background: '#FFF7ED', color: '#C2410C', fontFamily: 'var(--font-ui)' }}>
+    <div className="mt-2 flex flex-wrap gap-1">
+      <Badge color={CHIP_ACCENTS.trigger} size="xs">
         {meta.triggerType}
-      </span>
-      <span
-        style={{
-          fontSize: 10,
-          padding: '1px 6px',
-          borderRadius: 4,
-          fontWeight: 500,
-          fontFamily: 'var(--font-ui)',
-          background: meta.status === 'active' ? '#DCFCE7' : '#F3F4F6',
-          color: meta.status === 'active' ? '#166534' : '#6B7280',
-        }}
+      </Badge>
+      <Badge
+        color={meta.status === 'active' ? statusColors.resolved.text : undefined}
+        bg={meta.status === 'active' ? statusColors.resolved.bg : 'var(--color-surface-2)'}
+        size="xs"
       >
         {meta.status}
-      </span>
+      </Badge>
       {meta.humanReadableSchedule && (
-        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#F3F4F6', color: '#6B7280', fontFamily: 'var(--font-ui)' }}>
+        <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
           {meta.humanReadableSchedule}
-        </span>
+        </Badge>
       )}
       {meta.sourceConnectorId && (
-        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: '#EFF6FF', color: '#2563EB', fontFamily: 'var(--font-ui)' }}>
+        <Badge color={CHIP_ACCENTS.connector} size="xs">
           from connector
-        </span>
+        </Badge>
       )}
     </div>
   );
@@ -223,23 +189,24 @@ function TriggerMeta({ meta }: { meta: TriggerMetadata }) {
 // ─── View Toggle Icons (SVG) ──────────────────────────────────────────
 
 function GridIcon({ active }: { active: boolean }) {
+  const fill = active ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)';
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1" y="1" width="5" height="5" rx="1" fill={active ? '#111827' : '#9CA3AF'} />
-      <rect x="8" y="1" width="5" height="5" rx="1" fill={active ? '#111827' : '#9CA3AF'} />
-      <rect x="1" y="8" width="5" height="5" rx="1" fill={active ? '#111827' : '#9CA3AF'} />
-      <rect x="8" y="8" width="5" height="5" rx="1" fill={active ? '#111827' : '#9CA3AF'} />
+      <rect x="1" y="1" width="5" height="5" rx="1" fill={fill} />
+      <rect x="8" y="1" width="5" height="5" rx="1" fill={fill} />
+      <rect x="1" y="8" width="5" height="5" rx="1" fill={fill} />
+      <rect x="8" y="8" width="5" height="5" rx="1" fill={fill} />
     </svg>
   );
 }
 
 function ListIcon({ active }: { active: boolean }) {
-  const c = active ? '#111827' : '#9CA3AF';
+  const fill = active ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)';
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-      <rect x="1" y="2" width="12" height="2" rx="1" fill={c} />
-      <rect x="1" y="6" width="12" height="2" rx="1" fill={c} />
-      <rect x="1" y="10" width="12" height="2" rx="1" fill={c} />
+      <rect x="1" y="2" width="12" height="2" rx="1" fill={fill} />
+      <rect x="1" y="6" width="12" height="2" rx="1" fill={fill} />
+      <rect x="1" y="10" width="12" height="2" rx="1" fill={fill} />
     </svg>
   );
 }
@@ -248,11 +215,21 @@ function ListIcon({ active }: { active: boolean }) {
 
 function SearchIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
-      <circle cx="6" cy="6" r="4.5" stroke="#9CA3AF" strokeWidth="1.5" />
-      <path d="M9.5 9.5L12.5 12.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+      <circle cx="6" cy="6" r="4.5" stroke="var(--color-text-tertiary)" strokeWidth="1.5" />
+      <path d="M9.5 9.5L12.5 12.5" stroke="var(--color-text-tertiary)" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
+}
+
+// ─── Health label helper ─────────────────────────────────────────────
+
+function healthLabel(status: string): { label: string; color: string } {
+  switch (status) {
+    case 'healthy':  return { label: 'Healthy',  color: CHIP_ACCENTS.data };
+    case 'degraded': return { label: 'Degraded', color: CHIP_ACCENTS.agent };
+    default:         return { label: 'Down',     color: CHIP_ACCENTS.guard };
+  }
 }
 
 // ─── Registry Card ────────────────────────────────────────────────────
@@ -273,67 +250,41 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
   }, [chip.lastUpdated]);
 
   return (
-    <div
-      onClick={() => { setExpanded(!expanded); onSelect(chip.id); }}
+    <Card
+      variant="interactive"
+      padding="sm"
+      className="p-3.5"
       style={{
-        background: '#fff',
-        border: `1px solid ${expanded ? colors.border : 'var(--color-border)'}`,
-        borderRadius: 8,
-        padding: 14,
-        cursor: 'pointer',
-        transition: 'box-shadow 150ms ease, border-color 150ms ease',
-        boxShadow: 'var(--shadow-xs)',
+        borderColor: expanded ? colors.border : undefined,
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = 'var(--color-border-strong)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
+      onClick={() => { setExpanded(!expanded); onSelect(chip.id); }}
     >
-      {/* Header row: type badge + status dot */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 3,
-            fontSize: 10,
-            fontWeight: 600,
-            fontFamily: 'var(--font-ui)',
-            color: colors.text,
-            background: colors.bg,
-            border: `1px solid ${colors.border}`,
-            padding: '2px 7px',
-            borderRadius: 4,
-          }}
+      {/* Header row: type badge + status */}
+      <div className="flex items-center justify-between mb-2">
+        <Badge
+          bg={colors.bg}
+          color={colors.text}
+          variant="outline"
+          size="xs"
+          icon={<span style={{ color: colors.accent }}>{icon}</span>}
         >
-          <span style={{ color: colors.accent }}>{icon}</span> @{chip.type}
-        </span>
-        <StatusDot status={chip.status} />
+          @{chip.type}
+        </Badge>
+        <StatusBadge status={chip.status} size="xs" />
       </div>
 
       {/* Name */}
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          fontFamily: 'var(--font-ui)',
-          color: '#111827',
-          marginBottom: 4,
-          lineHeight: 1.3,
-        }}
-      >
+      <div className="text-[13px] font-semibold text-[var(--color-text-primary)] mb-1 leading-tight">
         {chip.name}
       </div>
 
       {/* Description */}
       <div
+        className="text-[12px] text-[var(--color-text-secondary)] leading-relaxed overflow-hidden"
         style={{
-          fontSize: 12,
-          color: '#6B7280',
-          fontFamily: 'var(--font-ui)',
-          lineHeight: 1.5,
           display: '-webkit-box',
           WebkitLineClamp: expanded ? 999 : 2,
           WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
         }}
       >
         {chip.description}
@@ -351,54 +302,33 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
       )}
 
       {/* Footer */}
-      <div
-        style={{
-          marginTop: 10,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 10,
-          fontFamily: 'var(--font-ui)',
-          color: '#9CA3AF',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="mt-2.5 flex items-center justify-between text-[10px] text-[var(--color-text-tertiary)]">
+        <div className="flex items-center gap-2.5">
           <span>{chip.owner.split('@')[0]}</span>
-          <span style={{ padding: '1px 5px', borderRadius: 3, background: '#F3F4F6', color: '#6B7280', fontWeight: 500 }}>
+          <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
             v{chip.version}
-          </span>
+          </Badge>
           <span>{timeAgo}</span>
         </div>
-        <span style={{ color: '#9CA3AF' }}>
+        <span className="text-[var(--color-text-tertiary)]">
           {chip.usageCount} refs
         </span>
       </div>
 
       {/* Expanded detail */}
       {expanded && (
-        <div
-          style={{
-            marginTop: 12,
-            paddingTop: 12,
-            borderTop: '1px solid #F3F4F6',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            fontSize: 12,
-            fontFamily: 'var(--font-ui)',
-          }}
-        >
+        <div className="mt-3 pt-3 border-t border-[var(--color-surface-2)] flex flex-col gap-1.5 text-[12px]">
           <DetailRow label="Registry ID">
-            <code style={{ fontSize: 10, background: '#F9FAFB', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono, monospace)', color: '#4B5563' }}>
+            <code className="text-[10px] bg-[var(--color-surface-1)] px-1.5 py-0.5 rounded font-mono text-[var(--color-text-secondary)]">
               {chip.registryId}
             </code>
           </DetailRow>
           <DetailRow label="Permission">
-            <span style={{ color: '#4B5563', textTransform: 'capitalize' }}>{chip.permissions.currentUser}</span>
+            <span className="text-[var(--color-text-secondary)] capitalize">{chip.permissions.currentUser}</span>
           </DetailRow>
           {chip.endpoint && (
             <DetailRow label="Endpoint">
-              <code style={{ fontSize: 10, background: '#F9FAFB', padding: '2px 6px', borderRadius: 4, fontFamily: 'var(--font-mono, monospace)', color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, display: 'inline-block' }}>
+              <code className="text-[10px] bg-[var(--color-surface-1)] px-1.5 py-0.5 rounded font-mono text-[var(--color-text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap max-w-[180px] inline-block">
                 {chip.endpoint}
               </code>
             </DetailRow>
@@ -406,63 +336,39 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
           {chip.healthStatus && (
             <DetailRow label="Health">
               <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  color:
-                    chip.healthStatus === 'healthy' ? '#059669' :
-                    chip.healthStatus === 'degraded' ? '#D97706' : '#DC2626',
-                }}
+                className="text-[11px] font-medium"
+                style={{ color: healthLabel(chip.healthStatus).color }}
               >
-                {chip.healthStatus === 'healthy' ? 'Healthy' :
-                 chip.healthStatus === 'degraded' ? 'Degraded' : 'Down'}
+                {healthLabel(chip.healthStatus).label}
               </span>
             </DetailRow>
           )}
-          <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-            <button
+          <div className="flex gap-1.5 mt-1">
+            <Button
+              size="sm"
+              variant="primary"
               onClick={(e) => { e.stopPropagation(); onOpenEditor(); }}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: 'none',
-                background: '#2563EB',
-                color: '#fff',
-                fontSize: 10,
-                fontWeight: 500,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
             >
               Open in Editor
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={(e) => { e.stopPropagation(); onViewHistory(); }}
-              style={{
-                padding: '4px 10px',
-                borderRadius: 6,
-                border: '1px solid #E5E7EB',
-                background: '#fff',
-                color: '#4B5563',
-                fontSize: 10,
-                fontWeight: 500,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
             >
               View History
-            </button>
+            </Button>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ color: '#9CA3AF', width: 76, flexShrink: 0, fontSize: 11 }}>{label}</span>
+    <div className="flex items-center gap-2">
+      <span className="text-[var(--color-text-tertiary)] w-[76px] shrink-0 text-[11px]">{label}</span>
       {children}
     </div>
   );
@@ -475,88 +381,38 @@ function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: s
   const icon = CHIP_ICONS[chip.type];
 
   return (
-    <div
+    <Card
+      variant="interactive"
+      padding="none"
+      className="flex items-center gap-3.5 px-3.5 py-2.5"
       onClick={() => onSelect(chip.id)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        padding: '10px 14px',
-        borderRadius: 8,
-        border: '1px solid var(--color-border)',
-        background: '#fff',
-        transition: 'box-shadow 150ms ease',
-        boxShadow: 'var(--shadow-xs)',
-        cursor: 'pointer',
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07)'; e.currentTarget.style.borderColor = 'var(--color-border-strong)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}
     >
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          fontFamily: 'var(--font-ui)',
-          color: colors.text,
-          background: colors.bg,
-          border: `1px solid ${colors.border}`,
-          padding: '2px 7px',
-          borderRadius: 4,
-          flexShrink: 0,
-        }}
+      <Badge
+        bg={colors.bg}
+        color={colors.text}
+        variant="outline"
+        size="xs"
+        icon={<span style={{ color: colors.accent }}>{icon}</span>}
+        className="shrink-0"
       >
-        <span style={{ color: colors.accent }}>{icon}</span> @{chip.type}
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-ui)', color: '#111827', width: 180, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        @{chip.type}
+      </Badge>
+      <span className="text-[13px] font-medium text-[var(--color-text-primary)] w-[180px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap">
         {chip.name}
       </span>
-      <span style={{ fontSize: 12, color: '#6B7280', fontFamily: 'var(--font-ui)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <span className="text-[12px] text-[var(--color-text-secondary)] flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
         {chip.description}
       </span>
-      <StatusDot status={chip.status} />
-      <span style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: '#9CA3AF', width: 44, textAlign: 'right', flexShrink: 0 }}>
+      <StatusBadge status={chip.status} size="xs" />
+      <span className="text-[10px] text-[var(--color-text-tertiary)] w-[44px] text-right shrink-0">
         v{chip.version}
       </span>
-      <span style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: '#9CA3AF', width: 52, textAlign: 'right', flexShrink: 0 }}>
+      <span className="text-[10px] text-[var(--color-text-tertiary)] w-[52px] text-right shrink-0">
         {chip.usageCount} refs
       </span>
-    </div>
+    </Card>
   );
 }
-
-// ─── Empty State ─────────────────────────────────────────────────────
-
-function EmptyState({ onClear }: { onClear: () => void }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 20px' }}>
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ marginBottom: 12, opacity: 0.4 }}>
-        <circle cx="18" cy="18" r="12" stroke="#9CA3AF" strokeWidth="2" />
-        <path d="M27 27L35 35" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" />
-        <path d="M14 18H22" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-      <div style={{ fontSize: 13, fontFamily: 'var(--font-ui)', color: '#9CA3AF', marginBottom: 8 }}>
-        No assets match your search.
-      </div>
-      <button
-        onClick={onClear}
-        style={{
-          fontSize: 12,
-          fontFamily: 'var(--font-ui)',
-          color: '#2563EB',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-          textUnderlineOffset: 2,
-        }}
-      >
-        Clear filters
-      </button>
-    </div>
-  );
-}
-
-// ─── Main Catalog ─────────────────────────────────────────────────────
 
 // ─── Main Catalog ─────────────────────────────────────────────────────
 
@@ -567,7 +423,6 @@ export function RegistryCatalog() {
   const [typeFilter, setTypeFilter] = useState<ChipType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('relevance');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchFocused, setSearchFocused] = useState(false);
 
   const filtered = useMemo(() => {
     let items = contextFilteredChips;
@@ -598,166 +453,89 @@ export function RegistryCatalog() {
   return (
     <div className="page-container" style={{ overflow: 'auto' }}>
       {/* Header */}
-      <header
-        className="page-header sticky top-0 z-50"
-      >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            display: 'flex',
-            alignItems: 'center',
-          }}
-        >
+      <header className="page-header sticky top-0 z-50">
+        <div className="max-w-[1200px] mx-auto flex items-center">
           <div>
-            <h1 style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3 }}>
+            <h1 className="text-[13px] font-semibold text-[var(--color-text-primary)] m-0 leading-tight">
               Registry & Catalog
             </h1>
-            <p style={{ fontSize: 10, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)', margin: 0, marginTop: 1 }}>
+            <p className="text-[10px] text-[var(--color-text-tertiary)] m-0 mt-0.5">
               All @-referenceable assets -- {allChips.length} entries
             </p>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 11, fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-[11px] text-[var(--color-text-tertiary)]">
               {filtered.length} result{filtered.length !== 1 ? 's' : ''}
             </span>
-            <button
-              onClick={openCreateModal}
-              style={{
-                padding: '5px 12px',
-                borderRadius: 8,
-                border: 'none',
-                background: 'var(--color-accent, #2563EB)',
-                color: '#fff',
-                fontSize: 11,
-                fontWeight: 500,
-                fontFamily: 'var(--font-ui)',
-                cursor: 'pointer',
-              }}
-            >
+            <Button size="sm" variant="primary" onClick={openCreateModal}>
               + Create New
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
-      <div className="page-body" style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div className="page-body max-w-[1200px] mx-auto">
         {/* Search + Controls Row */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div className="flex flex-wrap items-center gap-2.5 mb-3.5">
           {/* Search */}
-          <div style={{ flex: '1 1 100%', minWidth: 200, position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <span style={{ position: 'absolute', left: 12, display: 'flex', pointerEvents: 'none' }}>
+          <div className="flex-[1_1_100%] min-w-[200px] relative flex items-center">
+            <span className="absolute left-3 flex pointer-events-none">
               <SearchIcon />
             </span>
-            <input
-              type="text"
+            <TextInput
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
               placeholder="Search assets by name, type, owner, or description..."
-              style={{
-                width: '100%',
-                padding: '8px 32px 8px 34px',
-                borderRadius: 8,
-                border: `1px solid ${searchFocused ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                boxShadow: searchFocused ? '0 0 0 3px rgba(37,99,235,0.08)' : 'none',
-                background: '#fff',
-                fontSize: 13,
-                fontFamily: 'var(--font-ui)',
-                color: 'var(--color-text-primary)',
-                outline: 'none',
-                transition: 'border-color 150ms ease, box-shadow 150ms ease',
-              }}
+              className="pl-[34px]"
             />
             {searchQuery && (
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-[var(--color-text-tertiary)] p-0.5"
                 onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  color: '#9CA3AF',
-                  padding: 2,
-                  lineHeight: 1,
-                }}
               >
                 x
-              </button>
+              </Button>
             )}
           </div>
 
           {/* Sort */}
-          <select
+          <Select
             value={sortKey}
             onChange={(e) => setSortKey(e.target.value as SortKey)}
-            style={{
-              padding: '8px 10px',
-              borderRadius: 8,
-              border: '1px solid var(--color-border)',
-              background: '#fff',
-              fontSize: 12,
-              fontFamily: 'var(--font-ui)',
-              color: 'var(--color-text-secondary)',
-              outline: 'none',
-              cursor: 'pointer',
-              appearance: 'auto' as const,
-            }}
+            inputSize="sm"
+            className="w-auto"
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.key} value={o.key}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
 
           {/* View toggle */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              borderRadius: 8,
-              background: '#F3F4F6',
-              padding: 2,
-            }}
-          >
+          <div className="flex items-center rounded-lg bg-[var(--color-surface-2)] p-0.5">
             <button
               onClick={() => setViewMode('grid')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '5px 8px',
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                background: viewMode === 'grid' ? '#fff' : 'transparent',
-                boxShadow: viewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 150ms ease',
-              }}
+              className={[
+                'flex items-center justify-center px-2 py-1.5 rounded-md border-none cursor-pointer transition-all duration-150',
+                viewMode === 'grid'
+                  ? 'bg-white shadow-sm'
+                  : 'bg-transparent',
+              ].join(' ')}
               title="Grid view"
             >
               <GridIcon active={viewMode === 'grid'} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '5px 8px',
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                background: viewMode === 'list' ? '#fff' : 'transparent',
-                boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                transition: 'all 150ms ease',
-              }}
+              className={[
+                'flex items-center justify-center px-2 py-1.5 rounded-md border-none cursor-pointer transition-all duration-150',
+                viewMode === 'list'
+                  ? 'bg-white shadow-sm'
+                  : 'bg-transparent',
+              ].join(' ')}
               title="List view"
             >
               <ListIcon active={viewMode === 'list'} />
@@ -766,13 +544,32 @@ export function RegistryCatalog() {
         </div>
 
         {/* Type filters */}
-        <div style={{ marginBottom: 20 }}>
+        <div className="mb-5">
           <TypeFilter active={typeFilter} onChange={setTypeFilter} />
         </div>
 
         {/* Results */}
         {filtered.length === 0 ? (
-          <EmptyState onClear={() => { setSearchQuery(''); setTypeFilter('all'); }} />
+          <SharedEmptyState
+            icon={
+              <svg width="24" height="24" viewBox="0 0 40 40" fill="none" style={{ opacity: 0.5 }}>
+                <circle cx="18" cy="18" r="12" stroke="var(--color-text-tertiary)" strokeWidth="2" />
+                <path d="M27 27L35 35" stroke="var(--color-text-tertiary)" strokeWidth="2" strokeLinecap="round" />
+                <path d="M14 18H22" stroke="var(--color-text-tertiary)" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            }
+            title="No assets match your search."
+            action={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSearchQuery(''); setTypeFilter('all'); }}
+                className="underline underline-offset-2 text-[var(--color-accent)]"
+              >
+                Clear filters
+              </Button>
+            }
+          />
         ) : viewMode === 'grid' ? (
           <div className="grid-auto">
             {filtered.map((chip) => (
@@ -780,7 +577,7 @@ export function RegistryCatalog() {
             ))}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="flex flex-col gap-1.5">
             {filtered.map((chip) => (
               <RegistryListRow key={chip.id} chip={chip} onSelect={handleSelect} />
             ))}
@@ -788,66 +585,34 @@ export function RegistryCatalog() {
         )}
 
         {/* Summary bar */}
-        <div
-          style={{
-            marginTop: 32,
-            padding: 14,
-            borderRadius: 8,
-            border: '1px solid var(--color-border)',
-            background: '#fff',
-          }}
-        >
-          <h3
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              fontFamily: 'var(--font-ui)',
-              color: '#9CA3AF',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              margin: 0,
-              marginBottom: 10,
-            }}
-          >
+        <Card variant="default" padding="sm" className="mt-8 p-3.5">
+          <h3 className="text-[10px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wide m-0 mb-2.5">
             Registry Summary
           </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div className="flex flex-wrap gap-2">
             {(['connector', 'skill', 'trigger', 'doc', 'tool', 'agent', 'guard', 'data', 'schema'] as ChipType[]).map((t) => {
               const count = allChips.filter((c) => c.type === t).length;
               return (
                 <button
                   key={t}
                   onClick={() => setTypeFilter(t)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '5px 10px',
-                    borderRadius: 6,
-                    border: 'none',
-                    background: typeFilter === t ? CHIP_COLORS[t].bg : '#F9FAFB',
-                    cursor: 'pointer',
-                    fontSize: 11,
-                    fontFamily: 'var(--font-ui)',
-                    color: '#4B5563',
-                    transition: 'background 150ms ease',
-                  }}
+                  className={[
+                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border-none',
+                    'cursor-pointer text-[11px] text-[var(--color-text-secondary)] transition-colors duration-150',
+                    typeFilter === t ? '' : 'bg-[var(--color-surface-1)] hover:bg-[var(--color-surface-2)]',
+                  ].join(' ')}
+                  style={typeFilter === t ? { background: CHIP_COLORS[t].bg } : undefined}
                 >
                   <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: '50%',
-                      background: CHIP_COLORS[t].accent,
-                      flexShrink: 0,
-                    }}
+                    className="w-[7px] h-[7px] rounded-full shrink-0"
+                    style={{ background: CHIP_COLORS[t].accent }}
                   />
                   {count} @{t}
                 </button>
               );
             })}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Create Asset Wizard */}
