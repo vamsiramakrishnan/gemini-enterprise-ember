@@ -16,3 +16,4 @@ export { Kbd } from './Kbd';
 export { Spinner } from './Spinner';
 export { EmptyState } from './EmptyState';
 export { ErrorBoundary, RouteErrorBoundary, ComponentErrorBoundary } from './ErrorBoundary';
+export { Skeleton, SkeletonCard, SkeletonText } from './Skeleton';
