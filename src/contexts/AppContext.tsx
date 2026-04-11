@@ -19,6 +19,7 @@ export { AppProvider } from './AppProvider';
 // ─── Hooks ───────────────────────────────────────────────────────────
 export { useNotifications } from './NotificationContext';
 export { useAuth } from './AuthContext';
+export { useWorkspace } from './WorkspaceContext';
 export { usePlaybook } from './PlaybookContext';
 export { useRegistry } from './RegistryContext';
 export { useConnectors } from './ConnectorContext';

@@ -30,6 +30,11 @@ export function HomePage() {
   const [wizardType, setWizardType] = useState<ChipType | undefined>(undefined);
 
   const handleQuickCreate = (type: ChipType) => {
+    // Agents open the dedicated playbook editor — not the wizard
+    if (type === 'agent') {
+      navigate('/editor/new');
+      return;
+    }
     setWizardType(type);
     setWizardOpen(true);
   };

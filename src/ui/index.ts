@@ -17,6 +17,7 @@ export { Spinner } from './Spinner';
 export { EmptyState } from './EmptyState';
 export { ErrorBoundary, RouteErrorBoundary } from './ErrorBoundary';
 export { Skeleton, SkeletonCard, SkeletonText } from './Skeleton';
+export { Drawer } from './Drawer';
 
 // ComponentErrorBoundary available via direct import when needed:
 // import { ComponentErrorBoundary } from '../ui/ErrorBoundary';

@@ -1,14 +1,15 @@
 /**
  * AppProvider — Composes all context providers into a single wrapper.
  *
- * Wrap your app in <AppProvider> to get access to all contexts.
- * The nesting order matters: inner providers can access outer ones
- * (e.g., PlaybookProvider uses NotificationContext).
+ * Nesting order matters: inner providers can access outer ones.
+ * WorkspaceProvider wraps RegistryProvider so the registry can
+ * scope its view to the current workspace.
  */
 
 import type { ReactNode } from 'react';
 import { NotificationProvider } from './NotificationContext';
 import { AuthProvider } from './AuthContext';
+import { WorkspaceProvider } from './WorkspaceContext';
 import { PlaybookProvider } from './PlaybookContext';
 import { RegistryProvider } from './RegistryContext';
 import { ConnectorProvider } from './ConnectorContext';
@@ -18,13 +19,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <NotificationProvider>
       <AuthProvider>
-        <PlaybookProvider>
-          <RegistryProvider>
-            <ConnectorProvider>
-              <TestProvider>{children}</TestProvider>
-            </ConnectorProvider>
-          </RegistryProvider>
-        </PlaybookProvider>
+        <WorkspaceProvider>
+          <PlaybookProvider>
+            <RegistryProvider>
+              <ConnectorProvider>
+                <TestProvider>{children}</TestProvider>
+              </ConnectorProvider>
+            </RegistryProvider>
+          </PlaybookProvider>
+        </WorkspaceProvider>
       </AuthProvider>
     </NotificationProvider>
   );

@@ -16,6 +16,7 @@ import { Shell } from './components/shell/Shell';
 import { RouteErrorBoundary, Spinner } from './ui';
 import { HomePage } from './components/dashboard/HomePage';
 import { PlaybookEditor } from './components/editor/PlaybookEditor';
+import { NewAgentScreen } from './components/editor/NewAgentScreen';
 
 // ─── React Query client ──────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Page><HomePage /></Page>} />
               <Route path="/editor" element={<Page><PlaybookEditor /></Page>} />
+              <Route path="/editor/new" element={<Page><NewAgentScreen /></Page>} />
               <Route path="/split-view" element={<Page><LiveSplitView /></Page>} />
               <Route path="/notebook" element={<Page><NotebookView /></Page>} />
               <Route path="/registry" element={<Page><RegistryCatalog /></Page>} />
