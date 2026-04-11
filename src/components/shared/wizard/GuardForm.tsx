@@ -1,12 +1,17 @@
 /**
  * GuardForm — Type-specific wizard form for creating guards.
+ *
+ * Driven by GUARD_CONFIG — adding a new guard kind requires
+ * zero changes to this file.
  */
 
+import { GUARD_CONFIG, GUARD_OPTIONS, GUARD_PHASES } from '../../../config';
+import type { GuardKind } from '../../../parser/types';
 import { Field, wizardStyles } from './WizardShared';
 
 export interface GuardFormState {
   guardKind: string;
-  phase: 'pre_model' | 'post_model';
+  phase: string;
   threshold: string;
 }
 
@@ -17,41 +22,39 @@ export const INITIAL_GUARD_FORM: GuardFormState = {
 };
 
 export function GuardForm({ state, onChange }: { state: GuardFormState; onChange: (s: GuardFormState) => void }) {
+  const kindConfig = GUARD_CONFIG[state.guardKind as GuardKind];
+
   return (
     <>
       <Field label="Guard Kind">
         <select
           style={wizardStyles.select}
           value={state.guardKind}
-          onChange={(e) => onChange({ ...state, guardKind: e.target.value })}
+          onChange={(e) => onChange({ ...state, guardKind: e.target.value, phase: GUARD_CONFIG[e.target.value as GuardKind]?.defaultPhase ?? 'post_model' })}
         >
-          <option value="pii">PII Detection (G.pii)</option>
-          <option value="toxicity">Toxicity Check (G.toxicity)</option>
-          <option value="budget">Token Budget (G.budget)</option>
-          <option value="json">JSON Validation (G.json)</option>
-          <option value="length">Output Length (G.length)</option>
-          <option value="topic">Topic Blocking (G.topic)</option>
-          <option value="grounded">Hallucination Check (G.grounded)</option>
-          <option value="output">Schema Validation (G.output)</option>
+          {GUARD_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
       </Field>
       <Field label="Phase">
         <select
           style={wizardStyles.select}
           value={state.phase}
-          onChange={(e) => onChange({ ...state, phase: e.target.value as GuardFormState['phase'] })}
+          onChange={(e) => onChange({ ...state, phase: e.target.value })}
         >
-          <option value="pre_model">Before Model (pre_model)</option>
-          <option value="post_model">After Model (post_model)</option>
+          {GUARD_PHASES.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
       </Field>
-      {(state.guardKind === 'toxicity' || state.guardKind === 'budget' || state.guardKind === 'length') && (
-        <Field label={state.guardKind === 'budget' ? 'Max Tokens' : state.guardKind === 'length' ? 'Max Characters' : 'Threshold (0-1)'}>
+      {kindConfig?.thresholdField && (
+        <Field label={kindConfig.thresholdField.label}>
           <input
             style={{ ...wizardStyles.input, width: 140 }}
             type="number"
-            step={state.guardKind === 'toxicity' ? '0.1' : '1'}
-            placeholder={state.guardKind === 'toxicity' ? '0.8' : '5000'}
+            step={kindConfig.thresholdField.step}
+            placeholder={kindConfig.thresholdField.placeholder}
             value={state.threshold}
             onChange={(e) => onChange({ ...state, threshold: e.target.value })}
           />

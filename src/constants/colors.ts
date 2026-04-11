@@ -42,13 +42,7 @@ export const colors = {
 export { CHIP_ACCENTS as chipAccent } from '../config/chipConfig';
 
 // ─── Status colors ────────────────────────────────────────────────────
+// Derived from STATUS_COLORS in config/statusConfig.ts.
+// DO NOT define status colors here. Edit config/statusConfig.ts instead.
 
-export const statusColors = {
-  resolved:   { bg: '#DCFCE7', text: '#166534' },
-  draft:      { bg: '#FEF9C3', text: '#854D0E' },
-  unresolved: { bg: '#FEE2E2', text: '#991B1B' },
-  deprecated: { bg: '#F3F4F6', text: '#6B7280' },
-  production: { bg: '#DCFCE7', text: '#166534' },
-  staging:    { bg: '#DBEAFE', text: '#1E40AF' },
-  'rolled-back': { bg: '#FEF3C7', text: '#92400E' },
-} as const;
+export { STATUS_COLORS as statusColors } from '../config/statusConfig';

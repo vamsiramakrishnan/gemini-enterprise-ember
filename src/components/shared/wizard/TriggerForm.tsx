@@ -1,15 +1,17 @@
 /**
  * TriggerForm — Type-specific wizard form for creating triggers.
+ *
+ * Driven by TRIGGER_CONFIG — adding a new trigger type requires
+ * zero changes to this file. Form fields are declared in the config.
  */
 
+import { TRIGGER_CONFIG, TRIGGER_OPTIONS } from '../../../config';
+import type { TriggerType } from '../../../config';
 import { Field, wizardStyles } from './WizardShared';
 
 export interface TriggerFormState {
-  triggerType: 'chat' | 'inbox' | 'event' | 'schedule' | 'webhook';
-  cronExpression: string;
-  queueName: string;
-  eventSource: string;
-  eventType: string;
+  triggerType: string;
+  [key: string]: string; // dynamic fields from config
 }
 
 export const INITIAL_TRIGGER_FORM: TriggerFormState = {
@@ -21,61 +23,33 @@ export const INITIAL_TRIGGER_FORM: TriggerFormState = {
 };
 
 export function TriggerForm({ state, onChange }: { state: TriggerFormState; onChange: (s: TriggerFormState) => void }) {
+  const triggerType = state.triggerType as TriggerType;
+  const config = TRIGGER_CONFIG[triggerType];
+
   return (
     <>
       <Field label="Trigger Type">
         <select
           style={wizardStyles.select}
           value={state.triggerType}
-          onChange={(e) => onChange({ ...state, triggerType: e.target.value as TriggerFormState['triggerType'] })}
+          onChange={(e) => onChange({ ...state, triggerType: e.target.value })}
         >
-          <option value="chat">Chat (real-time streaming)</option>
-          <option value="inbox">Inbox (async queue)</option>
-          <option value="event">Event (webhook from connector)</option>
-          <option value="schedule">Schedule (cron)</option>
-          <option value="webhook">Webhook (custom endpoint)</option>
+          {TRIGGER_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
       </Field>
-      {state.triggerType === 'schedule' && (
-        <Field label="Cron Expression">
+      {config?.formFields.map((field) => (
+        <Field key={field.key} label={field.label}>
           <input
             style={wizardStyles.input}
-            placeholder="0 9 * * 1-5 (weekdays at 9am)"
-            value={state.cronExpression}
-            onChange={(e) => onChange({ ...state, cronExpression: e.target.value })}
+            type={field.type ?? 'text'}
+            placeholder={field.placeholder}
+            value={state[field.key] ?? ''}
+            onChange={(e) => onChange({ ...state, [field.key]: e.target.value })}
           />
         </Field>
-      )}
-      {state.triggerType === 'inbox' && (
-        <Field label="Queue Name">
-          <input
-            style={wizardStyles.input}
-            placeholder="e.g. claims-queue"
-            value={state.queueName}
-            onChange={(e) => onChange({ ...state, queueName: e.target.value })}
-          />
-        </Field>
-      )}
-      {state.triggerType === 'event' && (
-        <>
-          <Field label="Source Connector">
-            <input
-              style={wizardStyles.input}
-              placeholder="e.g. slack, jira, google-drive"
-              value={state.eventSource}
-              onChange={(e) => onChange({ ...state, eventSource: e.target.value })}
-            />
-          </Field>
-          <Field label="Event Type">
-            <input
-              style={wizardStyles.input}
-              placeholder="e.g. message-posted, issue-created, file-uploaded"
-              value={state.eventType}
-              onChange={(e) => onChange({ ...state, eventType: e.target.value })}
-            />
-          </Field>
-        </>
-      )}
+      ))}
     </>
   );
 }
