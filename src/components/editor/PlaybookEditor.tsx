@@ -15,7 +15,7 @@
  * Inspector sidebar with Details + Space tabs.
  */
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { REGISTRY, findChip } from '../../data/registry';
 import { parsePlaybook, compilePlaybookToGraph } from '../../parser';

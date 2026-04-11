@@ -38,9 +38,9 @@ export const SmartChipSchema = z.object({
   permissions: z.object({
     currentUser: z.enum(['viewer', 'invoker', 'editor', 'admin']),
   }),
-  metadata: z.record(z.unknown()),
-  lastUpdated: z.string().datetime(),
-  usageCount: z.number().int().nonneg(),
+  metadata: z.record(z.string(), z.unknown()),
+  lastUpdated: z.string(),
+  usageCount: z.number().int().nonnegative(),
   endpoint: z.string().url().optional(),
   healthStatus: z.enum(['healthy', 'degraded', 'down']).optional(),
 });
@@ -52,7 +52,7 @@ export type SmartChipInput = z.input<typeof SmartChipSchema>;
 export const ConnectorEntitySchema = z.object({
   name: z.string(),
   enabled: z.boolean(),
-  documentCount: z.number().int().nonneg(),
+  documentCount: z.number().int().nonnegative(),
 });
 
 export const ConnectorActionSchema = z.object({
@@ -122,7 +122,7 @@ export const GuardPhaseSchema = z.enum([
 export const GuardSpecSchema = z.object({
   kind: GuardKindSchema,
   phase: GuardPhaseSchema,
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
 });
 
 // ─── API Response wrappers ───────────────────────────────────────────
@@ -140,8 +140,8 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
   z.object({
     items: z.array(itemSchema),
-    total: z.number().int().nonneg(),
-    page: z.number().int().nonneg(),
+    total: z.number().int().nonnegative(),
+    page: z.number().int().nonnegative(),
     pageSize: z.number().int().positive(),
     hasMore: z.boolean(),
   });

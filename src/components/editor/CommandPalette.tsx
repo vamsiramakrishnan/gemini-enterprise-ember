@@ -6,7 +6,7 @@
  * with keyboard shortcut hints.
  */
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 
 export function CommandPalette({ open, onClose, onAction }: { open: boolean; onClose: () => void; onAction: (action: string) => void }) {
   const [query, setQuery] = useState('');

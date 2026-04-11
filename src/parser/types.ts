@@ -311,19 +311,12 @@ export interface TopologyExpression {
 // Currently mocked; replace implementations when adk-fluent SDK is available.
 
 export interface AdkFluentService {
-  // Compile playbook to IR
   compileToIR(content: string): Promise<IRNode>;
-  // Compile IR to native ADK objects (returns opaque handle)
   compileToADK(ir: IRNode, config?: ExecutionConfig): Promise<string>;
-  // Execute a test prompt against a compiled agent
-  executeTest(agentId: string, prompt: string): Promise<TestExecutionResult>;
-  // Stream execution events
-  streamExecution(agentId: string, prompt: string): AsyncIterable<AgentEvent>;
-  // Validate playbook references against registry
-  validateReferences(content: string): Promise<ValidationResult>;
-  // Export IR as Mermaid diagram
+  executeTest(agentId: string, prompt: string): Promise<{ iterations: unknown[]; totalDuration: number; tokenCount: number; finalResponse: string }>;
+  streamExecution(agentId: string, prompt: string): AsyncIterable<{ type: string; timestamp: number; data: Record<string, unknown> }>;
+  validateReferences(content: string): Promise<{ valid: boolean; errors: Array<{ line: number; message: string }>; warnings: Array<{ line: number; message: string }> }>;
   toMermaid(ir: IRNode): string;
-  // Get IR from topology expression string
   parseTopology(expr: string): IRNode;
 }
 

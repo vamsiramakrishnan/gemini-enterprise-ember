@@ -5,8 +5,6 @@
  * TabIcon: renders a small SVG icon for each editor tab (document, structured, flow, notebook).
  */
 
-import React from 'react';
-
 // ─── StatusBar ──────────────────────────────────────────────────────────
 
 export function StatusBar({

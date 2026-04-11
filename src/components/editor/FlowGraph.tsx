@@ -16,10 +16,9 @@
  * Extracted from PlaybookEditor.tsx for modularity.
  */
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
 import { REGISTRY } from '../../data/registry';
-import { findNodeForChip } from '../chips/InlineChip';
 
 // ─── Constants (derived from unified chipConfig) ────────────────────────
 
