@@ -33,8 +33,8 @@ export const NH = flowGraph.nodeHeight;
 
 export const STYLE_TAG = `
 @keyframes nodePulse {
-  0%, 100% { stroke-opacity: 0.7; }
-  50% { stroke-opacity: 1; }
+  0%, 100% { stroke-opacity: 0.5; stroke-width: 2.5; }
+  50% { stroke-opacity: 1; stroke-width: 3; }
 }
 @keyframes lineHighlightPulse {
   0% { background-color: #DBEAFE; }
@@ -48,6 +48,14 @@ export const STYLE_TAG = `
 @keyframes slideInRight {
   from { transform: translateX(40px); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
+}
+@keyframes nodeGlow {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--node-color, rgba(37,99,235,0.2))); }
+  50% { filter: drop-shadow(0 0 12px var(--node-color, rgba(37,99,235,0.35))); }
+}
+@keyframes edgeTrail {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
 }
 `;
 
@@ -233,7 +241,10 @@ export function FlowGraph({
   return (
     <div
       className="w-full h-full overflow-hidden relative"
-      style={{ background: '#FAFBFC', cursor: dragging ? 'grabbing' : 'grab' }}
+      style={{
+        background: 'linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%)',
+        cursor: dragging ? 'grabbing' : 'grab',
+      }}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
@@ -241,13 +252,18 @@ export function FlowGraph({
       onWheel={onWheel}
     >
       {/* Dot grid background */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.4 }}>
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.35 }}>
         <defs>
           <pattern id="dotgrid" width="24" height="24" patternUnits="userSpaceOnUse">
-            <circle cx="12" cy="12" r="1" fill="#CBD5E1" />
+            <circle cx="12" cy="12" r="0.8" fill="#94A3B8" />
           </pattern>
+          <radialGradient id="centerGlow" cx="50%" cy="40%" r="50%">
+            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.03" />
+            <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+          </radialGradient>
         </defs>
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
+        <rect width="100%" height="100%" fill="url(#centerGlow)" />
       </svg>
 
       {/* Topology expression bar */}
@@ -269,19 +285,67 @@ export function FlowGraph({
         </div>
       )}
 
-      {/* Controls */}
+      {/* Controls — glass panels */}
       <div className={`absolute left-3 z-10 flex gap-1.5 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
-        <div className="px-2.5 py-1.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg text-[11px] text-gray-500 flex items-center gap-1.5 shadow-sm">
-          Auto-compiled from playbook · {graph.nodes.length} nodes · {graph.edges.length} edges
+        <div
+          className="px-3 py-2 rounded-xl text-[11px] flex items-center gap-2"
+          style={{
+            background: 'rgba(255, 255, 255, 0.78)',
+            backdropFilter: 'blur(16px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
+            boxShadow: 'var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.4)',
+            color: 'var(--color-text-tertiary)',
+            fontFamily: 'var(--font-ui)',
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.5 }}>
+            <path d="M2 4h8M2 6h5M2 8h6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          Auto-compiled from playbook
+          <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{graph.nodes.length}</span> nodes
+          <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>{graph.edges.length}</span> edges
         </div>
       </div>
-      <div className={`absolute right-3 z-10 flex gap-1.5 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
-        <button onClick={fitToScreen} className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-600 hover:bg-gray-50 shadow-sm">
-          Fit
-        </button>
-        <button onClick={() => setZoom(z => Math.min(2, z + 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">+</button>
-        <button onClick={() => setZoom(z => Math.max(0.3, z - 0.15))} className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 hover:bg-gray-50 shadow-sm">-</button>
-        <span className="px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] text-gray-400 font-mono">{(zoom * 100).toFixed(0)}%</span>
+      <div className={`absolute right-3 z-10 flex gap-1 ${parsed.topologyRaw ? 'top-12' : 'top-3'}`}>
+        <div
+          className="flex items-center gap-0 rounded-xl overflow-hidden"
+          style={{
+            background: 'rgba(255, 255, 255, 0.78)',
+            backdropFilter: 'blur(16px) saturate(180%)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
+            boxShadow: 'var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.4)',
+          }}
+        >
+          <button
+            onClick={fitToScreen}
+            className="px-3 py-2 text-[11px] font-medium transition-colors duration-150"
+            style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-ui)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            Fit
+          </button>
+          <div style={{ width: 1, height: 20, background: 'var(--color-border-subtle)' }} />
+          <button
+            onClick={() => setZoom(z => Math.min(2, z + 0.15))}
+            className="px-2.5 py-2 text-xs transition-colors duration-150"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >+</button>
+          <div style={{ width: 1, height: 20, background: 'var(--color-border-subtle)' }} />
+          <button
+            onClick={() => setZoom(z => Math.max(0.3, z - 0.15))}
+            className="px-2.5 py-2 text-xs transition-colors duration-150"
+            style={{ color: 'var(--color-text-secondary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >-</button>
+          <div style={{ width: 1, height: 20, background: 'var(--color-border-subtle)' }} />
+          <span className="px-2.5 py-2 text-[10px] tabular-nums" style={{ color: 'var(--color-text-quaternary)', fontFamily: 'var(--font-mono)' }}>
+            {(zoom * 100).toFixed(0)}%
+          </span>
+        </div>
       </div>
 
       {/* SVG Canvas */}
@@ -291,21 +355,34 @@ export function FlowGraph({
         style={{ cursor: dragging ? 'grabbing' : 'default' }}
       >
         <defs>
-          <marker id="arrow" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
-            <polygon points="0 0, 10 4, 0 8" fill="#94A3B8" />
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#94A3B8" opacity="0.8" />
           </marker>
-          <marker id="arrowGreen" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
-            <polygon points="0 0, 10 4, 0 8" fill="#16A34A" />
+          <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#16A34A" />
           </marker>
-          <marker id="arrowRed" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
-            <polygon points="0 0, 10 4, 0 8" fill="#E11D48" />
+          <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#E11D48" />
           </marker>
-          <filter id="nodeShadow" x="-10%" y="-10%" width="120%" height="130%">
-            <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.08" />
+          <filter id="nodeShadow" x="-15%" y="-15%" width="130%" height="145%">
+            <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.06" />
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000" floodOpacity="0.04" />
           </filter>
-          <filter id="nodeShadowHover" x="-10%" y="-10%" width="120%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15" />
+          <filter id="nodeShadowHover" x="-15%" y="-15%" width="130%" height="150%">
+            <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000" floodOpacity="0.10" />
+            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.06" />
           </filter>
+          <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          {/* Node gradient fills per type */}
+          {Object.entries(NODE_COLORS).map(([type, color]) => (
+            <linearGradient key={`grad-${type}`} id={`nodeGrad-${type}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={color} stopOpacity="0.06" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.12" />
+            </linearGradient>
+          ))}
         </defs>
 
         <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
@@ -420,7 +497,7 @@ export function FlowGraph({
 
             const isGate = node.type === 'gate';
             const isTrigger = node.type === 'trigger-entry';
-            const rx = isGate ? 24 : isTrigger ? 24 : 10;
+            const rx = isGate ? 20 : isTrigger ? 20 : 12;
 
             return (
               <g key={node.id} className="graph-node cursor-pointer"
@@ -428,50 +505,62 @@ export function FlowGraph({
                 onMouseEnter={() => onNodeHover(node.id)}
                 onMouseLeave={onNodeLeave}
                 onDoubleClick={() => onGoToSource(node.id)}
-                style={{ opacity: dimmed ? 0.3 : 1, transition: 'opacity 0.3s ease' }}
+                style={{ opacity: dimmed ? 0.2 : 1, transition: 'opacity 0.35s ease' }}
               >
-                {/* Selection ring */}
+                {/* Selection glow ring */}
                 {isSelected && (
-                  <rect x={x - 4} y={y - 4} width={NW + 8} height={NH + 8} rx={rx + 4}
-                    fill="none" stroke={color} strokeWidth={2.5} strokeDasharray="none"
-                    style={{ animation: 'nodePulse 2s infinite' }}
+                  <rect x={x - 5} y={y - 5} width={NW + 10} height={NH + 10} rx={rx + 5}
+                    fill="none" stroke={color} strokeWidth={2} strokeOpacity={0.4}
+                    style={{ animation: 'nodePulse 2.5s ease-in-out infinite' }}
                   />
                 )}
-                {/* Card body */}
+                {/* Card body — white with gradient fill */}
                 <rect x={x} y={y} width={NW} height={NH} rx={rx}
-                  fill="white" stroke={isActive ? color : '#E2E8F0'}
-                  strokeWidth={isActive ? 2 : 1}
+                  fill="white"
+                  stroke={isActive ? color : 'var(--color-border)'}
+                  strokeWidth={isActive ? 1.5 : 1}
                   filter={isActive ? 'url(#nodeShadowHover)' : 'url(#nodeShadow)'}
-                  style={{ transition: 'all 0.2s ease' }}
+                  style={{ transition: 'all 0.25s ease' }}
                 />
-                {/* Color tint */}
+                {/* Gradient tint overlay */}
                 <rect x={x} y={y} width={NW} height={NH} rx={rx}
-                  fill={color} fillOpacity={isActive ? 0.08 : 0.03}
-                  style={{ transition: 'fill-opacity 0.2s ease' }}
+                  fill={`url(#nodeGrad-${node.type})`}
+                  style={{ transition: 'fill-opacity 0.25s ease', pointerEvents: 'none' }}
                 />
-                {/* Left accent bar */}
-                <rect x={x} y={y + 8} width={4} height={NH - 16} rx={2} fill={color} />
-                {/* Trigger: double circle accent */}
+                {/* Top highlight for depth illusion */}
+                <rect x={x + 1} y={y + 1} width={NW - 2} height={NH / 2} rx={rx - 1}
+                  fill="white" fillOpacity={0.4}
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* Left accent bar — rounded, with glow */}
+                <rect x={x + 1} y={y + 10} width={3.5} height={NH - 20} rx={2} fill={color}
+                  style={{ filter: isActive ? `drop-shadow(0 0 3px ${color})` : 'none' }}
+                />
+                {/* Trigger: pulsing ring accent */}
                 {isTrigger && (
-                  <circle cx={x + NW - 16} cy={y + 16} r={6} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray="3 2" />
+                  <>
+                    <circle cx={x + NW - 16} cy={y + 16} r={6} fill={color} fillOpacity={0.1} stroke={color} strokeWidth={1} strokeOpacity={0.4} />
+                    <circle cx={x + NW - 16} cy={y + 16} r={3} fill={color} fillOpacity={0.3} />
+                  </>
                 )}
                 {/* Icon + Label */}
-                <text x={x + 16} y={y + 24} fill="#374151" fontSize={14}>{icon}</text>
-                <text x={x + 34} y={y + 25} fill="#1F2937" fontSize={12} fontWeight={600}
-                  style={{ fontFamily: 'var(--font-ui)' }}>
-                  {node.label.length > 22 ? node.label.slice(0, 22) + '…' : node.label}
+                <text x={x + 16} y={y + 24} fill={color} fontSize={13} style={{ opacity: 0.8 }}>{icon}</text>
+                <text x={x + 34} y={y + 25} fill="var(--color-text-primary)" fontSize={12} fontWeight={600}
+                  style={{ fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}>
+                  {node.label.length > 22 ? node.label.slice(0, 22) + '\u2026' : node.label}
                 </text>
                 {/* Type label + adk-fluent construct */}
-                <text x={x + 16} y={y + 44} fill="#9CA3AF" fontSize={10}>
-                  {node.type.replace(/-/g, ' ')}{ADK_CONSTRUCT[node.type] ? ` · ${ADK_CONSTRUCT[node.type]}` : ''}
+                <text x={x + 16} y={y + 44} fill="var(--color-text-quaternary)" fontSize={10}
+                  style={{ fontFamily: 'var(--font-ui)' }}>
+                  {node.type.replace(/-/g, ' ')}{ADK_CONSTRUCT[node.type] ? ` \u00B7 ${ADK_CONSTRUCT[node.type]}` : ''}
                 </text>
-                {/* Line badge */}
+                {/* Line badge — pill shape */}
                 {node.sourceLines[0] != null && (
                   <>
-                    <rect x={x + NW - 36} y={y + 38} width={28} height={16} rx={4}
-                      fill={color} fillOpacity={0.1} />
-                    <text x={x + NW - 22} y={y + 50} textAnchor="middle" fill={color}
-                      fontSize={9} fontWeight={500}>
+                    <rect x={x + NW - 38} y={y + 38} width={30} height={16} rx={8}
+                      fill={color} fillOpacity={0.08} stroke={color} strokeOpacity={0.15} strokeWidth={0.5} />
+                    <text x={x + NW - 23} y={y + 50} textAnchor="middle" fill={color}
+                      fontSize={9} fontWeight={600} style={{ fontFamily: 'var(--font-mono)' }}>
                       L{node.sourceLines[0]}
                     </text>
                   </>
@@ -505,11 +594,25 @@ export function FlowGraph({
         </g>
       </svg>
 
-      {/* Legend */}
-      <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5 sm:gap-2 text-[9px] sm:text-[10px] bg-white/80 backdrop-blur rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 border max-w-[calc(100%-24px)]" style={{ color: 'var(--color-text-secondary)', borderColor: 'var(--color-surface-2)' }}>
+      {/* Legend — glass panel */}
+      <div
+        className="absolute bottom-3 left-3 flex flex-wrap gap-2 sm:gap-2.5 text-[9px] sm:text-[10px] px-3 sm:px-4 py-2 sm:py-2.5 max-w-[calc(100%-24px)]"
+        style={{
+          background: 'rgba(255, 255, 255, 0.78)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid rgba(255, 255, 255, 0.5)',
+          boxShadow: 'var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.4)',
+          color: 'var(--color-text-tertiary)',
+          fontFamily: 'var(--font-ui)',
+        }}
+      >
         {Object.entries(NODE_COLORS).map(([type, color]) => (
-          <span key={type} className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
+          <span key={type} className="flex items-center gap-1.5">
+            <span
+              className="w-2.5 h-2.5 rounded"
+              style={{ background: color, boxShadow: `0 0 3px ${color}30` }}
+            />
             {type.replace(/-/g, ' ')}
           </span>
         ))}

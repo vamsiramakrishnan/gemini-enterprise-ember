@@ -31,29 +31,59 @@ export function InlineChip({
   if (!resolved) {
     return (
       <span
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border-2 border-dashed cursor-pointer mx-0.5"
-        style={{ borderColor: '#DC2626', color: '#DC2626', background: '#FEF2F2' }}
+        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border-[1.5px] border-dashed cursor-pointer mx-0.5 transition-all duration-150 hover:scale-[1.03] active:scale-[0.97]"
+        style={{
+          borderColor: '#EF4444',
+          color: '#DC2626',
+          background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)',
+        }}
         onClick={onClick}
       >
-        {icon} {name}
+        <span className="opacity-70">⚠</span> {name}
       </span>
     );
   }
 
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium cursor-pointer transition-all mx-0.5"
+      className="inline-flex items-center gap-1 px-2.5 py-[3px] rounded-full text-[11px] font-semibold cursor-pointer mx-0.5 group/chip"
       style={{
-        background: colors.bg,
+        background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.tint} 100%)`,
         color: colors.text,
         border: `1px solid ${colors.border}`,
-        boxShadow: glowing ? `0 0 0 2px ${colors.accent}33, 0 0 8px ${colors.accent}22` : 'none',
+        boxShadow: glowing
+          ? `0 0 0 3px ${colors.accent}25, 0 0 12px ${colors.accent}18, inset 0 1px 0 rgba(255,255,255,0.5)`
+          : `inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px ${colors.accent}08`,
+        transition: 'all 180ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        letterSpacing: '-0.01em',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 1px 3px ${colors.accent}22, 0 0 0 1px ${colors.accent}33`; e.currentTarget.style.transform = 'translateY(-0.5px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = glowing ? `0 0 0 2px ${colors.accent}33, 0 0 8px ${colors.accent}22` : 'none'; e.currentTarget.style.transform = 'none'; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `0 2px 8px ${colors.accent}20, 0 0 0 2px ${colors.accent}18, inset 0 1px 0 rgba(255,255,255,0.6)`;
+        e.currentTarget.style.transform = 'translateY(-1px) scale(1.03)';
+        e.currentTarget.style.borderColor = colors.accent + '55';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = glowing
+          ? `0 0 0 3px ${colors.accent}25, 0 0 12px ${colors.accent}18, inset 0 1px 0 rgba(255,255,255,0.5)`
+          : `inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px ${colors.accent}08`;
+        e.currentTarget.style.transform = 'none';
+        e.currentTarget.style.borderColor = colors.border;
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = 'translateY(0) scale(0.97)';
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = 'translateY(-1px) scale(1.03)';
+      }}
       onClick={onClick}
     >
-      <span style={{ color: colors.accent }}>{icon}</span> {name}
+      <span
+        className="text-[10px] transition-transform duration-150"
+        style={{ color: colors.accent, filter: `drop-shadow(0 0 2px ${colors.accent}30)` }}
+      >
+        {icon}
+      </span>
+      {name}
     </span>
   );
 }

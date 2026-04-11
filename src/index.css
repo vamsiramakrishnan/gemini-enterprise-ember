@@ -6,26 +6,29 @@
 /* ─── Design Tokens ─────────────────────────────────────────────── */
 
 @theme {
-  /* Surfaces — deliberate 3-step hierarchy with clear visual distinction */
+  /* Surfaces — deliberate 4-step hierarchy with warmth */
   --color-surface-0: #FFFFFF;
-  --color-surface-1: #F8F8F7;
-  --color-surface-2: #F0F0EE;
+  --color-surface-1: #F9F9F8;
+  --color-surface-2: #F1F0EE;
   --color-surface-3: #E4E4E2;
 
   /* Chrome */
   --color-sidebar: #FBFBFA;
-  --color-border: #E6E5E3;
-  --color-border-strong: #CFCEC9;
+  --color-border: #E8E7E5;
+  --color-border-strong: #D1D0CC;
+  --color-border-subtle: #F0EFED;
 
   /* Text — wider spread for hierarchy, tertiary at 5.5:1 contrast */
-  --color-text-primary: #1A1A1A;
-  --color-text-secondary: #5C5C5C;
+  --color-text-primary: #18181B;
+  --color-text-secondary: #52525B;
   --color-text-tertiary: #868583;
+  --color-text-quaternary: #A8A7A5;
 
   /* Accent — Google Blue, refined */
   --color-accent: #2563EB;
   --color-accent-hover: #1D4ED8;
   --color-accent-light: #EBF2FF;
+  --color-accent-muted: #93B4F6;
 
   /* Chip colors */
   --color-chip-doc: #0F766E;
@@ -49,14 +52,17 @@
   --font-body: 'Literata', 'Georgia', 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
 
-  /* Shadows — Apple-inspired layered depth */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.02);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.08), 0 4px 8px -4px rgba(0, 0, 0, 0.04);
-  --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, 0.10), 0 8px 16px -4px rgba(0, 0, 0, 0.04);
-  --shadow-ring: 0 0 0 3px rgba(37, 99, 235, 0.12);
-  --shadow-glow: 0 0 0 1px rgba(37, 99, 235, 0.1), 0 0 20px -4px rgba(37, 99, 235, 0.15);
+  /* Shadows — Apple-inspired layered depth with inner refinement */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.10), 0 4px 10px -4px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --shadow-xl: 0 24px 48px -8px rgba(0, 0, 0, 0.12), 0 8px 20px -4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  --shadow-2xl: 0 32px 64px -12px rgba(0, 0, 0, 0.16), 0 12px 24px -4px rgba(0, 0, 0, 0.08);
+  --shadow-ring: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  --shadow-glow: 0 0 0 1px rgba(37, 99, 235, 0.12), 0 0 24px -4px rgba(37, 99, 235, 0.18);
+  --shadow-inner: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 
   /* Radii — rounder, warmer */
   --radius-xs: 4px;
@@ -64,17 +70,23 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
+  --radius-2xl: 24px;
 
   /* Spacing scale */
   --space-page-x: clamp(16px, 4vw, 40px);
   --space-page-y: clamp(16px, 3vw, 32px);
 
-  /* Animation timing — standardized */
+  /* Animation timing — standardized with more options */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --duration-fast: 120ms;
-  --duration-normal: 200ms;
-  --duration-slow: 320ms;
+  --ease-bounce: cubic-bezier(0.34, 1.8, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-instant: 80ms;
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
 }
 
 /* ─── Reset & Base ────────────────────────────────────────────────── */
@@ -86,6 +98,7 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  scroll-behavior: smooth;
 }
 
 body {
@@ -99,8 +112,32 @@ body {
   letter-spacing: -0.011em;
 }
 
+/* Subtle warm paper texture on page backgrounds */
+.bg-paper {
+  background:
+    var(--color-surface-1)
+    url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.015'%3E%3Cpath d='M0 0h20v20H0zM20 20h20v20H20z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Glass morphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+.glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+}
+.glass-subtle {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+}
+
 ::selection {
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(37, 99, 235, 0.14);
   color: var(--color-text-primary);
 }
 
@@ -117,8 +154,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    transform: none !important;
   }
 }
 
@@ -240,18 +277,44 @@ body {
 /* ─── Animations — standardized timing ──────────────────────────── */
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInScale {
-  from { opacity: 0; transform: scale(0.97); }
+  from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes fadeInScaleSpring {
+  0% { opacity: 0; transform: scale(0.92); }
+  60% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @keyframes shimmer {
@@ -259,35 +322,130 @@ body {
   to { transform: translateX(100%); }
 }
 
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08); }
+}
+
+@keyframes rotate-subtle {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes expand-in {
+  from { opacity: 0; transform: scaleY(0.6); transform-origin: top; }
+  to { opacity: 1; transform: scaleY(1); transform-origin: top; }
+}
+
+@keyframes chip-materialize {
+  0% { opacity: 0; transform: scale(0.5); filter: blur(4px); }
+  50% { opacity: 1; transform: scale(1.08); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
 .animate-in {
   animation: fadeIn var(--duration-normal) var(--ease-out) both;
 }
+.animate-scale-in {
+  animation: fadeInScaleSpring var(--duration-slow) var(--ease-out) both;
+}
+.animate-slide-up {
+  animation: slideUp var(--duration-normal) var(--ease-out) both;
+}
+.animate-slide-down {
+  animation: slideDown var(--duration-normal) var(--ease-out) both;
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
 
-/* Staggered grid entrance — smooth cascade */
+/* Staggered grid entrance — smooth cascade with spring */
 .stagger > * { animation: fadeIn var(--duration-slow) var(--ease-out) both; }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 40ms; }
-.stagger > *:nth-child(3) { animation-delay: 80ms; }
-.stagger > *:nth-child(4) { animation-delay: 120ms; }
-.stagger > *:nth-child(5) { animation-delay: 160ms; }
-.stagger > *:nth-child(6) { animation-delay: 200ms; }
-.stagger > *:nth-child(7) { animation-delay: 240ms; }
-.stagger > *:nth-child(8) { animation-delay: 280ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+.stagger > *:nth-child(7) { animation-delay: 300ms; }
+.stagger > *:nth-child(8) { animation-delay: 350ms; }
+.stagger > *:nth-child(9) { animation-delay: 400ms; }
+.stagger > *:nth-child(10) { animation-delay: 450ms; }
+.stagger > *:nth-child(11) { animation-delay: 500ms; }
+.stagger > *:nth-child(12) { animation-delay: 550ms; }
+
+/* Faster stagger for denser layouts */
+.stagger-fast > * { animation: fadeInScale var(--duration-normal) var(--ease-out) both; }
+.stagger-fast > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-fast > *:nth-child(2) { animation-delay: 30ms; }
+.stagger-fast > *:nth-child(3) { animation-delay: 60ms; }
+.stagger-fast > *:nth-child(4) { animation-delay: 90ms; }
+.stagger-fast > *:nth-child(5) { animation-delay: 120ms; }
+.stagger-fast > *:nth-child(6) { animation-delay: 150ms; }
+.stagger-fast > *:nth-child(7) { animation-delay: 180ms; }
+.stagger-fast > *:nth-child(8) { animation-delay: 210ms; }
 
 /* ─── Component Patterns ─────────────────────────────────────────── */
 
-/* Card base — warm paper feel */
+/* Card base — warm paper feel with depth */
 .card {
   background: var(--color-surface-0);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs);
-  transition: box-shadow var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out);
+  transition: box-shadow var(--duration-normal) var(--ease-out),
+              border-color var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
 }
 .card:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   border-color: var(--color-border-strong);
+}
+
+/* Card with glass */
+.card-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: box-shadow var(--duration-normal) var(--ease-out),
+              border-color var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+.card-glass:hover {
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Interactive card with hover lift */
+.card-lift {
+  transition: box-shadow var(--duration-normal) var(--ease-out),
+              border-color var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-border-strong);
+}
+.card-lift:active {
+  transform: translateY(0);
+  transition-duration: var(--duration-instant);
 }
 
 /* Note: Button, Badge, Card, Input, Chip, StatusDot styles are now in React
@@ -511,39 +669,57 @@ body {
 
 .editable-line {
   cursor: text;
-  border-left: 2px solid transparent;
-  padding-left: 10px;
-  transition: all var(--duration-fast) var(--ease-out);
+  border-left: 2.5px solid transparent;
+  padding-left: 12px;
+  transition: all var(--duration-normal) var(--ease-out);
   border-radius: var(--radius-xs);
+  position: relative;
 }
 .editable-line:hover {
-  border-left-color: var(--color-accent);
-  background: rgba(37, 99, 235, 0.03);
+  border-left-color: var(--color-accent-muted);
+  background: rgba(37, 99, 235, 0.025);
 }
 .editable-line.editing {
   border-left-color: var(--color-accent);
   background: var(--color-accent-light);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+.editable-line.highlighted {
+  background: rgba(37, 99, 235, 0.06);
+  border-left-color: var(--color-accent);
 }
 
 /* ─── Notebook Cell Container ────────────────────────────────────── */
 
 .cell-container {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: white;
+  box-shadow: var(--shadow-xs);
   transition: box-shadow var(--duration-normal) var(--ease-out),
-              border-color var(--duration-normal) var(--ease-out);
+              border-color var(--duration-normal) var(--ease-out),
+              transform var(--duration-normal) var(--ease-out);
 }
 .cell-container:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+.cell-container:active {
+  transform: translateY(0);
+  transition-duration: var(--duration-instant);
+}
+
+/* Cell accent stripe — applied via border-left */
+.cell-container[data-accent] {
+  border-left-width: 3px;
 }
 
 .cell-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   cursor: pointer;
   user-select: none;
 }
@@ -551,7 +727,7 @@ body {
 .add-cell-divider {
   height: 0;
   position: relative;
-  margin: 6px 0;
+  margin: 8px 0;
   opacity: 0;
   transition: opacity var(--duration-normal) var(--ease-out);
 }
@@ -560,34 +736,80 @@ body {
   opacity: 1;
 }
 
-/* ─── Chip Resolve Glow ──────────────────────────────────────────── */
+/* ─── Chip Resolve Glow ──────────────────────────────────────��───── */
 
 @keyframes chipResolve {
-  from { box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15); }
-  to { box-shadow: none; }
+  0% { box-shadow: 0 0 0 0 var(--chip-glow-color, rgba(37, 99, 235, 0.3)); }
+  40% { box-shadow: 0 0 0 6px var(--chip-glow-color, rgba(37, 99, 235, 0.15)); }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 .chip-glow-enter {
-  animation: chipResolve 800ms var(--ease-out) forwards;
+  animation: chipResolve 1000ms var(--ease-out) forwards;
+}
+
+/* Chip materialize effect for newly inserted chips */
+@keyframes chipInsert {
+  0% { opacity: 0; transform: scale(0.5); filter: blur(4px); }
+  50% { opacity: 1; transform: scale(1.06); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+.chip-insert {
+  animation: chipInsert 400ms var(--ease-spring) forwards;
 }
 
 /* ─── Page Transition ────────────────────────────────────────────── */
 
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(8px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .page-enter {
-  animation: pageIn var(--duration-normal) var(--ease-out);
+  animation: pageIn var(--duration-slow) var(--ease-out);
 }
 
-/* ─── Tab Content Transition ─────────────────────────────────────── */
+/* ─── Tab Content Transition ──────────────────────────────────────��� */
 
 @keyframes tabFadeIn {
-  from { opacity: 0; transform: translateY(3px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .tab-content-enter {
-  animation: tabFadeIn var(--duration-fast) var(--ease-out);
+  animation: tabFadeIn var(--duration-normal) var(--ease-out);
+}
+
+/* ─── Sliding Tab Indicator ────────────────���─────────────────────── */
+
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2.5px;
+  border-radius: 2px 2px 0 0;
+  background: var(--color-accent);
+  transition: left var(--duration-normal) var(--ease-spring),
+              width var(--duration-normal) var(--ease-spring);
+}
+
+/* ─── Hover Glow Effect ──────────────────────────────────────────── */
+
+.hover-glow {
+  position: relative;
+}
+.hover-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    var(--glow-color, rgba(37, 99, 235, 0.08)) 0%,
+    transparent 70%
+  );
+}
+.hover-glow:hover::after {
+  opacity: 1;
 }
 
 /* ─── Focus System ──────────────────────────────────────────────── */
@@ -595,7 +817,7 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 :focus:not(:focus-visible) {
@@ -608,6 +830,13 @@ textarea:focus-visible,
 select:focus-visible {
   outline: none;
   border-color: var(--color-accent);
+  box-shadow: var(--shadow-ring), 0 0 0 1px var(--color-accent);
+}
+
+/* Focus within cards — subtle ring */
+.card:focus-within,
+.cell-container:focus-within {
+  border-color: var(--color-accent-muted);
   box-shadow: var(--shadow-ring);
 }
 
@@ -638,4 +867,71 @@ a:not([class]) {
 }
 a:not([class]):hover {
   text-decoration: underline;
+}
+
+/* ─── Utility Classes ─────────────────────────────────────────────── */
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-accent) 0%, #7C3AED 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Dot grid background for notebook */
+.bg-dots {
+  background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Gradient border trick */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--color-accent), #7C3AED);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+.gradient-border:hover::before {
+  opacity: 0.5;
+}
+
+/* Smooth scrollbar appearance */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Truncate with ellipsis */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

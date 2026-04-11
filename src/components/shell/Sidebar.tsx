@@ -1,8 +1,9 @@
 /**
  * SidebarContent — Shared sidebar UI for mobile drawer and desktop panel.
  *
- * Contains: logo area, "Create New" button, nav items with section headers,
- * and an agent status footer. Used by Shell in both mobile and desktop layouts.
+ * Contains: logo area with gradient, "Create New" button, nav items with
+ * section headers, active glow indicator, and an agent status footer.
+ * Used by Shell in both mobile and desktop layouts.
  */
 
 import { NavLink, useLocation } from 'react-router-dom';
@@ -38,21 +39,20 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
       >
         <button
           onClick={onToggle}
-          className="flex items-center gap-3 w-full"
+          className="flex items-center gap-3 w-full group"
           style={{
             transition: `opacity var(--duration-fast) var(--ease-out)`,
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
         >
           <div
-            className="shrink-0 flex items-center justify-center"
+            className="shrink-0 flex items-center justify-center relative"
             style={{
               width: 36,
               height: 36,
               borderRadius: 'var(--radius-md)',
-              background: 'var(--color-accent)',
-              boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)',
+              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #4F46E5 100%)',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
+              transition: 'box-shadow 200ms ease-out, transform 200ms ease-out',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -60,13 +60,13 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
             </svg>
           </div>
           {!collapsed && (
-            <div className="flex flex-col">
+            <div className="flex flex-col" style={{ animation: 'fadeIn 200ms ease-out' }}>
               <span
                 style={{
                   fontSize: 14,
-                  fontWeight: 600,
+                  fontWeight: 650,
                   lineHeight: 1.25,
-                  letterSpacing: '-0.01em',
+                  letterSpacing: '-0.015em',
                   color: 'var(--color-text-primary)',
                   fontFamily: 'var(--font-ui)',
                 }}
@@ -100,22 +100,29 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
           className="w-full flex items-center justify-center gap-2"
           style={{
             padding: collapsed ? '11px 0' : '11px 16px',
-            background: 'var(--color-accent)',
+            background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
             color: 'var(--color-surface-0)',
             fontSize: 13,
             fontWeight: 600,
             fontFamily: 'var(--font-ui)',
+            letterSpacing: '-0.01em',
             borderRadius: 'var(--radius-md)',
-            transition: `background var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)`,
-            boxShadow: 'var(--shadow-xs)',
+            transition: `all var(--duration-fast) var(--ease-out)`,
+            boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-accent-hover)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.3)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--color-accent)';
-            e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'none';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(0.5px)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           title="Create new asset"
         >
@@ -128,8 +135,8 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
 
       {/* Navigation */}
       <nav
-        className="flex-1 overflow-y-auto"
-        style={{ padding: '6px 10px' }}
+        className="flex-1 overflow-y-auto scrollbar-thin"
+        style={{ padding: '8px 10px' }}
       >
         {NAV.map((item, i) => {
           const isActive = location.pathname === item.path;
@@ -161,7 +168,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
               <NavLink
                 to={item.path}
                 onClick={onNavigate}
-                className="flex items-center relative"
+                className="flex items-center relative group/nav"
                 style={{
                   padding: '10px 12px',
                   gap: 10,
@@ -170,9 +177,10 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                   background: isActive ? 'var(--color-accent-light)' : 'transparent',
                   fontWeight: isActive ? 500 : 400,
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   marginBottom: 2,
-                  transition: `background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out)`,
+                  transition: `all var(--duration-fast) var(--ease-out)`,
+                  boxShadow: isActive ? 'inset 0 0 0 1px rgba(37, 99, 235, 0.08)' : 'none',
                 }}
                 title={collapsed ? item.label : undefined}
                 onMouseEnter={(e) => {
@@ -196,6 +204,8 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                       height: 22,
                       borderRadius: '0 3px 3px 0',
                       background: 'var(--color-accent)',
+                      boxShadow: '2px 0 8px rgba(37, 99, 235, 0.2)',
+                      transition: 'height 200ms ease-out',
                     }}
                   />
                 )}
@@ -203,7 +213,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 {!collapsed && (
                   <span
                     className="truncate"
-                    style={{ fontSize: 13, fontFamily: 'var(--font-ui)' }}
+                    style={{ fontSize: 13, fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}
                   >
                     {item.label}
                   </span>
@@ -245,10 +255,11 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   fontSize: 10,
-                  background: 'var(--color-surface-2)',
+                  background: 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
                   color: 'var(--color-text-secondary)',
+                  letterSpacing: '0.02em',
                 }}
               >
                 CA
@@ -260,6 +271,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   height: 10,
                   background: 'var(--color-success)',
                   border: '2px solid var(--color-surface-1)',
+                  boxShadow: '0 0 4px rgba(22, 163, 74, 0.3)',
                 }}
               />
             </div>
@@ -270,6 +282,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   fontSize: 12,
                   color: 'var(--color-text-primary)',
                   fontFamily: 'var(--font-ui)',
+                  letterSpacing: '-0.01em',
                 }}
               >
                 Claims Agent
@@ -294,9 +307,9 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   fontSize: 9,
-                  background: 'var(--color-surface-2)',
+                  background: 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
                   color: 'var(--color-text-secondary)',
                 }}
               >
@@ -309,6 +322,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   height: 10,
                   background: 'var(--color-success)',
                   border: '2px solid var(--color-surface-1)',
+                  boxShadow: '0 0 4px rgba(22, 163, 74, 0.3)',
                 }}
               />
             </div>

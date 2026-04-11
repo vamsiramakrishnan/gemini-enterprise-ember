@@ -122,14 +122,25 @@ const STATUS_CONFIGS: Record<string, { dotColor: string; textColor: string; bgCo
 function ActionSummary({ actionCount, systemCount }: { actionCount: number; systemCount: number }) {
   return (
     <div
-      className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-lg"
-      style={{ border: '1px solid var(--color-border)', background: 'var(--color-surface-1)', fontFamily: 'var(--font-ui)' }}
+      className="flex flex-wrap items-center gap-2"
+      style={{
+        padding: '12px 18px',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--color-border)',
+        background: 'linear-gradient(135deg, var(--color-surface-0) 0%, var(--color-accent-light) 100%)',
+        fontFamily: 'var(--font-ui)',
+        boxShadow: 'var(--shadow-xs)',
+      }}
     >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--color-accent)', opacity: 0.7 }}>
+        <path d="M8 1v6l4.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.3" fill="none"/>
+      </svg>
       <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
         Agent can perform{' '}
-        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{actionCount} actions</span>
+        <span style={{ fontWeight: 650, color: 'var(--color-accent)', letterSpacing: '-0.01em' }}>{actionCount} actions</span>
         {' '}across{' '}
-        <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{systemCount} connected systems</span>
+        <span style={{ fontWeight: 650, color: 'var(--color-accent)', letterSpacing: '-0.01em' }}>{systemCount} connected systems</span>
       </span>
     </div>
   );
@@ -465,21 +476,35 @@ function ConnectorCard({ connector, onSelect, onToggle, onSync, onOpenConsole, o
 
 function SectionHeader({ label, count }: { label: string; count: number }) {
   return (
-    <h2
-      className="mb-3"
-      style={{
-        fontSize: 10,
-        fontWeight: 600,
-        color: 'var(--color-text-tertiary)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        fontFamily: 'var(--font-ui)',
-        margin: 0,
-        marginBottom: 12,
-      }}
-    >
-      {label} ({count})
-    </h2>
+    <div className="flex items-center gap-2" style={{ marginBottom: 14 }}>
+      <h2
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: 'var(--color-text-tertiary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          fontFamily: 'var(--font-ui)',
+          margin: 0,
+        }}
+      >
+        {label}
+      </h2>
+      <span
+        style={{
+          fontSize: 9,
+          fontWeight: 600,
+          color: 'var(--color-text-quaternary)',
+          background: 'var(--color-surface-2)',
+          padding: '1px 7px',
+          borderRadius: 'var(--radius-sm)',
+          fontFamily: 'var(--font-ui)',
+        }}
+      >
+        {count}
+      </span>
+      <div style={{ flex: 1, height: 1, background: 'var(--color-border-subtle)', marginLeft: 4 }} />
+    </div>
   );
 }
 
@@ -538,15 +563,41 @@ export function ConnectorHub() {
     <div className="page-container" style={{ overflow: 'auto' }}>
       {/* Header */}
       <header
-        className="page-header sticky top-0 z-50 flex items-center justify-between"
+        className="sticky top-0 z-50 flex items-center justify-between"
+        style={{
+          padding: '14px var(--space-page-x)',
+          borderBottom: '1px solid var(--color-border)',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        }}
       >
-        <div style={{ fontFamily: 'var(--font-ui)' }}>
-          <h1 style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3 }}>
-            Connected Systems
-          </h1>
-          <p style={{ fontSize: 10, color: 'var(--color-text-tertiary)', margin: 0, marginTop: 1 }}>
-            {activeCount} active connection{activeCount !== 1 ? 's' : ''}
-          </p>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center justify-center shrink-0"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)',
+              border: '1px solid #BFDBFE50',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="4" cy="4" r="2" stroke="#2563EB" strokeWidth="1.2"/>
+              <circle cx="10" cy="4" r="2" stroke="#2563EB" strokeWidth="1.2"/>
+              <circle cx="7" cy="10" r="2" stroke="#2563EB" strokeWidth="1.2"/>
+              <path d="M5.5 5.5L7 8.5M8.5 5.5L7 8.5" stroke="#2563EB" strokeWidth="0.8" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div style={{ fontFamily: 'var(--font-ui)' }}>
+            <h1 style={{ fontSize: 14, fontWeight: 650, color: 'var(--color-text-primary)', margin: 0, lineHeight: 1.3, letterSpacing: '-0.015em' }}>
+              Connected Systems
+            </h1>
+            <p style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)', margin: '1px 0 0' }}>
+              {activeCount} active connection{activeCount !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
         <Button
           variant="primary"

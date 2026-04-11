@@ -12,7 +12,7 @@ import { useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS, CREATE_CARDS } from '../../config/chipConfig';
 import type { ChipType } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
-import { Card, StatusBadge } from '../../ui';
+import { StatusBadge } from '../../ui';
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -49,19 +49,30 @@ export function HomePage() {
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <header
         style={{
-          background: 'linear-gradient(145deg, #1A1F36 0%, #1E3A5F 40%, #2563EB 100%)',
+          background: 'linear-gradient(145deg, #0F172A 0%, #1E3A5F 35%, #2563EB 80%, #3B82F6 100%)',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Subtle radial glow for depth */}
+        {/* Rich layered depth with multiple radial glows */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
             background:
-              'radial-gradient(ellipse at 75% 30%, rgba(124, 58, 237, 0.12) 0%, transparent 60%), ' +
-              'radial-gradient(ellipse at 20% 80%, rgba(37, 99, 235, 0.08) 0%, transparent 50%)',
+              'radial-gradient(ellipse at 70% 20%, rgba(124, 58, 237, 0.18) 0%, transparent 50%), ' +
+              'radial-gradient(ellipse at 20% 80%, rgba(37, 99, 235, 0.12) 0%, transparent 45%), ' +
+              'radial-gradient(ellipse at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%)',
+            pointerEvents: 'none',
+          }}
+        />
+        {/* Subtle grid pattern overlay */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)',
+            backgroundSize: '32px 32px',
             pointerEvents: 'none',
           }}
         />
@@ -71,14 +82,16 @@ export function HomePage() {
           style={{ padding: 'clamp(36px, 6vw, 56px) var(--space-page-x)' }}
         >
           <h1
+            className="animate-in"
             style={{
-              fontSize: 'clamp(24px, 4vw, 32px)',
+              fontSize: 'clamp(26px, 4.5vw, 36px)',
               fontWeight: 700,
               color: '#FFFFFF',
               fontFamily: 'var(--font-ui)',
-              letterSpacing: '-0.03em',
-              lineHeight: 1.15,
+              letterSpacing: '-0.035em',
+              lineHeight: 1.12,
               margin: 0,
+              textShadow: '0 2px 12px rgba(0,0,0,0.15)',
             }}
           >
             Playbook Agent Builder
@@ -117,27 +130,27 @@ export function HomePage() {
               onClick={() => navigate('/editor')}
               className="flex items-center gap-2"
               style={{
-                padding: '10px 22px',
-                background: 'rgba(255, 255, 255, 0.95)',
+                padding: '11px 24px',
+                background: 'rgba(255, 255, 255, 0.97)',
                 color: '#1E3A5F',
                 fontSize: 13,
                 fontWeight: 600,
                 fontFamily: 'var(--font-ui)',
                 letterSpacing: '-0.01em',
-                borderRadius: 'var(--radius-md)',
+                borderRadius: 'var(--radius-lg)',
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                transition: `all var(--duration-fast) var(--ease-out)`,
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
+                transition: `all 180ms cubic-bezier(0.34, 1.56, 0.64, 1)`,
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = '#FFFFFF';
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255,255,255,0.5)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.97)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255,255,255,0.5)';
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
@@ -149,25 +162,28 @@ export function HomePage() {
             <button
               onClick={() => navigate('/live')}
               style={{
-                padding: '10px 22px',
+                padding: '11px 24px',
                 background: 'rgba(255, 255, 255, 0.08)',
-                color: 'rgba(255, 255, 255, 0.8)',
+                color: 'rgba(255, 255, 255, 0.85)',
                 fontSize: 13,
                 fontWeight: 500,
                 fontFamily: 'var(--font-ui)',
                 letterSpacing: '-0.01em',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
                 cursor: 'pointer',
-                transition: `all var(--duration-fast) var(--ease-out)`,
+                backdropFilter: 'blur(8px)',
+                transition: `all 180ms cubic-bezier(0.34, 1.56, 0.64, 1)`,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.16)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
               Live Author
@@ -241,32 +257,69 @@ export function HomePage() {
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: 20,
+              gap: 14,
             }}
           >
             {HOMEPAGE_CARDS.map((card) => {
               const c = CHIP_COLORS[card.type];
               return (
-                <Card
+                <button
                   key={card.type}
-                  variant="interactive"
-                  padding="none"
-                  accentColor={c.accent}
                   onClick={() => handleQuickCreate(card.type)}
-                  role="button"
-                  style={{ textAlign: 'left' }}
+                  className="group/card text-left"
+                  style={{
+                    padding: 0,
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--color-surface-0)',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-xs)',
+                    transition: 'all 220ms cubic-bezier(0.16, 1, 0.3, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    e.currentTarget.style.boxShadow = `var(--shadow-lg), 0 0 0 1px ${c.accent}18`;
+                    e.currentTarget.style.borderColor = `${c.accent}30`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    e.currentTarget.style.boxShadow = `var(--shadow-lg), 0 0 0 1px ${c.accent}18`;
+                  }}
                 >
-                  <div style={{ padding: '18px 18px 16px' }}>
+                  {/* Gradient top edge */}
+                  <div
+                    style={{
+                      height: 3,
+                      background: `linear-gradient(90deg, ${c.accent}, ${c.accent}60)`,
+                      borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+                      opacity: 0.7,
+                      transition: 'opacity 200ms ease-out',
+                    }}
+                  />
+                  <div style={{ padding: '16px 18px 14px' }}>
                     <div className="flex items-center gap-3" style={{ marginBottom: 10 }}>
                       <span
                         className="flex items-center justify-center shrink-0"
                         style={{
-                          width: 36,
-                          height: 36,
+                          width: 38,
+                          height: 38,
                           borderRadius: 'var(--radius-md)',
-                          background: c.tint,
+                          background: `linear-gradient(135deg, ${c.tint}, ${c.bg})`,
                           color: c.text,
-                          fontSize: 14,
+                          fontSize: 15,
+                          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 3px ${c.accent}15`,
+                          border: `1px solid ${c.accent}12`,
                         }}
                       >
                         {card.icon}
@@ -279,6 +332,7 @@ export function HomePage() {
                             color: 'var(--color-text-primary)',
                             fontFamily: 'var(--font-ui)',
                             lineHeight: 1.3,
+                            letterSpacing: '-0.01em',
                           }}
                         >
                           {card.title}
@@ -288,16 +342,25 @@ export function HomePage() {
                             fontSize: 10.5,
                             color: 'var(--color-text-tertiary)',
                             fontFamily: 'var(--font-ui)',
+                            marginTop: 1,
                           }}
                         >
                           {card.subtitle}
                         </div>
                       </div>
                       <span
+                        className="flex items-center justify-center shrink-0"
                         style={{
-                          fontSize: 18,
+                          width: 26,
+                          height: 26,
+                          borderRadius: 'var(--radius-sm)',
+                          background: 'var(--color-surface-1)',
+                          border: '1px solid var(--color-border)',
                           color: 'var(--color-text-tertiary)',
+                          fontSize: 14,
+                          fontWeight: 300,
                           lineHeight: 1,
+                          transition: 'all 200ms ease-out',
                         }}
                       >
                         +
@@ -316,7 +379,7 @@ export function HomePage() {
                       {card.description}
                     </p>
                   </div>
-                </Card>
+                </button>
               );
             })}
           </div>
@@ -339,15 +402,28 @@ export function HomePage() {
             </h2>
             <Link
               to="/registry"
+              className="flex items-center gap-1"
               style={{
                 fontSize: 12,
                 fontWeight: 500,
                 color: 'var(--color-accent)',
                 fontFamily: 'var(--font-ui)',
                 textDecoration: 'none',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-sm)',
+                transition: 'all 150ms ease-out',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--color-accent-light)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
               }}
             >
-              View all in Registry &rarr;
+              View all
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M4.5 2.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </Link>
           </div>
 
@@ -356,29 +432,49 @@ export function HomePage() {
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: 20,
+              gap: 14,
             }}
           >
             {recentAssets.map((chip) => {
               const c = CHIP_COLORS[chip.type];
               return (
-                <Card
+                <div
                   key={chip.id}
-                  variant="interactive"
-                  padding="none"
                   onClick={() => navigate('/registry')}
+                  className="cursor-pointer"
+                  style={{
+                    padding: 0,
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--color-surface-0)',
+                    boxShadow: 'var(--shadow-xs)',
+                    transition: 'all 220ms cubic-bezier(0.16, 1, 0.3, 1)',
+                    overflow: 'hidden',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                    e.currentTarget.style.borderColor = 'var(--color-border-strong)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                  }}
                 >
-                  <div style={{ padding: '16px 18px' }}>
+                  <div style={{ padding: '14px 16px 12px' }}>
                     <div className="flex items-center gap-2.5" style={{ marginBottom: 8 }}>
                       <span
                         className="flex items-center justify-center shrink-0"
                         style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 'var(--radius-xs)',
-                          background: c.tint,
+                          width: 26,
+                          height: 26,
+                          borderRadius: 'var(--radius-sm)',
+                          background: `linear-gradient(135deg, ${c.tint}, ${c.bg})`,
                           color: c.text,
                           fontSize: 10,
+                          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.6)`,
+                          border: `1px solid ${c.accent}10`,
                         }}
                       >
                         {CHIP_ICONS[chip.type]}
@@ -390,6 +486,7 @@ export function HomePage() {
                           fontWeight: 600,
                           color: 'var(--color-text-primary)',
                           fontFamily: 'var(--font-ui)',
+                          letterSpacing: '-0.01em',
                         }}
                       >
                         {chip.name}
@@ -405,24 +502,34 @@ export function HomePage() {
                         color: 'var(--color-text-secondary)',
                         fontFamily: 'var(--font-ui)',
                         margin: 0,
+                        lineHeight: 1.5,
                       }}
                     >
                       {chip.description}
                     </p>
-                    <div
-                      className="flex items-center justify-between"
-                      style={{
-                        marginTop: 10,
-                        fontSize: 10.5,
-                        color: 'var(--color-text-tertiary)',
-                        fontFamily: 'var(--font-ui)',
-                      }}
-                    >
-                      <span>v{chip.version}</span>
-                      <span>{chip.usageCount} refs</span>
-                    </div>
                   </div>
-                </Card>
+                  {/* Footer bar */}
+                  <div
+                    className="flex items-center justify-between"
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: 10.5,
+                      color: 'var(--color-text-tertiary)',
+                      fontFamily: 'var(--font-ui)',
+                      borderTop: '1px solid var(--color-border-subtle)',
+                      background: 'var(--color-surface-1)',
+                    }}
+                  >
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>v{chip.version}</span>
+                    <span className="flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ opacity: 0.5 }}>
+                        <path d="M5 1v4l2.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1" fill="none"/>
+                      </svg>
+                      {chip.usageCount} refs
+                    </span>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -430,25 +537,49 @@ export function HomePage() {
 
         {/* Section: How It Works ───────────────────────────────── */}
         <section style={{ marginBottom: 40 }}>
-          <Card padding="none">
-            <div style={{ padding: '28px 32px' }}>
-              <h2
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-ui)',
-                  textAlign: 'center',
-                  margin: '0 0 28px',
-                }}
-              >
-                How It Works
-              </h2>
+          <div
+            style={{
+              borderRadius: 'var(--radius-xl)',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface-0)',
+              boxShadow: 'var(--shadow-xs)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: '28px 32px 32px' }}>
+              <div className="flex flex-col items-center" style={{ marginBottom: 28 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    color: 'var(--color-text-tertiary)',
+                    fontFamily: 'var(--font-ui)',
+                    marginBottom: 6,
+                  }}
+                >
+                  Getting Started
+                </span>
+                <h2
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 650,
+                    color: 'var(--color-text-primary)',
+                    fontFamily: 'var(--font-ui)',
+                    letterSpacing: '-0.015em',
+                    textAlign: 'center',
+                    margin: 0,
+                  }}
+                >
+                  Three steps to a running agent
+                </h2>
+              </div>
               <div
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                  gap: 36,
+                  gap: 24,
                 }}
               >
                 {[
@@ -456,49 +587,82 @@ export function HomePage() {
                     step: '1',
                     title: 'Write a Playbook',
                     desc: 'Author instructions with @references. Each @tool, @connector, @guard shapes the agent\u2019s action space.',
-                    color: 'var(--color-accent)',
+                    color: '#2563EB',
+                    gradient: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                    icon: (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 3h7l3 3v7a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M5 9h6M5 11.5h4" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                    ),
                   },
                   {
                     step: '2',
                     title: 'Create Assets',
                     desc: 'Define tools, skills, connectors, and guards. The wizard generates adk-fluent Python code for you.',
-                    color: 'var(--color-chip-skill)',
+                    color: '#7C3AED',
+                    gradient: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+                    icon: (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="2" y="2" width="5" height="5" rx="1" stroke="white" strokeWidth="1.3"/>
+                        <rect x="9" y="2" width="5" height="5" rx="1" stroke="white" strokeWidth="1.3"/>
+                        <rect x="2" y="9" width="5" height="5" rx="1" stroke="white" strokeWidth="1.3"/>
+                        <path d="M11.5 9.5v5M9 11.75h5" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                    ),
                   },
                   {
                     step: '3',
                     title: 'Deploy & Monitor',
                     desc: 'Publish versions, set up triggers, and monitor your agent fleet from the portfolio dashboard.',
-                    color: 'var(--color-chip-data)',
+                    color: '#059669',
+                    gradient: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    icon: (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 2v4l3.5 2" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        <circle cx="8" cy="8" r="6" stroke="white" strokeWidth="1.3"/>
+                        <path d="M12 12l2 2" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                    ),
                   },
-                ].map((s) => (
+                ].map((s, i) => (
                   <div
                     key={s.step}
-                    className="flex flex-col items-center"
+                    className="flex flex-col items-center relative"
                     style={{ textAlign: 'center' }}
                   >
+                    {/* Connector line between steps (not on first) */}
+                    {i > 0 && (
+                      <div
+                        className="absolute top-5 -left-3 hidden md:block"
+                        style={{
+                          width: 24,
+                          height: 1,
+                          background: 'var(--color-border-strong)',
+                        }}
+                      />
+                    )}
                     <div
                       className="flex items-center justify-center"
                       style={{
-                        width: 38,
-                        height: 38,
+                        width: 40,
+                        height: 40,
                         borderRadius: '50%',
-                        background: s.color,
-                        color: '#FFFFFF',
-                        fontSize: 14,
-                        fontWeight: 700,
-                        fontFamily: 'var(--font-ui)',
-                        marginBottom: 14,
+                        background: s.gradient,
+                        marginBottom: 16,
+                        boxShadow: `0 3px 10px ${s.color}30, inset 0 1px 0 rgba(255,255,255,0.2)`,
                       }}
                     >
-                      {s.step}
+                      {s.icon}
                     </div>
                     <div
                       style={{
                         fontSize: 13,
-                        fontWeight: 600,
+                        fontWeight: 620,
                         color: 'var(--color-text-primary)',
                         fontFamily: 'var(--font-ui)',
                         marginBottom: 6,
+                        letterSpacing: '-0.01em',
                       }}
                     >
                       {s.title}
@@ -519,7 +683,7 @@ export function HomePage() {
                 ))}
               </div>
             </div>
-          </Card>
+          </div>
         </section>
 
       </div>

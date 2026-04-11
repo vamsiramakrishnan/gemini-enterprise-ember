@@ -691,38 +691,79 @@ export function VersionHistory() {
   return (
     <div className="page-container">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <header className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <h1
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px var(--space-page-x)',
+          borderBottom: '1px solid var(--color-border)',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+          flexShrink: 0,
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center justify-center shrink-0"
             style={{
-              margin: 0,
-              fontSize: 13,
-              fontWeight: 600,
-              color: colors.textPrimary,
-              fontFamily: 'var(--font-ui)',
+              width: 32,
+              height: 32,
+              borderRadius: 'var(--radius-md)',
+              background: 'linear-gradient(135deg, var(--color-surface-2), var(--color-surface-3))',
             }}
           >
-            Version History
-          </h1>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 10,
-              color: colors.textTertiary,
-              fontFamily: 'var(--font-ui)',
-              marginTop: 1,
-            }}
-          >
-            Claims Processing Agent — {VERSIONS.length} versions
-          </p>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="var(--color-text-secondary)" strokeWidth="1.2" fill="none"/>
+              <path d="M7 3.5v4l2.5 1.5" stroke="var(--color-text-secondary)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 650,
+                color: 'var(--color-text-primary)',
+                fontFamily: 'var(--font-ui)',
+                letterSpacing: '-0.015em',
+              }}
+            >
+              Version History
+            </h1>
+            <p
+              style={{
+                margin: '1px 0 0',
+                fontSize: 10.5,
+                color: 'var(--color-text-tertiary)',
+                fontFamily: 'var(--font-ui)',
+              }}
+            >
+              Claims Processing Agent &mdash; {VERSIONS.length} versions
+            </p>
+          </div>
         </div>
-        <Badge
-          bg="var(--color-surface-2)"
-          color="var(--color-text-secondary)"
-          size="md"
+        <div
+          className="flex items-center gap-1.5"
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--color-text-secondary)',
+            background: 'var(--color-surface-1)',
+            padding: '5px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--color-border-subtle)',
+            letterSpacing: '-0.01em',
+          }}
         >
-          v{compareFrom.version} → v{selected.version}
-        </Badge>
+          v{compareFrom.version}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ opacity: 0.4 }}>
+            <path d="M4.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          v{selected.version}
+        </div>
       </header>
 
       {/* ── Three-Panel Layout ──────────────────────────────────────── */}

@@ -57,16 +57,21 @@ function TypeFilter({
           <button
             key={t}
             onClick={() => onChange(t)}
-            className={[
-              'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full',
-              'text-[11px] font-medium border border-transparent',
-              'cursor-pointer transition-colors duration-150',
-              isActive
-                ? 'bg-gray-700 text-white'
-                : 'bg-[var(--color-surface-2)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-3)]',
-            ].join(' ')}
+            className="inline-flex items-center gap-1 cursor-pointer"
+            style={{
+              padding: '3px 10px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 11,
+              fontWeight: 500,
+              border: isActive ? '1px solid var(--color-text-primary)' : '1px solid transparent',
+              background: isActive ? 'var(--color-text-primary)' : 'var(--color-surface-2)',
+              color: isActive ? 'white' : 'var(--color-text-secondary)',
+              fontFamily: 'var(--font-ui)',
+              transition: 'all 150ms ease-out',
+              letterSpacing: '-0.01em',
+            }}
           >
-            {icon && <span className="text-[10px]">{icon}</span>}
+            {icon && <span style={{ fontSize: 10 }}>{icon}</span>}
             {t === 'all' ? 'All' : `@${t}`}
           </button>
         );
@@ -250,45 +255,86 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
   }, [chip.lastUpdated]);
 
   return (
-    <Card
-      variant="interactive"
-      padding="sm"
-      className="p-3.5"
+    <div
+      className="cursor-pointer"
       style={{
-        borderColor: expanded ? colors.border : undefined,
+        borderRadius: 'var(--radius-lg)',
+        background: 'var(--color-surface-0)',
+        border: expanded ? `1px solid ${colors.border}` : '1px solid var(--color-border)',
+        boxShadow: expanded ? `var(--shadow-md), 0 0 0 1px ${colors.accent}10` : 'var(--shadow-xs)',
+        transition: 'all 220ms cubic-bezier(0.16, 1, 0.3, 1)',
+        overflow: 'hidden',
       }}
       onClick={() => { setExpanded(!expanded); onSelect(chip.id); }}
+      onMouseEnter={(e) => {
+        if (!expanded) {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+          e.currentTarget.style.borderColor = 'var(--color-border-strong)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!expanded) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+          e.currentTarget.style.borderColor = 'var(--color-border)';
+        }
+      }}
     >
-      {/* Header row: type badge + status */}
-      <div className="flex items-center justify-between mb-2">
-        <Badge
-          bg={colors.bg}
-          color={colors.text}
-          variant="outline"
-          size="xs"
-          icon={<span style={{ color: colors.accent }}>{icon}</span>}
-        >
-          @{chip.type}
-        </Badge>
-        <StatusBadge status={chip.status} size="xs" />
-      </div>
-
-      {/* Name */}
-      <div className="text-[13px] font-semibold text-[var(--color-text-primary)] mb-1 leading-tight">
-        {chip.name}
-      </div>
-
-      {/* Description */}
+      {/* Accent top edge */}
       <div
-        className="text-[12px] text-[var(--color-text-secondary)] leading-relaxed overflow-hidden"
         style={{
-          display: '-webkit-box',
-          WebkitLineClamp: expanded ? 999 : 2,
-          WebkitBoxOrient: 'vertical',
+          height: 2,
+          background: `linear-gradient(90deg, ${colors.accent}, ${colors.accent}40)`,
+          opacity: expanded ? 1 : 0.5,
+          transition: 'opacity 200ms ease-out',
         }}
-      >
-        {chip.description}
-      </div>
+      />
+      <div style={{ padding: '14px 16px' }}>
+        {/* Header row: type badge + status */}
+        <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+          <Badge
+            bg={colors.bg}
+            color={colors.text}
+            variant="outline"
+            size="xs"
+            icon={<span style={{ color: colors.accent }}>{icon}</span>}
+          >
+            @{chip.type}
+          </Badge>
+          <StatusBadge status={chip.status} size="xs" />
+        </div>
+
+        {/* Name */}
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 620,
+            color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-ui)',
+            letterSpacing: '-0.01em',
+            marginBottom: 4,
+            lineHeight: 1.3,
+          }}
+        >
+          {chip.name}
+        </div>
+
+        {/* Description */}
+        <div
+          className="overflow-hidden"
+          style={{
+            fontSize: 12,
+            color: 'var(--color-text-secondary)',
+            fontFamily: 'var(--font-ui)',
+            lineHeight: 1.55,
+            display: '-webkit-box',
+            WebkitLineClamp: expanded ? 999 : 2,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
+          {chip.description}
+        </div>
 
       {/* Type-specific metadata */}
       {chip.type === 'connector' && chip.metadata && (
@@ -301,67 +347,109 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
         <TriggerMeta meta={chip.metadata as unknown as TriggerMetadata} />
       )}
 
-      {/* Footer */}
-      <div className="mt-2.5 flex items-center justify-between text-[10px] text-[var(--color-text-tertiary)]">
-        <div className="flex items-center gap-2.5">
-          <span>{chip.owner.split('@')[0]}</span>
-          <Badge color="var(--color-text-secondary)" bg="var(--color-surface-2)" size="xs">
-            v{chip.version}
-          </Badge>
-          <span>{timeAgo}</span>
+        {/* Footer */}
+        <div
+          className="flex items-center justify-between"
+          style={{
+            marginTop: 10,
+            fontSize: 10,
+            color: 'var(--color-text-tertiary)',
+            fontFamily: 'var(--font-ui)',
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span>{chip.owner.split('@')[0]}</span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 9.5,
+                background: 'var(--color-surface-1)',
+                padding: '1px 6px',
+                borderRadius: 'var(--radius-xs)',
+                border: '1px solid var(--color-border-subtle)',
+              }}
+            >
+              v{chip.version}
+            </span>
+            <span>{timeAgo}</span>
+          </div>
+          <span>{chip.usageCount} refs</span>
         </div>
-        <span className="text-[var(--color-text-tertiary)]">
-          {chip.usageCount} refs
-        </span>
-      </div>
 
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="mt-3 pt-3 border-t border-[var(--color-surface-2)] flex flex-col gap-1.5 text-[12px]">
-          <DetailRow label="Registry ID">
-            <code className="text-[10px] bg-[var(--color-surface-1)] px-1.5 py-0.5 rounded font-mono text-[var(--color-text-secondary)]">
-              {chip.registryId}
-            </code>
-          </DetailRow>
-          <DetailRow label="Permission">
-            <span className="text-[var(--color-text-secondary)] capitalize">{chip.permissions.currentUser}</span>
-          </DetailRow>
-          {chip.endpoint && (
-            <DetailRow label="Endpoint">
-              <code className="text-[10px] bg-[var(--color-surface-1)] px-1.5 py-0.5 rounded font-mono text-[var(--color-text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap max-w-[180px] inline-block">
-                {chip.endpoint}
+        {/* Expanded detail */}
+        {expanded && (
+          <div
+            className="flex flex-col gap-1.5"
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: '1px solid var(--color-border-subtle)',
+              fontSize: 12,
+            }}
+          >
+            <DetailRow label="Registry ID">
+              <code
+                style={{
+                  fontSize: 10,
+                  background: 'var(--color-surface-1)',
+                  padding: '2px 6px',
+                  borderRadius: 'var(--radius-xs)',
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                {chip.registryId}
               </code>
             </DetailRow>
-          )}
-          {chip.healthStatus && (
-            <DetailRow label="Health">
-              <span
-                className="text-[11px] font-medium"
-                style={{ color: healthLabel(chip.healthStatus).color }}
-              >
-                {healthLabel(chip.healthStatus).label}
-              </span>
+            <DetailRow label="Permission">
+              <span className="capitalize" style={{ color: 'var(--color-text-secondary)' }}>{chip.permissions.currentUser}</span>
             </DetailRow>
-          )}
-          <div className="flex gap-1.5 mt-1">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={(e) => { e.stopPropagation(); onOpenEditor(); }}
-            >
-              Open in Editor
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={(e) => { e.stopPropagation(); onViewHistory(); }}
-            >
-              View History
-            </Button>
+            {chip.endpoint && (
+              <DetailRow label="Endpoint">
+                <code
+                  className="overflow-hidden text-ellipsis whitespace-nowrap max-w-[180px] inline-block"
+                  style={{
+                    fontSize: 10,
+                    background: 'var(--color-surface-1)',
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-xs)',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--color-text-secondary)',
+                  }}
+                >
+                  {chip.endpoint}
+                </code>
+              </DetailRow>
+            )}
+            {chip.healthStatus && (
+              <DetailRow label="Health">
+                <span
+                  style={{ fontSize: 11, fontWeight: 500, color: healthLabel(chip.healthStatus).color }}
+                >
+                  {healthLabel(chip.healthStatus).label}
+                </span>
+              </DetailRow>
+            )}
+            <div className="flex gap-1.5 mt-1">
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={(e) => { e.stopPropagation(); onOpenEditor(); }}
+              >
+                Open in Editor
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={(e) => { e.stopPropagation(); onViewHistory(); }}
+              >
+                View History
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -453,18 +541,65 @@ export function RegistryCatalog() {
   return (
     <div className="page-container" style={{ overflow: 'auto' }}>
       {/* Header */}
-      <header className="page-header sticky top-0 z-50">
+      <header
+        className="sticky top-0 z-50"
+        style={{
+          padding: '14px var(--space-page-x)',
+          borderBottom: '1px solid var(--color-border)',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        }}
+      >
         <div className="max-w-[1200px] mx-auto flex items-center">
-          <div>
-            <h1 className="text-[13px] font-semibold text-[var(--color-text-primary)] m-0 leading-tight">
-              Registry & Catalog
-            </h1>
-            <p className="text-[10px] text-[var(--color-text-tertiary)] m-0 mt-0.5">
-              All @-referenceable assets -- {allChips.length} entries
-            </p>
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, var(--color-surface-2), var(--color-surface-3))',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="1.5" y="1.5" width="4.5" height="4.5" rx="1" stroke="var(--color-text-secondary)" strokeWidth="1.2"/>
+                <rect x="8" y="1.5" width="4.5" height="4.5" rx="1" stroke="var(--color-text-secondary)" strokeWidth="1.2"/>
+                <rect x="1.5" y="8" width="4.5" height="4.5" rx="1" stroke="var(--color-text-secondary)" strokeWidth="1.2"/>
+                <rect x="8" y="8" width="4.5" height="4.5" rx="1" stroke="var(--color-text-secondary)" strokeWidth="1.2"/>
+              </svg>
+            </div>
+            <div>
+              <h1
+                style={{
+                  fontSize: 14,
+                  fontWeight: 650,
+                  color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-ui)',
+                  letterSpacing: '-0.015em',
+                  margin: 0,
+                  lineHeight: 1.3,
+                }}
+              >
+                Registry & Catalog
+              </h1>
+              <p style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)', margin: '1px 0 0' }}>
+                All @-referenceable assets &mdash; {allChips.length} entries
+              </p>
+            </div>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <span className="text-[11px] text-[var(--color-text-tertiary)]">
+            <span
+              style={{
+                fontSize: 11,
+                color: 'var(--color-text-tertiary)',
+                fontFamily: 'var(--font-ui)',
+                padding: '3px 10px',
+                background: 'var(--color-surface-1)',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--color-border-subtle)',
+              }}
+            >
               {filtered.length} result{filtered.length !== 1 ? 's' : ''}
             </span>
             <Button size="sm" variant="primary" onClick={openCreateModal}>
@@ -515,27 +650,42 @@ export function RegistryCatalog() {
           </Select>
 
           {/* View toggle */}
-          <div className="flex items-center rounded-lg bg-[var(--color-surface-2)] p-0.5">
+          <div
+            className="flex items-center"
+            style={{
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-surface-2)',
+              padding: 2,
+            }}
+          >
             <button
               onClick={() => setViewMode('grid')}
-              className={[
-                'flex items-center justify-center px-2 py-1.5 rounded-md border-none cursor-pointer transition-all duration-150',
-                viewMode === 'grid'
-                  ? 'bg-white shadow-sm'
-                  : 'bg-transparent',
-              ].join(' ')}
+              className="flex items-center justify-center"
+              style={{
+                padding: '5px 8px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                cursor: 'pointer',
+                background: viewMode === 'grid' ? 'var(--color-surface-0)' : 'transparent',
+                boxShadow: viewMode === 'grid' ? 'var(--shadow-xs)' : 'none',
+                transition: 'all 150ms ease-out',
+              }}
               title="Grid view"
             >
               <GridIcon active={viewMode === 'grid'} />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={[
-                'flex items-center justify-center px-2 py-1.5 rounded-md border-none cursor-pointer transition-all duration-150',
-                viewMode === 'list'
-                  ? 'bg-white shadow-sm'
-                  : 'bg-transparent',
-              ].join(' ')}
+              className="flex items-center justify-center"
+              style={{
+                padding: '5px 8px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                cursor: 'pointer',
+                background: viewMode === 'list' ? 'var(--color-surface-0)' : 'transparent',
+                boxShadow: viewMode === 'list' ? 'var(--shadow-xs)' : 'none',
+                transition: 'all 150ms ease-out',
+              }}
               title="List view"
             >
               <ListIcon active={viewMode === 'list'} />
