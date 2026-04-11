@@ -9,6 +9,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { NAV } from './Navigation';
 import { ICON_MAP } from './Icons';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }: SidebarContentProps) {
   const location = useLocation();
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   return (
     <>
@@ -236,6 +238,77 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
           );
         })}
       </nav>
+
+      {/* Theme Toggle */}
+      <div
+        className="shrink-0"
+        style={{
+          padding: collapsed ? '8px 10px' : '8px 14px',
+          borderTop: '1px solid var(--color-border)',
+        }}
+      >
+        <button
+          onClick={() => {
+            const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+          }}
+          className="w-full flex items-center gap-2.5 group/theme"
+          style={{
+            padding: collapsed ? '8px 0' : '8px 12px',
+            borderRadius: 'var(--radius-md)',
+            background: 'transparent',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            transition: 'all 150ms ease-out',
+            color: 'var(--color-text-secondary)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-surface-2)';
+            e.currentTarget.style.color = 'var(--color-text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+          }}
+          title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: resolvedTheme === 'dark'
+                ? 'linear-gradient(135deg, #1E293B 0%, #334155 100%)'
+                : 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+              transition: 'all 300ms ease-out',
+              flexShrink: 0,
+            }}
+          >
+            {resolvedTheme === 'dark' ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M13.5 8.5a5.5 5.5 0 0 1-6-6 5.5 5.5 0 1 0 6 6Z" stroke="#94A3B8" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="3" stroke="#D97706" strokeWidth="1.3"/>
+                <path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.76 3.76l1.06 1.06M11.18 11.18l1.06 1.06M3.76 12.24l1.06-1.06M11.18 4.82l1.06-1.06" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            )}
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col" style={{ animation: 'fadeIn 200ms ease-out' }}>
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}>
+                {resolvedTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)' }}>
+                {theme === 'system' ? 'System' : theme === 'dark' ? 'Manual' : 'Manual'}
+              </span>
+            </div>
+          )}
+        </button>
+      </div>
 
       {/* Footer: Agent Status */}
       <div

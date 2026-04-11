@@ -11,6 +11,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppProvider, useNotifications } from './contexts/AppContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationToast } from './components/shared/NotificationToast';
 import { Shell } from './components/shell/Shell';
 import { RouteErrorBoundary, Spinner } from './ui';
@@ -85,6 +86,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
         <AppProvider>
           <Suspense fallback={<Shell><Loading /></Shell>}>
             <Routes>
@@ -108,6 +110,7 @@ export default function App() {
           </Suspense>
           <NotificationLayer />
         </AppProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </BrowserRouter>
   );

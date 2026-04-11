@@ -5,7 +5,7 @@
  * sync status, entities, actions, and the "governed space expansion" visual.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useConnectors, useNotifications, useRegistry } from '../../contexts/AppContext';
 import type { ConnectorEntry } from '../../data/connectors';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
@@ -13,6 +13,7 @@ import { Button } from '../../ui/Button';
 import { Card } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { TextInput } from '../../ui/Input';
+import { useScrollStagger } from '../../hooks';
 
 // ─── SVG Icons ───────────────────────────────────────────────────────
 
@@ -530,6 +531,14 @@ export function ConnectorHub() {
 
   const googleConnectors = useMemo(() => connectors.filter((c) => c.provider === 'google'), [connectors]);
   const thirdPartyConnectors = useMemo(() => connectors.filter((c) => c.provider === 'third-party'), [connectors]);
+  const googleGridRef = useScrollStagger<HTMLDivElement>({ staggerMs: 50 });
+  const thirdPartyGridRef = useScrollStagger<HTMLDivElement>({ staggerMs: 50 });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(t);
+  }, []);
   const googleFiltered = useMemo(() => filterBySearch(googleConnectors), [filterBySearch, googleConnectors]);
   const thirdPartyFiltered = useMemo(() => filterBySearch(thirdPartyConnectors), [filterBySearch, thirdPartyConnectors]);
   const activeCount = connectors.filter((c) => c.status === 'active').length;
@@ -627,21 +636,65 @@ export function ConnectorHub() {
         {/* Google Sources */}
         <div>
           <SectionHeader label="Google" count={googleFiltered.length} />
-          <div className="grid-auto">
-            {googleFiltered.map((c) => (
-              <ConnectorCard key={c.id} connector={c} onSelect={handleSelect} onToggle={handleToggle} onSync={handleSync} onOpenConsole={handleOpenConsole} onTestQuery={handleTestQuery} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid-auto">
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className="card p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)' }} />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="skeleton rounded" style={{ width: '55%', height: 13 }} />
+                      <div className="skeleton rounded" style={{ width: '35%', height: 10 }} />
+                    </div>
+                    <div className="skeleton rounded-full" style={{ width: 56, height: 20 }} />
+                  </div>
+                  <div className="skeleton rounded" style={{ width: '80%', height: 10 }} />
+                  <div className="flex gap-2">
+                    <div className="skeleton rounded" style={{ width: 60, height: 10 }} />
+                    <div className="skeleton rounded" style={{ width: 60, height: 10 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div ref={googleGridRef} className="grid-auto">
+              {googleFiltered.map((c) => (
+                <ConnectorCard key={c.id} connector={c} onSelect={handleSelect} onToggle={handleToggle} onSync={handleSync} onOpenConsole={handleOpenConsole} onTestQuery={handleTestQuery} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Third-party */}
         <div>
           <SectionHeader label="Third-Party" count={thirdPartyFiltered.length} />
-          <div className="grid-auto">
-            {thirdPartyFiltered.map((c) => (
-              <ConnectorCard key={c.id} connector={c} onSelect={handleSelect} onToggle={handleToggle} onSync={handleSync} onOpenConsole={handleOpenConsole} onTestQuery={handleTestQuery} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid-auto">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className="card p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)' }} />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="skeleton rounded" style={{ width: '60%', height: 13 }} />
+                      <div className="skeleton rounded" style={{ width: '40%', height: 10 }} />
+                    </div>
+                    <div className="skeleton rounded-full" style={{ width: 56, height: 20 }} />
+                  </div>
+                  <div className="skeleton rounded" style={{ width: '75%', height: 10 }} />
+                  <div className="flex gap-2">
+                    <div className="skeleton rounded" style={{ width: 50, height: 10 }} />
+                    <div className="skeleton rounded" style={{ width: 50, height: 10 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div ref={thirdPartyGridRef} className="grid-auto">
+              {thirdPartyFiltered.map((c) => (
+                <ConnectorCard key={c.id} connector={c} onSelect={handleSelect} onToggle={handleToggle} onSync={handleSync} onOpenConsole={handleOpenConsole} onTestQuery={handleTestQuery} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Code execution contrast note */}

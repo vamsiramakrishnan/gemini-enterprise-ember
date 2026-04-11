@@ -18,6 +18,7 @@ import { VERSIONS, DIFF_V21_V22, DIFF_SUMMARY } from '../../data/versions';
 import type { VersionEntry, DiffLineEntry } from '../../data/versions';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipChange, VersionStatus } from '../../parser/types';
+import { useScrollStagger } from '../../hooks';
 import { statusColors, colors } from '../../constants/colors';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
@@ -624,6 +625,7 @@ export function VersionHistory() {
   const [selectedVersion, setSelectedVersion] = useState('2.2.0');
   const [expandedUnchanged, setExpandedUnchanged] = useState(false);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const timelineRef = useScrollStagger<HTMLDivElement>({ staggerMs: 80 });
 
   const selected = VERSIONS.find((v) => v.version === selectedVersion) || VERSIONS[4];
   const compareFrom = VERSIONS.find((v) => v.version === '2.1.0')!;
@@ -783,6 +785,7 @@ export function VersionHistory() {
           >
             Timeline
           </h2>
+          <div ref={timelineRef}>
           {[...VERSIONS].reverse().map((v) => (
             <TimelineEntry
               key={v.version}
@@ -794,6 +797,7 @@ export function VersionHistory() {
               }}
             />
           ))}
+          </div>
         </div>
 
         {/* ── Center: Chip-Aware Diff ─────────────────────────────── */}

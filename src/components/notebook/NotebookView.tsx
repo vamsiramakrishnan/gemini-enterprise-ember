@@ -7,7 +7,7 @@
  * and Code Execution (the escape hatch).
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useTest, useNotifications, useConnectors, useRegistry } from '../../contexts/AppContext';
 import { getAdkFluentService } from '../../services/adk-fluent';
@@ -15,6 +15,24 @@ import type { AssetCodeResult } from '../../services/adk-fluent';
 import type { SkillActivationResult } from '../../contexts/AppContext';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import type { ChipType } from '../../parser/types';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // ---------------------------------------------------------------------------
 // Add Cell Divider — shown between cells on hover
@@ -580,23 +598,6 @@ function Cell({
           }}
         />
       )}
-      {/* Drag handle — visual only */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-6 flex items-start pt-5 justify-center opacity-0 group-hover/cell:opacity-30 transition-opacity cursor-grab z-10"
-        title="Drag to reorder"
-        style={{ marginLeft: warningStripe ? 0 : -2 }}
-      >
-        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
-          <circle cx="2.5" cy="2" r="1.2" fill="currentColor" />
-          <circle cx="7.5" cy="2" r="1.2" fill="currentColor" />
-          <circle cx="2.5" cy="6" r="1.2" fill="currentColor" />
-          <circle cx="7.5" cy="6" r="1.2" fill="currentColor" />
-          <circle cx="2.5" cy="10" r="1.2" fill="currentColor" />
-          <circle cx="7.5" cy="10" r="1.2" fill="currentColor" />
-          <circle cx="2.5" cy="14" r="1.2" fill="currentColor" />
-          <circle cx="7.5" cy="14" r="1.2" fill="currentColor" />
-        </svg>
-      </div>
       {/* Collapse/expand toggle */}
       <button
         onClick={() => setCollapsed((v) => !v)}
@@ -2096,6 +2097,96 @@ function CodeExecutionCell() {
 }
 
 // ---------------------------------------------------------------------------
+// Sortable cell wrapper — wraps each notebook cell for drag-to-reorder
+// ---------------------------------------------------------------------------
+
+interface NotebookCellItem {
+  id: string;
+  type: 'trigger' | 'playbook' | 'tool' | 'test' | 'skill' | 'connector' | 'schema' | 'code-execution' | 'dynamic';
+  dynamicCell?: DynamicCell;
+}
+
+function SortableCell({
+  item,
+  children,
+}: {
+  item: NotebookCellItem;
+  children: (props: {
+    dragHandleListeners: Record<string, unknown>;
+    dragHandleAttributes: Record<string, unknown>;
+    isDragging: boolean;
+  }) => React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    position: 'relative' as const,
+    // When dragging, dim the original slot so the overlay stands out
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group/sortable">
+      {/* Placeholder dashed border shown when this cell is being dragged away */}
+      {isDragging && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            border: '2px dashed var(--color-border-strong)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--color-surface-1)',
+            zIndex: 1,
+          }}
+        />
+      )}
+      {/* Sortable drag handle overlay — positioned over the Cell's visual drag handle area */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-7 flex items-start pt-5 justify-center opacity-0 group-hover/sortable:opacity-100 z-20"
+        style={{
+          color: 'var(--color-text-quaternary)',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          transition: 'opacity 150ms ease-out, color 150ms ease-out',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'var(--color-text-secondary)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--color-text-quaternary)';
+        }}
+        {...attributes}
+        {...listeners}
+      >
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+          <circle cx="2.5" cy="2" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="2" r="1.2" fill="currentColor" />
+          <circle cx="2.5" cy="6" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="6" r="1.2" fill="currentColor" />
+          <circle cx="2.5" cy="10" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="10" r="1.2" fill="currentColor" />
+          <circle cx="2.5" cy="14" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="14" r="1.2" fill="currentColor" />
+        </svg>
+      </div>
+      {children({
+        dragHandleListeners: listeners as Record<string, unknown>,
+        dragHandleAttributes: attributes as Record<string, unknown>,
+        isDragging,
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main NotebookView export
 // ---------------------------------------------------------------------------
 
@@ -2105,6 +2196,77 @@ export function NotebookView() {
   const [dynamicCells, setDynamicCells] = useState<DynamicCell[]>([]);
   const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const [createWizardType, setCreateWizardType] = useState<ChipType | undefined>(undefined);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Stable IDs for the 8 static cells
+  const STATIC_CELLS: NotebookCellItem[] = useMemo(() => [
+    { id: 'static-trigger', type: 'trigger' as const },
+    { id: 'static-playbook', type: 'playbook' as const },
+    { id: 'static-tool', type: 'tool' as const },
+    { id: 'static-test', type: 'test' as const },
+    { id: 'static-skill', type: 'skill' as const },
+    { id: 'static-connector', type: 'connector' as const },
+    { id: 'static-schema', type: 'schema' as const },
+    { id: 'static-code-execution', type: 'code-execution' as const },
+  ], []);
+
+  // Unified ordered cell list: static + dynamic
+  const [cellOrder, setCellOrder] = useState<string[]>(() =>
+    STATIC_CELLS.map((c) => c.id)
+  );
+
+  // Rebuild the full ordered items list from cellOrder + dynamicCells
+  const orderedItems: NotebookCellItem[] = useMemo(() => {
+    const staticMap = new Map(STATIC_CELLS.map((c) => [c.id, c]));
+    const dynamicMap = new Map(dynamicCells.map((c) => [c.id, { id: c.id, type: 'dynamic' as const, dynamicCell: c }]));
+
+    // Start from cellOrder, resolving each ID
+    const result: NotebookCellItem[] = [];
+    for (const id of cellOrder) {
+      const s = staticMap.get(id);
+      if (s) { result.push(s); continue; }
+      const d = dynamicMap.get(id);
+      if (d) { result.push(d); continue; }
+      // ID not found — skip (was removed)
+    }
+    // Append any dynamic cells not yet in cellOrder (newly added)
+    for (const dc of dynamicCells) {
+      if (!cellOrder.includes(dc.id)) {
+        result.push({ id: dc.id, type: 'dynamic', dynamicCell: dc });
+      }
+    }
+    return result;
+  }, [cellOrder, dynamicCells, STATIC_CELLS]);
+
+  const cellIds = useMemo(() => orderedItems.map((item) => item.id), [orderedItems]);
+
+  // Sensors for dnd-kit
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = cellIds.indexOf(active.id as string);
+    const newIndex = cellIds.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    setCellOrder(arrayMove(cellIds, oldIndex, newIndex));
+  }, [cellIds]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null);
+  }, []);
 
   const cellTypeToChipType: Record<DynamicCellType, ChipType | null> = {
     tool: 'tool',
@@ -2126,12 +2288,14 @@ export function NotebookView() {
       // For playbook, test, code cells — insert directly
       const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setDynamicCells((prev) => [...prev, { id, cellType, name: '', createdAt: Date.now() }]);
+      setCellOrder((prev) => [...prev, id]);
       addNotification({ type: 'success', title: `${cellType} cell added`, message: 'New cell inserted at the bottom of the notebook.' });
     }
   }, [addNotification]);
 
   const handleRemoveCell = useCallback((id: string) => {
     setDynamicCells((prev) => prev.filter((c) => c.id !== id));
+    setCellOrder((prev) => prev.filter((cid) => cid !== id));
     addNotification({ type: 'info', title: 'Cell removed' });
   }, [addNotification]);
 
@@ -2144,9 +2308,37 @@ export function NotebookView() {
       : 'playbook';
     const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setDynamicCells((prev) => [...prev, { id, cellType, name: partial.name, createdAt: Date.now() }]);
+    setCellOrder((prev) => [...prev, id]);
   }, [createChip]);
 
-  const totalCells = 8 + dynamicCells.length;
+  // Render a cell by its item descriptor
+  // dragProps are available for future per-cell drag styling if needed
+  const renderCellContent = (
+    item: NotebookCellItem,
+    _dragProps: { dragHandleListeners: Record<string, unknown>; dragHandleAttributes: Record<string, unknown>; isDragging: boolean },
+  ) => {
+    switch (item.type) {
+      case 'trigger': return <TriggerCell />;
+      case 'playbook': return <PlaybookCell />;
+      case 'tool': return <ToolCell />;
+      case 'test': return <TestCell />;
+      case 'skill': return <SkillCell />;
+      case 'connector': return <ConnectorCell />;
+      case 'schema': return <SchemaCell />;
+      case 'code-execution': return <CodeExecutionCell />;
+      case 'dynamic':
+        if (item.dynamicCell) {
+          return <DynamicCellRenderer cell={item.dynamicCell} onRemove={() => handleRemoveCell(item.id)} />;
+        }
+        return null;
+      default: return null;
+    }
+  };
+
+  // For DragOverlay: find the currently dragged item and render a static preview
+  const activeDragItem = activeDragId ? orderedItems.find((item) => item.id === activeDragId) : null;
+
+  const totalCells = orderedItems.length;
 
   return (
     <div
@@ -2244,67 +2436,84 @@ export function NotebookView() {
         </div>
       </header>
 
-      {/* Notebook cells */}
-      <div className="max-w-4xl mx-auto space-y-1" style={{ padding: '32px 24px' }}>
-        <TriggerCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <PlaybookCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <ToolCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <TestCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <SkillCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <ConnectorCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <SchemaCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <CodeExecutionCell />
+      {/* Notebook cells with drag-to-reorder */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <SortableContext items={cellIds} strategy={verticalListSortingStrategy}>
+          <div className="max-w-4xl mx-auto space-y-1" style={{ padding: '32px 24px' }}>
+            {orderedItems.map((item, idx) => (
+              <div key={item.id}>
+                {idx > 0 && <AddCellDivider onInsertCell={handleInsertCell} />}
+                <SortableCell item={item}>
+                  {(dragProps) => renderCellContent(item, dragProps)}
+                </SortableCell>
+              </div>
+            ))}
 
-        {/* Dynamic cells */}
-        {dynamicCells.map((cell) => (
-          <div key={cell.id}>
-            <AddCellDivider onInsertCell={handleInsertCell} />
-            <DynamicCellRenderer cell={cell} onRemove={() => handleRemoveCell(cell.id)} />
+            {/* Add cell button */}
+            <div className="flex justify-center" style={{ padding: '20px 0' }}>
+              <button
+                onClick={() => {
+                  setCreateWizardType(undefined);
+                  setCreateWizardOpen(true);
+                }}
+                className="flex items-center gap-2"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--color-text-tertiary)',
+                  background: 'var(--color-surface-0)',
+                  border: '1px dashed var(--color-border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '9px 24px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-accent)';
+                  e.currentTarget.style.color = 'var(--color-accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-border-strong)';
+                  e.currentTarget.style.color = 'var(--color-text-tertiary)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Cell
+              </button>
+            </div>
           </div>
-        ))}
+        </SortableContext>
 
-        {/* Add cell button */}
-        <div className="flex justify-center" style={{ padding: '20px 0' }}>
-          <button
-            onClick={() => {
-              setCreateWizardType(undefined);
-              setCreateWizardOpen(true);
-            }}
-            className="flex items-center gap-2"
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--color-text-tertiary)',
-              background: 'var(--color-surface-0)',
-              border: '1px dashed var(--color-border-strong)',
-              borderRadius: 'var(--radius-md)',
-              padding: '9px 24px',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-              transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-accent)';
-              e.currentTarget.style.color = 'var(--color-accent)';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--color-border-strong)';
-              e.currentTarget.style.color = 'var(--color-text-tertiary)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Cell
-          </button>
-        </div>
-      </div>
+        {/* Drag overlay — renders a lightweight preview of the dragged cell */}
+        <DragOverlay dropAnimation={null}>
+          {activeDragItem ? (
+            <div
+              style={{
+                opacity: 0.85,
+                boxShadow: '0 16px 32px rgba(0,0,0,0.18), 0 6px 12px rgba(0,0,0,0.1)',
+                borderRadius: 'var(--radius-lg)',
+                transform: 'scale(1.02)',
+                pointerEvents: 'none',
+                maxWidth: '100%',
+              }}
+            >
+              {renderCellContent(activeDragItem, {
+                dragHandleListeners: {},
+                dragHandleAttributes: {},
+                isDragging: true,
+              })}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <CreateAssetWizard
         isOpen={createWizardOpen}

@@ -9,13 +9,14 @@
  * instead of hardcoded hex colors and inline style objects.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistry } from '../../contexts/AppContext';
+import { useScrollStagger } from '../../hooks';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
-import { Button, Card, Badge, StatusBadge, TextInput, Select, EmptyState as SharedEmptyState } from '../../ui';
+import { Button, Card, Badge, StatusBadge, TextInput, Select, EmptyState as SharedEmptyState, SkeletonCard } from '../../ui';
 import { CHIP_ACCENTS } from '../../config/chipConfig';
 import { statusColors } from '../../constants/colors';
 
@@ -511,6 +512,14 @@ export function RegistryCatalog() {
   const [typeFilter, setTypeFilter] = useState<ChipType | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('relevance');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isLoading, setIsLoading] = useState(true);
+  const gridStaggerRef = useScrollStagger<HTMLDivElement>({ staggerMs: 50 });
+
+  // Simulate initial data fetch
+  useEffect(() => {
+    const t = setTimeout(() => setIsLoading(false), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   const filtered = useMemo(() => {
     let items = contextFilteredChips;
@@ -699,7 +708,13 @@ export function RegistryCatalog() {
         </div>
 
         {/* Results */}
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="grid-auto">
+            {Array.from({ length: 8 }, (_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <SharedEmptyState
             icon={
               <svg width="24" height="24" viewBox="0 0 40 40" fill="none" style={{ opacity: 0.5 }}>
@@ -721,7 +736,7 @@ export function RegistryCatalog() {
             }
           />
         ) : viewMode === 'grid' ? (
-          <div className="grid-auto">
+          <div ref={gridStaggerRef} className="grid-auto">
             {filtered.map((chip) => (
               <RegistryCard key={chip.id} chip={chip} onSelect={handleSelect} onOpenEditor={handleOpenEditor} onViewHistory={handleViewHistory} />
             ))}

@@ -12,7 +12,9 @@ import { useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS, CREATE_CARDS } from '../../config/chipConfig';
 import type { ChipType } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import { GradientMesh } from '../shared/GradientMesh';
 import { StatusBadge } from '../../ui';
+import { useScrollStagger } from '../../hooks';
 
 // ─── Constants ──────────────────────────────────────────────────────
 
@@ -42,6 +44,10 @@ export function HomePage() {
   const recentAssets = [...chips]
     .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
     .slice(0, 6);
+
+  const createGridRef = useScrollStagger<HTMLDivElement>();
+  const recentGridRef = useScrollStagger<HTMLDivElement>({ staggerMs: 70 });
+  const stepsGridRef = useScrollStagger<HTMLDivElement>({ staggerMs: 100 });
 
   return (
     <div className="h-full overflow-auto" style={{ background: 'var(--color-surface-1)' }}>
@@ -77,9 +83,22 @@ export function HomePage() {
           }}
         />
 
+        {/* Animated gradient mesh -- ambient background blobs */}
         <div
-          className="max-w-5xl mx-auto relative"
-          style={{ padding: 'clamp(36px, 6vw, 56px) var(--space-page-x)' }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            overflow: 'hidden',
+            zIndex: 0,
+            pointerEvents: 'none',
+          }}
+        >
+          <GradientMesh />
+        </div>
+
+        <div
+          className="max-w-5xl mx-auto"
+          style={{ padding: 'clamp(36px, 6vw, 56px) var(--space-page-x)', position: 'relative', zIndex: 1 }}
         >
           <h1
             className="animate-in"
@@ -253,6 +272,7 @@ export function HomePage() {
           </div>
 
           <div
+            ref={createGridRef}
             className="stagger"
             style={{
               display: 'grid',
@@ -428,6 +448,7 @@ export function HomePage() {
           </div>
 
           <div
+            ref={recentGridRef}
             className="stagger"
             style={{
               display: 'grid',
@@ -576,6 +597,7 @@ export function HomePage() {
                 </h2>
               </div>
               <div
+                ref={stepsGridRef}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
