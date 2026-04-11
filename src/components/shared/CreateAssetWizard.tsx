@@ -11,11 +11,13 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
+import { CHIP_COLORS, CHIP_ICONS } from '../../config/chipConfig';
+import { TYPE_OPTIONS } from '../../config/chipConfig';
 import type { ChipType, SmartChip } from '../../parser/types';
 import { getAdkFluentService } from '../../services/adk-fluent';
 import type { AssetCodeResult } from '../../services/adk-fluent';
-import { chipAccent, statusColors } from '../../constants/colors';
+import { statusColors } from '../../constants/colors';
+import { CHIP_ACCENTS } from '../../config/chipConfig';
 import { Modal, Button } from '../../ui';
 
 import { wizardStyles, StepIndicator } from './wizard/WizardShared';
@@ -34,25 +36,6 @@ export interface CreateAssetWizardProps {
   initialType?: ChipType;
   initialName?: string;
 }
-
-interface TypeOption {
-  type: ChipType;
-  label: string;
-  description: string;
-  icon: string;
-}
-
-const TYPE_OPTIONS: TypeOption[] = [
-  { type: 'agent', label: 'Agent', description: 'LLM agent with instructions, tools, and callbacks', icon: '◎' },
-  { type: 'tool', label: 'Tool', description: 'Function tool, MCP server, or OpenAPI endpoint', icon: '⬡' },
-  { type: 'skill', label: 'Skill', description: 'Reusable SKILL.md capability bundle', icon: '✦' },
-  { type: 'connector', label: 'Connector', description: 'Enterprise system integration (Jira, Salesforce, etc.)', icon: '◈' },
-  { type: 'guard', label: 'Guard', description: 'Policy or safety check (PII, budget, toxicity)', icon: '△' },
-  { type: 'doc', label: 'Document', description: 'Knowledge source for grounding', icon: '◇' },
-  { type: 'trigger', label: 'Trigger', description: 'Invocation entry point (chat, inbox, event, schedule)', icon: '▸' },
-  { type: 'schema', label: 'Schema', description: 'Output shape constraint (Pydantic model)', icon: '▢' },
-  { type: 'data', label: 'Data', description: 'Data binding or state transform', icon: '▣' },
-];
 
 // ─── Name & Description Fields ──────────────────────────────────────────
 
@@ -214,7 +197,7 @@ function ReviewStep({
           }}
         >
           <span style={{ fontSize: 14 }}>{showCode ? '\u25BE' : '\u25B8'}</span>
-          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)', color: chipAccent.skill }}>adk-fluent</span>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)', color: CHIP_ACCENTS.skill }}>adk-fluent</span>
           <span>Python Code Preview</span>
           {codePreview && (
             <span style={{
@@ -240,7 +223,7 @@ function ReviewStep({
                   <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Expression</span>
                   <code style={{
                     fontSize: 11, fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-                    color: chipAccent.skill, background: '#F5F3FF', padding: '2px 6px', borderRadius: 4,
+                    color: CHIP_ACCENTS.skill, background: '#F5F3FF', padding: '2px 6px', borderRadius: 4,
                   }}>
                     {codePreview.expression}
                   </code>

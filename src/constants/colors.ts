@@ -35,19 +35,11 @@ export const colors = {
   deprecated: 'var(--color-deprecated)',
 } as const;
 
-// ─── Chip accent colors (raw hex for SVG/canvas where CSS vars don't work) ──
+// ─── Chip accent colors ─────────────────────────────────────────────
+// Derived from CHIP_CONFIG — re-exported for convenience.
+// DO NOT define chip colors here. Edit config/chipConfig.ts instead.
 
-export const chipAccent = {
-  doc: '#0D9488',
-  tool: '#4F46E5',
-  agent: '#D97706',
-  guard: '#E11D48',
-  data: '#059669',
-  schema: '#475569',
-  connector: '#2563EB',
-  skill: '#7C3AED',
-  trigger: '#EA580C',
-} as const;
+export { CHIP_ACCENTS as chipAccent } from '../config/chipConfig';
 
 // ─── Status colors ────────────────────────────────────────────────────
 

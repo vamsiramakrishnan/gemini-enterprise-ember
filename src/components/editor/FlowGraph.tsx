@@ -21,47 +21,14 @@ import { parsePlaybook, compilePlaybookToGraph } from '../../parser';
 import { REGISTRY } from '../../data/registry';
 import { findNodeForChip } from '../chips/InlineChip';
 
-// ─── Constants ───────────────────────────────────────────────────────────
+// ─── Constants (derived from unified chipConfig) ────────────────────────
 
-export const NODE_COLORS: Record<string, string> = {
-  'trigger-entry': '#EA580C',
-  grounding: '#0D9488',
-  'tool-call': '#4F46E5',
-  'connector-call': '#2563EB',
-  agent: '#D97706',
-  decision: '#374151',
-  gate: '#E11D48',
-  output: '#475569',
-  transform: '#059669',
-};
+export { NODE_COLORS, NODE_ICONS, ADK_CONSTRUCT } from '../../config/chipConfig';
+import { NODE_COLORS, NODE_ICONS, ADK_CONSTRUCT } from '../../config/chipConfig';
+import { flowGraph } from '../../constants/layout';
 
-export const NODE_ICONS: Record<string, string> = {
-  'trigger-entry': '▸',
-  grounding: '◇',
-  'tool-call': '⬡',
-  'connector-call': '◈',
-  agent: '◎',
-  decision: '◆',
-  gate: '△',
-  output: '▢',
-  transform: '◇',
-};
-
-/** adk-fluent construct name for each node type (shown as subtitle) */
-export const ADK_CONSTRUCT: Record<string, string> = {
-  'trigger-entry': 'StreamRunner',
-  grounding: 'VertexAiSearchTool',
-  'tool-call': 'FunctionTool',
-  'connector-call': 'IntegrationToolset',
-  agent: 'LlmAgent',
-  decision: 'RouteNode',
-  gate: 'GateNode',
-  output: 'OutputSchema',
-  transform: 'TransformNode',
-};
-
-export const NW = 220; // node width
-export const NH = 72;  // node height
+export const NW = flowGraph.nodeWidth;
+export const NH = flowGraph.nodeHeight;
 
 // ─── CSS Keyframes (injected once by the editor orchestrator) ────────────
 

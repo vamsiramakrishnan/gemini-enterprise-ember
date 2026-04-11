@@ -8,82 +8,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useRegistry } from '../../contexts/AppContext';
-import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
+import { CHIP_COLORS, CHIP_ICONS, CREATE_CARDS } from '../../config/chipConfig';
 import type { ChipType, SmartChip } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import { Button, StatusBadge } from '../../ui';
-
-// ─── Quick-create card data ─────────────────────────────────────────
-
-interface CreateCard {
-  type: ChipType;
-  title: string;
-  subtitle: string;
-  description: string;
-  icon: string;
-  route?: string;
-}
-
-const CREATE_CARDS: CreateCard[] = [
-  {
-    type: 'agent',
-    title: 'New Agent',
-    subtitle: 'LLM Agent',
-    description: 'Create an agent with instructions, tools, and delegation. The agent runs an Observe-Reason-Act loop governed by its playbook.',
-    icon: '\u25CE',
-  },
-  {
-    type: 'tool',
-    title: 'New Tool',
-    subtitle: 'Function / MCP / OpenAPI',
-    description: 'Define a callable capability — a Python function, MCP server endpoint, or OpenAPI spec that agents can invoke.',
-    icon: '\u2B21',
-  },
-  {
-    type: 'skill',
-    title: 'New Skill',
-    subtitle: 'SKILL.md Bundle',
-    description: 'Package reusable expertise as a SKILL.md — instructions, tools, and eval cases that any agent can activate.',
-    icon: '\u2726',
-    route: '/skills',
-  },
-  {
-    type: 'connector',
-    title: 'New Connector',
-    subtitle: 'Enterprise Integration',
-    description: 'Connect to Jira, Salesforce, Slack, BigQuery, and other enterprise systems via Application Integration.',
-    icon: '\u25C8',
-    route: '/connectors',
-  },
-  {
-    type: 'guard',
-    title: 'New Guard',
-    subtitle: 'Policy / Safety',
-    description: 'Add a safety boundary — PII redaction, toxicity filtering, budget limits, or schema validation using the G namespace.',
-    icon: '\u25B3',
-  },
-  {
-    type: 'doc',
-    title: 'New Document',
-    subtitle: 'Knowledge Source',
-    description: 'Ground your agent with a knowledge source — policy documents, regulatory guides, or FAQs via Vertex AI Search.',
-    icon: '\u25C7',
-  },
-  {
-    type: 'trigger',
-    title: 'New Trigger',
-    subtitle: 'Entry Point',
-    description: 'Define how the agent loop starts — chat, inbox queue, webhook event, or cron schedule.',
-    icon: '\u25B8',
-  },
-  {
-    type: 'schema',
-    title: 'New Schema',
-    subtitle: 'Output Constraint',
-    description: 'Constrain agent output to a Pydantic model shape using the @ operator for typed responses.',
-    icon: '\u25A2',
-  },
-];
 
 // ─── Stats helpers ──────────────────────────────────────────────────
 

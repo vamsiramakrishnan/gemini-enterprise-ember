@@ -16,7 +16,8 @@ import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import { Button, Card, Badge, StatusBadge, TextInput, Select, EmptyState as SharedEmptyState } from '../../ui';
-import { chipAccent, statusColors } from '../../constants/colors';
+import { CHIP_ACCENTS } from '../../config/chipConfig';
+import { statusColors } from '../../constants/colors';
 
 // ─── Type Filter Chips ────────────────────────────────────────────────
 
@@ -108,10 +109,10 @@ function sortChips(chips: SmartChip[], key: SortKey): SmartChip[] {
 
 /** Raw hex needed because Badge computes transparent bg from color string */
 const SYNC_RAW: Record<string, string> = {
-  active: chipAccent.data,      // #059669
-  syncing: chipAccent.agent,    // #D97706
-  error: chipAccent.guard,      // #E11D48
-  paused: chipAccent.schema,    // #475569
+  active: CHIP_ACCENTS.data,      // #059669
+  syncing: CHIP_ACCENTS.agent,    // #D97706
+  error: CHIP_ACCENTS.guard,      // #E11D48
+  paused: CHIP_ACCENTS.schema,    // #475569
 };
 
 function ConnectorMeta({ meta }: { meta: ConnectorMetadata }) {
@@ -141,10 +142,10 @@ function ConnectorMeta({ meta }: { meta: ConnectorMetadata }) {
 function SkillMeta({ meta }: { meta: SkillMetadata }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1">
-      <Badge color={chipAccent.skill} size="xs">
+      <Badge color={CHIP_ACCENTS.skill} size="xs">
         {meta.scope}
       </Badge>
-      <Badge color={chipAccent.skill} size="xs">
+      <Badge color={CHIP_ACCENTS.skill} size="xs">
         {meta.activationMode}
       </Badge>
       {meta.resources.scripts.length > 0 && (
@@ -161,7 +162,7 @@ function SkillMeta({ meta }: { meta: SkillMetadata }) {
 function TriggerMeta({ meta }: { meta: TriggerMetadata }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1">
-      <Badge color={chipAccent.trigger} size="xs">
+      <Badge color={CHIP_ACCENTS.trigger} size="xs">
         {meta.triggerType}
       </Badge>
       <Badge
@@ -177,7 +178,7 @@ function TriggerMeta({ meta }: { meta: TriggerMetadata }) {
         </Badge>
       )}
       {meta.sourceConnectorId && (
-        <Badge color={chipAccent.connector} size="xs">
+        <Badge color={CHIP_ACCENTS.connector} size="xs">
           from connector
         </Badge>
       )}
@@ -225,9 +226,9 @@ function SearchIcon() {
 
 function healthLabel(status: string): { label: string; color: string } {
   switch (status) {
-    case 'healthy':  return { label: 'Healthy',  color: chipAccent.data };
-    case 'degraded': return { label: 'Degraded', color: chipAccent.agent };
-    default:         return { label: 'Down',     color: chipAccent.guard };
+    case 'healthy':  return { label: 'Healthy',  color: CHIP_ACCENTS.data };
+    case 'degraded': return { label: 'Degraded', color: CHIP_ACCENTS.agent };
+    default:         return { label: 'Down',     color: CHIP_ACCENTS.guard };
   }
 }
 
