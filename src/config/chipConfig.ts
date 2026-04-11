@@ -66,6 +66,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'VertexAiSearchTool',
     description: 'Ground your agent with a knowledge source — policy documents, regulatory guides, or FAQs via Vertex AI Search.',
     cssVar: '--color-chip-doc',
+    createRoute: '/docs/edit',
     graphNodeType: 'grounding',
   },
   tool: {
@@ -76,6 +77,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'FunctionTool',
     description: 'Define a callable capability — a Python function, MCP server endpoint, or OpenAPI spec that agents can invoke.',
     cssVar: '--color-chip-tool',
+    createRoute: '/tools/edit',
     graphNodeType: 'tool-call',
   },
   connector: {
@@ -99,6 +101,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'LlmAgent',
     description: 'Create an agent with instructions, tools, and delegation. The agent runs an Observe-Reason-Act loop governed by its playbook.',
     cssVar: '--color-chip-agent',
+    createRoute: '/agents/edit',
     graphNodeType: 'agent',
   },
   skill: {
@@ -122,6 +125,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'GateNode',
     description: 'Add a safety boundary — PII redaction, toxicity filtering, budget limits, or schema validation using the G namespace.',
     cssVar: '--color-chip-guard',
+    createRoute: '/guards/edit',
     graphNodeType: 'gate',
   },
   trigger: {
@@ -132,6 +136,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'StreamRunner',
     description: 'Define how the agent loop starts — chat, inbox queue, webhook event, or cron schedule.',
     cssVar: '--color-chip-trigger',
+    createRoute: '/triggers/edit',
     graphNodeType: 'trigger-entry',
   },
   data: {
@@ -142,6 +147,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'TransformNode',
     description: 'Bind data sources or define state transforms using the S namespace.',
     cssVar: '--color-chip-data',
+    createRoute: '/data/edit',
     graphNodeType: 'transform',
   },
   schema: {
@@ -152,6 +158,7 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     adkConstruct: 'OutputSchema',
     description: 'Constrain agent output to a Pydantic model shape using the @ operator for typed responses.',
     cssVar: '--color-chip-schema',
+    createRoute: '/schemas/edit',
     graphNodeType: 'output',
   },
 };

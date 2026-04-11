@@ -48,6 +48,16 @@ const SharingModal = lazy(() => import('./components/permissions/SharingModal').
 const DocsEmbed = lazy(() => import('./components/workspace/DocsEmbed').then(m => ({ default: m.DocsEmbed })));
 const SheetsSchema = lazy(() => import('./components/workspace/SheetsSchema').then(m => ({ default: m.SheetsSchema })));
 
+// ─── Dedicated chip type editors ────────────────────────────────────
+const AgentEditor = lazy(() => import('./components/agents/AgentEditor').then(m => ({ default: m.AgentEditor })));
+const ToolEditor = lazy(() => import('./components/tools/ToolEditor').then(m => ({ default: m.ToolEditor })));
+const GuardEditor = lazy(() => import('./components/guards/GuardEditor').then(m => ({ default: m.GuardEditor })));
+const TriggerEditor = lazy(() => import('./components/triggers/TriggerEditor').then(m => ({ default: m.TriggerEditor })));
+const ConnectorEditor = lazy(() => import('./components/connectors/ConnectorEditor').then(m => ({ default: m.ConnectorEditor })));
+const SchemaEditor = lazy(() => import('./components/schemas/SchemaEditor').then(m => ({ default: m.SchemaEditor })));
+const DocEditor = lazy(() => import('./components/docs/DocEditor').then(m => ({ default: m.DocEditor })));
+const DataEditor = lazy(() => import('./components/data/DataEditor').then(m => ({ default: m.DataEditor })));
+
 // ─── Loading fallback ────────────────────────────────────────────────
 
 function Loading() {
@@ -106,6 +116,15 @@ export default function App() {
               <Route path="/permissions" element={<Page><SharingModal /></Page>} />
               <Route path="/docs-embed" element={<Page><DocsEmbed /></Page>} />
               <Route path="/sheets-schema" element={<Page><SheetsSchema /></Page>} />
+              {/* Dedicated chip type editors */}
+              <Route path="/agents/edit/:id?" element={<Page><AgentEditor /></Page>} />
+              <Route path="/tools/edit/:id?" element={<Page><ToolEditor /></Page>} />
+              <Route path="/guards/edit/:id?" element={<Page><GuardEditor /></Page>} />
+              <Route path="/triggers/edit/:id?" element={<Page><TriggerEditor /></Page>} />
+              <Route path="/connectors/edit/:id?" element={<Page><ConnectorEditor /></Page>} />
+              <Route path="/schemas/edit/:id?" element={<Page><SchemaEditor /></Page>} />
+              <Route path="/docs/edit/:id?" element={<Page><DocEditor /></Page>} />
+              <Route path="/data/edit/:id?" element={<Page><DataEditor /></Page>} />
             </Routes>
           </Suspense>
           <NotificationLayer />

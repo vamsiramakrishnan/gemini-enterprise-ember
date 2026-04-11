@@ -17,7 +17,7 @@ import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import { Button, Card, Badge, StatusBadge, TextInput, Select, EmptyState as SharedEmptyState, SkeletonCard } from '../../ui';
-import { CHIP_ACCENTS } from '../../config/chipConfig';
+import { CHIP_ACCENTS, CHIP_CONFIG } from '../../config/chipConfig';
 import { statusColors } from '../../constants/colors';
 
 // ─── Type Filter Chips ────────────────────────────────────────────────
@@ -240,7 +240,7 @@ function healthLabel(status: string): { label: string; color: string } {
 
 // ─── Registry Card ────────────────────────────────────────────────────
 
-function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: SmartChip; onSelect: (id: string) => void; onOpenEditor: () => void; onViewHistory: () => void }) {
+function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: SmartChip; onSelect: (id: string) => void; onOpenEditor: (chip: SmartChip) => void; onViewHistory: () => void }) {
   const colors = CHIP_COLORS[chip.type];
   const icon = CHIP_ICONS[chip.type];
   const [expanded, setExpanded] = useState(false);
@@ -435,7 +435,7 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
               <Button
                 size="sm"
                 variant="primary"
-                onClick={(e) => { e.stopPropagation(); onOpenEditor(); }}
+                onClick={(e) => { e.stopPropagation(); onOpenEditor(chip); }}
               >
                 Open in Editor
               </Button>
@@ -531,8 +531,13 @@ export function RegistryCatalog() {
     return sortChips(items, sortKey);
   }, [contextFilteredChips, typeFilter, sortKey]);
 
-  const handleOpenEditor = () => {
-    navigate('/editor');
+  const handleOpenEditor = (chip: SmartChip) => {
+    const route = CHIP_CONFIG[chip.type]?.createRoute;
+    if (route) {
+      navigate(`${route}/${chip.id}`);
+    } else {
+      navigate('/editor');
+    }
   };
 
   const handleViewHistory = () => {
