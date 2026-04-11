@@ -1,11 +1,9 @@
 /**
- * Navigation config and hooks for the app shell.
+ * Navigation config for the app shell.
  *
- * Defines the sidebar nav structure (items, sections, routes)
- * and the responsive media-query hook.
+ * Defines the sidebar nav structure (items, sections, routes).
+ * Responsive hooks are in /src/hooks/useResponsive.ts.
  */
-
-import { useState, useEffect } from 'react';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -34,18 +32,3 @@ export const NAV: NavItem[] = [
   { path: '/live', label: 'Live Author', icon: 'live', section: 'Other' },
   { path: '/permissions', label: 'Permissions', icon: 'permissions' },
 ];
-
-// ─── Hooks ───────────────────────────────────────────────────────────
-
-/** Returns true when viewport is <= 767px. */
-export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isMobile;
-}

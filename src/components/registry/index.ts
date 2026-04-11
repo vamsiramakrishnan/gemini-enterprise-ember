@@ -1,0 +1,1 @@
+export { RegistryCatalog } from './RegistryCatalog';

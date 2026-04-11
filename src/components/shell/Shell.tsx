@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useRegistry } from '../../contexts/AppContext';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
-import { useIsMobile } from './Navigation';
+import { useIsMobile } from '../../hooks';
 import { SidebarContent } from './Sidebar';
 import { IconMenu, IconClose } from './Icons';
 
