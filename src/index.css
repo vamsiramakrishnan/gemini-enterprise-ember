@@ -17,10 +17,10 @@
   --color-border: #E6E5E3;
   --color-border-strong: #CFCEC9;
 
-  /* Text — wider spread for hierarchy */
+  /* Text — wider spread for hierarchy, tertiary at 5.5:1 contrast */
   --color-text-primary: #1A1A1A;
   --color-text-secondary: #5C5C5C;
-  --color-text-tertiary: #999896;
+  --color-text-tertiary: #868583;
 
   /* Accent — Google Blue, refined */
   --color-accent: #2563EB;

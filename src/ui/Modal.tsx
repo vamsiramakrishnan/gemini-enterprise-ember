@@ -61,18 +61,34 @@ export function Modal({
   return (
     <div
       className="fixed inset-0 flex items-center justify-center"
-      style={{ zIndex: zIndex.modal, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }}
+      style={{
+        zIndex: zIndex.modal,
+        background: 'rgba(0,0,0,0.3)',
+        backdropFilter: 'blur(4px)',
+        animation: 'modalOverlayIn 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
       onClick={onClose}
     >
+      <style>{`
+        @keyframes modalOverlayIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.96) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
       <div
         className="bg-white flex flex-col overflow-hidden"
         style={{
-          borderRadius: 14,
+          borderRadius: 16,
           width: sizeWidths[size],
           maxWidth: '92vw',
           maxHeight: '88vh',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
+          boxShadow: '0 24px 48px -8px rgba(0,0,0,0.12), 0 8px 16px -4px rgba(0,0,0,0.06)',
           fontFamily: 'var(--font-ui)',
+          animation: 'modalIn 250ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         onClick={(e) => e.stopPropagation()}
       >

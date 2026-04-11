@@ -47,12 +47,22 @@ export interface ChipTypeConfig {
 
 // ─── THE CONFIG ──────────────────────────────────────────────────────
 
+/**
+ * Color families:
+ *   Blue family   → tool, connector, doc (capability spectrum)
+ *   Purple family → skill, agent (intelligence spectrum)
+ *   Warm family   → guard, trigger, data, schema (governance spectrum)
+ *
+ * Within each family, tints/bgs are desaturated to reduce rainbow fatigue.
+ * Accent colors stay vibrant for chips and graph nodes.
+ */
 export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
+  // ── Blue family (capabilities) ────────────────────────────────────
   doc: {
     label: 'Document',
     subtitle: 'Knowledge Source',
     icon: '◇',
-    colors: { bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4', accent: '#0D9488', tint: '#CCFBF1' },
+    colors: { bg: '#F4FAFA', text: '#0F766E', border: '#B2E5DF', accent: '#0D9488', tint: '#E0F5F2' },
     adkConstruct: 'VertexAiSearchTool',
     description: 'Ground your agent with a knowledge source — policy documents, regulatory guides, or FAQs via Vertex AI Search.',
     cssVar: '--color-chip-doc',
@@ -62,37 +72,73 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     label: 'Tool',
     subtitle: 'Function / MCP / OpenAPI',
     icon: '⬡',
-    colors: { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE', accent: '#4F46E5', tint: '#E0E7FF' },
+    colors: { bg: '#F0F1FE', text: '#4338CA', border: '#CDCFFC', accent: '#4F46E5', tint: '#E4E5FC' },
     adkConstruct: 'FunctionTool',
     description: 'Define a callable capability — a Python function, MCP server endpoint, or OpenAPI spec that agents can invoke.',
     cssVar: '--color-chip-tool',
     graphNodeType: 'tool-call',
   },
+  connector: {
+    label: 'Connector',
+    subtitle: 'Enterprise Integration',
+    icon: '◈',
+    colors: { bg: '#F0F4FF', text: '#1D4ED8', border: '#C4D5FB', accent: '#2563EB', tint: '#DCEAFF' },
+    adkConstruct: 'IntegrationToolset',
+    description: 'Connect to Jira, Salesforce, Slack, BigQuery, and other enterprise systems via Application Integration.',
+    cssVar: '--color-chip-connector',
+    createRoute: '/connectors',
+    graphNodeType: 'connector-call',
+  },
+
+  // ── Purple family (intelligence) ──────────────────────────────────
   agent: {
     label: 'Agent',
     subtitle: 'LLM Agent',
     icon: '◎',
-    colors: { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A', accent: '#D97706', tint: '#FEF3C7' },
+    colors: { bg: '#FBF8EE', text: '#92610A', border: '#F0DCA0', accent: '#B77D16', tint: '#F5EDDA' },
     adkConstruct: 'LlmAgent',
     description: 'Create an agent with instructions, tools, and delegation. The agent runs an Observe-Reason-Act loop governed by its playbook.',
     cssVar: '--color-chip-agent',
     graphNodeType: 'agent',
   },
+  skill: {
+    label: 'Skill',
+    subtitle: 'SKILL.md Bundle',
+    icon: '✦',
+    colors: { bg: '#F6F3FF', text: '#6D28D9', border: '#DCD4FE', accent: '#7C3AED', tint: '#EDE7FE' },
+    adkConstruct: 'Skill',
+    description: 'Package reusable expertise as a SKILL.md — instructions, tools, and eval cases that any agent can activate.',
+    cssVar: '--color-chip-skill',
+    createRoute: '/skills',
+    graphNodeType: 'skill',
+  },
+
+  // ── Warm family (governance & structure) ───────────────────────────
   guard: {
     label: 'Guard',
     subtitle: 'Policy / Safety',
     icon: '△',
-    colors: { bg: '#FFF1F2', text: '#BE123C', border: '#FECDD3', accent: '#E11D48', tint: '#FFE4E6' },
+    colors: { bg: '#FEF2F2', text: '#BE123C', border: '#F9C8CC', accent: '#E11D48', tint: '#FDE4E7' },
     adkConstruct: 'GateNode',
     description: 'Add a safety boundary — PII redaction, toxicity filtering, budget limits, or schema validation using the G namespace.',
     cssVar: '--color-chip-guard',
     graphNodeType: 'gate',
   },
+  trigger: {
+    label: 'Trigger',
+    subtitle: 'Entry Point',
+    icon: '▸',
+    colors: { bg: '#FEF6EE', text: '#C2410C', border: '#FAD5B0', accent: '#EA580C', tint: '#FDEAD0' },
+    adkConstruct: 'StreamRunner',
+    description: 'Define how the agent loop starts — chat, inbox queue, webhook event, or cron schedule.',
+    cssVar: '--color-chip-trigger',
+    graphNodeType: 'trigger-entry',
+  },
   data: {
     label: 'Data',
     subtitle: 'Data Binding',
     icon: '▣',
-    colors: { bg: '#ECFDF5', text: '#047857', border: '#A7F3D0', accent: '#059669', tint: '#D1FAE5' },
+    colors: { bg: '#F0FAF5', text: '#047857', border: '#B0E5CA', accent: '#059669', tint: '#DAF4E6' },
     adkConstruct: 'TransformNode',
     description: 'Bind data sources or define state transforms using the S namespace.',
     cssVar: '--color-chip-data',
@@ -102,43 +148,11 @@ export const CHIP_CONFIG: Record<ChipType, ChipTypeConfig> = {
     label: 'Schema',
     subtitle: 'Output Constraint',
     icon: '▢',
-    colors: { bg: '#F8FAFC', text: '#334155', border: '#CBD5E1', accent: '#475569', tint: '#E2E8F0' },
+    colors: { bg: '#F7F8FA', text: '#334155', border: '#CDD1D8', accent: '#475569', tint: '#E6E8EC' },
     adkConstruct: 'OutputSchema',
     description: 'Constrain agent output to a Pydantic model shape using the @ operator for typed responses.',
     cssVar: '--color-chip-schema',
     graphNodeType: 'output',
-  },
-  connector: {
-    label: 'Connector',
-    subtitle: 'Enterprise Integration',
-    icon: '◈',
-    colors: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE', accent: '#2563EB', tint: '#DBEAFE' },
-    adkConstruct: 'IntegrationToolset',
-    description: 'Connect to Jira, Salesforce, Slack, BigQuery, and other enterprise systems via Application Integration.',
-    cssVar: '--color-chip-connector',
-    createRoute: '/connectors',
-    graphNodeType: 'connector-call',
-  },
-  skill: {
-    label: 'Skill',
-    subtitle: 'SKILL.md Bundle',
-    icon: '✦',
-    colors: { bg: '#F5F3FF', text: '#6D28D9', border: '#DDD6FE', accent: '#7C3AED', tint: '#EDE9FE' },
-    adkConstruct: 'Skill',
-    description: 'Package reusable expertise as a SKILL.md — instructions, tools, and eval cases that any agent can activate.',
-    cssVar: '--color-chip-skill',
-    createRoute: '/skills',
-    graphNodeType: 'skill',
-  },
-  trigger: {
-    label: 'Trigger',
-    subtitle: 'Entry Point',
-    icon: '▸',
-    colors: { bg: '#FFF7ED', text: '#C2410C', border: '#FED7AA', accent: '#EA580C', tint: '#FFEDD5' },
-    adkConstruct: 'StreamRunner',
-    description: 'Define how the agent loop starts — chat, inbox queue, webhook event, or cron schedule.',
-    cssVar: '--color-chip-trigger',
-    graphNodeType: 'trigger-entry',
   },
 };
 
