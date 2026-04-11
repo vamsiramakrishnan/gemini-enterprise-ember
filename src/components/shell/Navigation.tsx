@@ -1,8 +1,17 @@
 /**
  * Navigation config for the app shell.
  *
- * Defines the sidebar nav structure (items, sections, routes).
- * Responsive hooks are in /src/hooks/useResponsive.ts.
+ * 7 primary nav items organized by user intent:
+ *   Build   → Editor (the primary workspace)
+ *   Manage  → Assets (registry), Connectors, History
+ *   Operate → Portfolio
+ *
+ * Secondary screens (Split View, Notebook, Skills, Admin, Cost,
+ * Live Author, Permissions) are accessible via routes but not
+ * promoted in the sidebar — they're reached from contextual links
+ * within primary screens.
+ *
+ * Design principle: "If everything is important, nothing is."
  */
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -15,20 +24,28 @@ export interface NavItem {
   badge?: string;
 }
 
-// ─── Navigation items ────────────────────────────────────────────────
+// ─── Primary navigation (sidebar) ────────────────────────────────────
 
 export const NAV: NavItem[] = [
   { path: '/', label: 'Home', icon: 'home' },
   { path: '/editor', label: 'Editor', icon: 'editor', section: 'Build' },
-  { path: '/split-view', label: 'Split View', icon: 'splitView' },
-  { path: '/notebook', label: 'Notebook', icon: 'notebook' },
-  { path: '/registry', label: 'Registry', icon: 'registry', section: 'Manage' },
+  { path: '/registry', label: 'Assets', icon: 'registry', section: 'Manage' },
   { path: '/connectors', label: 'Connectors', icon: 'connectors' },
-  { path: '/skills', label: 'Skills', icon: 'skills' },
   { path: '/history', label: 'History', icon: 'history' },
   { path: '/portfolio', label: 'Portfolio', icon: 'portfolio', section: 'Operate' },
-  { path: '/admin', label: 'Admin', icon: 'admin' },
-  { path: '/cost', label: 'Cost', icon: 'cost' },
-  { path: '/live', label: 'Live Author', icon: 'live', section: 'Other' },
-  { path: '/permissions', label: 'Permissions', icon: 'permissions' },
+  { path: '/live', label: 'Live Author', icon: 'live' },
+];
+
+// ─── All routes (superset — includes secondary screens) ──────────────
+// Routes still exist for deep-linking, but aren't in the sidebar.
+
+export const SECONDARY_ROUTES = [
+  '/split-view',
+  '/notebook',
+  '/skills',
+  '/admin',
+  '/cost',
+  '/permissions',
+  '/docs-embed',
+  '/sheets-schema',
 ];

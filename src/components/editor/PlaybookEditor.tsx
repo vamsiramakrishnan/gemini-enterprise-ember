@@ -65,13 +65,6 @@ export function PlaybookEditor() {
   const parsed = useMemo(() => parsePlaybook(content, REGISTRY), [content]);
   const graph = useMemo(() => compilePlaybookToGraph(parsed), [parsed]);
 
-  // Stats
-  const chipCount = useMemo(() => {
-    let count = 0;
-    for (const refs of Object.values(parsed.referencesByType)) count += refs.length;
-    return count;
-  }, [parsed]);
-
   // Derive selected chip key for glowing
   const selectedChipKey = useMemo(() => {
     if (!selectedChip) return null;
@@ -153,12 +146,12 @@ export function PlaybookEditor() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Tab definitions for the Tabs primitive
+  // Tab definitions — Document is primary, Flow is secondary.
+  // Structured and Notebook are accessible but not promoted equally.
   const editorTabs = useMemo(() => [
     { id: 'document' as EditorTab, label: 'Document', icon: <TabIcon tab="document" active={activeTab === 'document'} /> },
-    { id: 'structured' as EditorTab, label: 'Structured', icon: <TabIcon tab="structured" active={activeTab === 'structured'} /> },
     { id: 'flow' as EditorTab, label: 'Flow', icon: <TabIcon tab="flow" active={activeTab === 'flow'} /> },
-    { id: 'notebook' as EditorTab, label: 'Notebook', icon: <TabIcon tab="notebook" active={activeTab === 'notebook'} /> },
+    { id: 'structured' as EditorTab, label: 'Blocks', icon: <TabIcon tab="structured" active={activeTab === 'structured'} /> },
   ], [activeTab]);
 
   // Inspector tab definitions
@@ -443,9 +436,8 @@ export function PlaybookEditor() {
 
       {/* ── Status Bar ── */}
       <StatusBar
-        chipCount={chipCount}
-        nodeCount={graph.nodes.length}
-        edgeCount={graph.edges.length}
+        dirty={dirty}
+        saving={saving}
         activeTab={activeTab}
       />
 

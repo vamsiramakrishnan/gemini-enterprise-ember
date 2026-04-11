@@ -1,38 +1,56 @@
 /**
- * EditorStatusBar — Bottom status bar and tab icon components for the Playbook Editor.
+ * EditorStatusBar — Bottom status bar and tab icon components.
  *
- * StatusBar: displays chip/node/edge counts and contextual hints for the active tab.
- * TabIcon: renders a small SVG icon for each editor tab (document, structured, flow, notebook).
+ * StatusBar shows actionable info: save state, keyboard hints.
+ * No decorative counters — only things the user can act on.
+ *
+ * TabIcon renders the SVG icon for each editor tab.
  */
 
 // ─── StatusBar ──────────────────────────────────────────────────────────
 
 export function StatusBar({
-  chipCount, nodeCount, edgeCount, activeTab,
+  dirty, saving, activeTab,
 }: {
-  chipCount: number; nodeCount: number; edgeCount: number; activeTab: string;
+  dirty: boolean; saving: boolean; activeTab: string;
 }) {
   return (
     <div
-      className="shrink-0 flex items-center justify-between px-3 sm:px-4 py-1 text-[10px] select-none"
-      style={{ borderTop: '1px solid var(--color-surface-2)', background: 'var(--color-surface-1)', color: 'var(--color-text-tertiary)' }}
+      className="shrink-0 flex items-center justify-between px-3 sm:px-4 py-1.5 text-[11px] select-none"
+      style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface-0)', color: 'var(--color-text-tertiary)' }}
     >
-      <div className="flex items-center gap-3 sm:gap-4">
-        <span>{chipCount} refs</span>
-        <span className="hidden sm:inline">{nodeCount} nodes</span>
-        <span className="hidden sm:inline">{edgeCount} edges</span>
+      <div className="flex items-center gap-2">
+        {saving ? (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--color-accent)' }} />
+            <span>Saving...</span>
+          </>
+        ) : dirty ? (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-draft)' }} />
+            <span>Unsaved changes</span>
+          </>
+        ) : (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-success)' }} />
+            <span className="hidden sm:inline">All changes saved</span>
+          </>
+        )}
       </div>
-      <div className="flex items-center gap-3 sm:gap-4">
-        <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-success)' }} />
-          <span className="hidden sm:inline">Auto-compiling</span>
-        </span>
-        <span className="hidden md:inline">
-          {activeTab === 'document' && 'Click any @reference to inspect \u00B7 Type @ to insert'}
-          {activeTab === 'structured' && 'Block editor \u00B7 / to insert \u00B7 Click skills to expand'}
-          {activeTab === 'flow' && 'Compiled graph \u00B7 Click nodes to view source'}
-          {activeTab === 'notebook' && 'Development mode'}
-        </span>
+      <div className="hidden md:flex items-center gap-1" style={{ color: 'var(--color-text-tertiary)' }}>
+        {activeTab === 'document' && (
+          <>
+            <span>Type</span>
+            <kbd className="px-1 py-0.5 rounded text-[9px] font-mono" style={{ background: 'var(--color-surface-2)' }}>@</kbd>
+            <span>for refs</span>
+            <span style={{ margin: '0 4px', opacity: 0.4 }}>&middot;</span>
+            <kbd className="px-1 py-0.5 rounded text-[9px] font-mono" style={{ background: 'var(--color-surface-2)' }}>{navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}K</kbd>
+            <span>search</span>
+          </>
+        )}
+        {activeTab === 'structured' && <span>Press / to insert blocks</span>}
+        {activeTab === 'flow' && <span>Click nodes to view source</span>}
+        {activeTab === 'notebook' && <span>Development mode</span>}
       </div>
     </div>
   );
@@ -40,12 +58,8 @@ export function StatusBar({
 
 // ─── TabIcon ────────────────────────────────────────────────────────────
 
-/**
- * Small SVG icon for each editor tab. Renders a document, block, graph, or
- * notebook icon depending on the `tab` prop, colored by `active` state.
- */
 export function TabIcon({ tab, active }: { tab: string; active: boolean }) {
-  const color = active ? '#2563EB' : '#9CA3AF';
+  const color = active ? 'var(--color-accent)' : 'var(--color-text-tertiary)';
   if (tab === 'document') return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <rect x="3" y="2" width="10" height="12" rx="1.5" stroke={color} strokeWidth="1.2"/>
@@ -57,7 +71,6 @@ export function TabIcon({ tab, active }: { tab: string; active: boolean }) {
       <rect x="3" y="2" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
       <rect x="3" y="7" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
       <rect x="3" y="12" width="6" height="2" rx="1" stroke={color} strokeWidth="1.2"/>
-      <rect x="11" y="12" width="2" height="2" rx="1" fill={color} fillOpacity="0.4"/>
     </svg>
   );
   if (tab === 'flow') return (
@@ -72,7 +85,6 @@ export function TabIcon({ tab, active }: { tab: string; active: boolean }) {
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <rect x="3" y="2" width="10" height="4" rx="1" stroke={color} strokeWidth="1.2"/>
       <rect x="3" y="8" width="10" height="3" rx="1" stroke={color} strokeWidth="1.2"/>
-      <rect x="3" y="13" width="6" height="1.5" rx="0.75" fill={color} fillOpacity="0.3"/>
     </svg>
   );
 }
