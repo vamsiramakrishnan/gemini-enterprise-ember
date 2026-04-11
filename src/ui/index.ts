@@ -15,5 +15,8 @@ export { Tabs } from './Tabs';
 export { Kbd } from './Kbd';
 export { Spinner } from './Spinner';
 export { EmptyState } from './EmptyState';
-export { ErrorBoundary, RouteErrorBoundary, ComponentErrorBoundary } from './ErrorBoundary';
+export { ErrorBoundary, RouteErrorBoundary } from './ErrorBoundary';
 export { Skeleton, SkeletonCard, SkeletonText } from './Skeleton';
+
+// ComponentErrorBoundary available via direct import when needed:
+// import { ComponentErrorBoundary } from '../ui/ErrorBoundary';

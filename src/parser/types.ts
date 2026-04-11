@@ -334,37 +334,8 @@ export interface ExecutionConfig {
   middlewares?: string[];
 }
 
-export interface TestExecutionResult {
-  iterations: LoopIteration[];
-  totalDuration: number;
-  tokenCount: number;
-  finalResponse: string;
-}
-
-export interface LoopIteration {
-  index: number;
-  observe: string;
-  reason: { playbookExcerpt: string; confidence: number; skillActivated?: string };
-  act: { chipRef: string; parameters: Record<string, unknown>; duration: number };
-  result: string;
-  guardChecks: Array<{ guard: string; passed: boolean; detail?: string }>;
-  decision: 'loop' | 'respond';
-  decisionReason?: string;
-}
-
-export interface AgentEvent {
-  type: 'thought' | 'tool_call' | 'tool_result' | 'guard_check' | 'response' | 'state_delta';
-  timestamp: number;
-  data: Record<string, unknown>;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: Array<{ line: number; message: string; chipRef?: string }>;
-  warnings: Array<{ line: number; message: string }>;
-  resolvedChips: number;
-  unresolvedChips: number;
-}
+// Note: LoopIteration, TestResult, GuardCheck types live in contexts/TestContext.tsx
+// (the only consumer). AgentEvent/ValidationResult were unused — removed.
 
 // ─── Parsed Playbook (output of the parser) ────────────────────────────
 

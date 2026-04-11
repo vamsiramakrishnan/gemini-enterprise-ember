@@ -263,10 +263,6 @@ body {
   animation: fadeIn var(--duration-normal) var(--ease-out) both;
 }
 
-.animate-in-scale {
-  animation: fadeInScale var(--duration-normal) var(--ease-out) both;
-}
-
 /* Staggered grid entrance — smooth cascade */
 .stagger > * { animation: fadeIn var(--duration-slow) var(--ease-out) both; }
 .stagger > *:nth-child(1) { animation-delay: 0ms; }
@@ -294,145 +290,9 @@ body {
   border-color: var(--color-border-strong);
 }
 
-/* Interactive card — lifts on hover */
-.card-interactive {
-  cursor: pointer;
-  transition: box-shadow var(--duration-normal) var(--ease-out),
-              border-color var(--duration-normal) var(--ease-out),
-              transform var(--duration-normal) var(--ease-out);
-}
-.card-interactive:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-  border-color: var(--color-border-strong);
-}
-.card-interactive:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
-  transition-duration: 60ms;
-}
-
-/* Chip base */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 20px;
-  white-space: nowrap;
-  transition: box-shadow var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
-}
-.chip:hover {
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
-}
-
-/* Section header */
-.section-header {
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-tertiary);
-}
-
-/* Input base */
-.input-base {
-  width: 100%;
-  padding: 9px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  color: var(--color-text-primary);
-  background: var(--color-surface-0);
-  outline: none;
-  transition: border-color var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
-}
-.input-base:focus {
-  border-color: var(--color-accent);
-  box-shadow: var(--shadow-ring);
-}
-.input-base::placeholder {
-  color: var(--color-text-tertiary);
-}
-
-/* Button primary */
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--color-accent);
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  border: none;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-.btn-primary:hover {
-  background: var(--color-accent-hover);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
-}
-.btn-primary:active {
-  transform: scale(0.97);
-  transition-duration: 60ms;
-}
-
-/* Button secondary */
-.btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--color-surface-0);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-}
-.btn-secondary:hover {
-  background: var(--color-surface-1);
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-xs);
-}
-.btn-secondary:active {
-  transform: scale(0.97);
-  transition-duration: 60ms;
-}
-
-/* Badge */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-/* Status dot */
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-}
-.status-dot--active { background: var(--color-success); box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.15); }
-.status-dot--warning { background: #EAB308; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.15); }
-.status-dot--error { background: #EF4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15); }
-.status-dot--idle { background: var(--color-text-tertiary); }
+/* Note: Button, Badge, Card, Input, Chip, StatusDot styles are now in React
+   components (src/ui/*). CSS classes below are kept only for global patterns
+   that can't live in components (skeleton, layout, transitions). */
 
 /* ─── Skeleton Loader ───────────────────────────────────────────── */
 
