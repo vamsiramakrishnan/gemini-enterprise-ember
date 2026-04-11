@@ -29,24 +29,28 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
       <div
         className="flex items-center shrink-0"
         style={{
-          height: 60,
-          padding: collapsed ? '0 10px' : '0 16px',
+          height: 64,
+          padding: collapsed ? '0 12px' : '0 18px',
           borderBottom: '1px solid var(--color-border)',
           background: 'var(--color-surface-0)',
+          transition: `padding var(--duration-normal) var(--ease-out)`,
         }}
       >
         <button
           onClick={onToggle}
-          className="flex items-center gap-3 hover:opacity-80 w-full"
+          className="flex items-center gap-3 w-full"
           style={{
             transition: `opacity var(--duration-fast) var(--ease-out)`,
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
         >
           <div
-            className="shrink-0 rounded-lg flex items-center justify-center"
+            className="shrink-0 flex items-center justify-center"
             style={{
-              width: 34,
-              height: 34,
+              width: 36,
+              height: 36,
+              borderRadius: 'var(--radius-md)',
               background: 'var(--color-accent)',
               boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)',
             }}
@@ -58,14 +62,24 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
           {!collapsed && (
             <div className="flex flex-col">
               <span
-                className="text-[13px] font-semibold leading-tight tracking-[-0.01em]"
-                style={{ color: 'var(--color-text-primary)' }}
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  lineHeight: 1.25,
+                  letterSpacing: '-0.01em',
+                  color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-ui)',
+                }}
               >
                 Playbook
               </span>
               <span
-                className="text-[10.5px] leading-tight"
-                style={{ color: 'var(--color-text-tertiary)' }}
+                style={{
+                  fontSize: 11,
+                  lineHeight: 1.25,
+                  color: 'var(--color-text-tertiary)',
+                  fontFamily: 'var(--font-ui)',
+                }}
               >
                 Agent Builder
               </span>
@@ -77,18 +91,20 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
       {/* Create New Button */}
       <div
         style={{
-          padding: collapsed ? '14px 8px 6px' : '14px 12px 6px',
+          padding: collapsed ? '16px 10px 8px' : '16px 14px 8px',
+          transition: `padding var(--duration-normal) var(--ease-out)`,
         }}
       >
         <button
           onClick={onCreateNew}
           className="w-full flex items-center justify-center gap-2"
           style={{
-            padding: collapsed ? '10px 0' : '10px 14px',
+            padding: collapsed ? '11px 0' : '11px 16px',
             background: 'var(--color-accent)',
             color: 'var(--color-surface-0)',
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
+            fontFamily: 'var(--font-ui)',
             borderRadius: 'var(--radius-md)',
             transition: `background var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)`,
             boxShadow: 'var(--shadow-xs)',
@@ -113,7 +129,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
       {/* Navigation */}
       <nav
         className="flex-1 overflow-y-auto"
-        style={{ padding: '8px 8px', }}
+        style={{ padding: '6px 10px' }}
       >
         {NAV.map((item, i) => {
           const isActive = location.pathname === item.path;
@@ -126,9 +142,9 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 <div
                   className="text-section-label"
                   style={{
-                    marginTop: i === 0 ? 4 : 24,
-                    marginBottom: 8,
-                    paddingLeft: 8,
+                    marginTop: i === 0 ? 6 : 28,
+                    marginBottom: 10,
+                    paddingLeft: 10,
                   }}
                 >
                   {item.section}
@@ -137,7 +153,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
               {item.section && collapsed && i > 0 && (
                 <div
                   style={{
-                    margin: '10px 8px',
+                    margin: '12px 8px',
                     borderTop: '1px solid var(--color-surface-2)',
                   }}
                 />
@@ -147,8 +163,9 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 onClick={onNavigate}
                 className="flex items-center relative"
                 style={{
-                  padding: collapsed ? '10px 12px' : '10px 12px',
+                  padding: '10px 12px',
                   gap: 10,
+                  minHeight: 44,
                   justifyContent: collapsed ? 'center' : 'flex-start',
                   color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                   background: isActive ? 'var(--color-accent-light)' : 'transparent',
@@ -173,22 +190,30 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
               >
                 {isActive && (
                   <div
-                    className="absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full"
+                    className="absolute left-0 top-1/2 -translate-y-1/2"
                     style={{
                       width: 3,
-                      height: 20,
+                      height: 22,
+                      borderRadius: '0 3px 3px 0',
                       background: 'var(--color-accent)',
                     }}
                   />
                 )}
                 {IconComponent && <IconComponent />}
                 {!collapsed && (
-                  <span className="text-[13px] truncate">{item.label}</span>
+                  <span
+                    className="truncate"
+                    style={{ fontSize: 13, fontFamily: 'var(--font-ui)' }}
+                  >
+                    {item.label}
+                  </span>
                 )}
                 {!collapsed && item.badge && (
                   <span
-                    className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                    className="ml-auto font-semibold rounded-full"
                     style={{
+                      fontSize: 9,
+                      padding: '2px 7px',
                       background: 'var(--color-accent-light)',
                       color: 'var(--color-accent)',
                     }}
@@ -206,17 +231,22 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
       <div
         className="shrink-0"
         style={{
-          padding: collapsed ? '14px 10px' : '14px 14px',
+          padding: collapsed ? '16px 12px' : '16px 16px',
           borderTop: '1px solid var(--color-border)',
           background: 'var(--color-surface-1)',
+          transition: `padding var(--duration-normal) var(--ease-out)`,
         }}
       >
         {!collapsed ? (
           <div className="flex items-center gap-3">
             <div className="relative">
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                className="flex items-center justify-center font-semibold"
                 style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 10,
                   background: 'var(--color-surface-2)',
                   color: 'var(--color-text-secondary)',
                 }}
@@ -224,8 +254,10 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 CA
               </div>
               <div
-                className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                className="absolute -bottom-0.5 -right-0.5 rounded-full"
                 style={{
+                  width: 10,
+                  height: 10,
                   background: 'var(--color-success)',
                   border: '2px solid var(--color-surface-1)',
                 }}
@@ -233,14 +265,22 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
             </div>
             <div className="flex-1 min-w-0">
               <div
-                className="text-[11.5px] font-medium truncate"
-                style={{ color: 'var(--color-text-primary)' }}
+                className="font-medium truncate"
+                style={{
+                  fontSize: 12,
+                  color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-ui)',
+                }}
               >
                 Claims Agent
               </div>
               <div
-                className="text-[10px]"
-                style={{ color: 'var(--color-text-tertiary)' }}
+                style={{
+                  fontSize: 10.5,
+                  color: 'var(--color-text-tertiary)',
+                  fontFamily: 'var(--font-ui)',
+                  marginTop: 1,
+                }}
               >
                 v2.1 · Running
               </div>
@@ -250,8 +290,12 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
           <div className="flex justify-center">
             <div className="relative">
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[9px] font-semibold"
+                className="flex items-center justify-center font-semibold"
                 style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 9,
                   background: 'var(--color-surface-2)',
                   color: 'var(--color-text-secondary)',
                 }}
@@ -259,8 +303,10 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 CA
               </div>
               <div
-                className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+                className="absolute -bottom-0.5 -right-0.5 rounded-full"
                 style={{
+                  width: 10,
+                  height: 10,
                   background: 'var(--color-success)',
                   border: '2px solid var(--color-surface-1)',
                 }}
