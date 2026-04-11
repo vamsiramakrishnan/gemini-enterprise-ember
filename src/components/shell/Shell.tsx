@@ -102,10 +102,12 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: 'var(--color-surface-1)' }}>
       <aside
-        className="h-full flex flex-col shrink-0 transition-[width] duration-200 ease-out bg-white"
+        className="h-full flex flex-col shrink-0"
         style={{
-          width: collapsed ? 56 : 220,
+          width: collapsed ? 56 : 228,
           borderRight: '1px solid var(--color-border)',
+          background: 'var(--color-sidebar)',
+          transition: 'width var(--duration-normal) var(--ease-out)',
         }}
       >
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} onCreateNew={openCreateWizard} />
