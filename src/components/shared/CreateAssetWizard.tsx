@@ -7,6 +7,7 @@
  * Step 3: Review & create
  *
  * Form components live in ./wizard/ subdirectory.
+ * Uses the shared Modal and Button primitives from ../../ui.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -14,6 +15,8 @@ import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip } from '../../parser/types';
 import { getAdkFluentService } from '../../services/adk-fluent';
 import type { AssetCodeResult } from '../../services/adk-fluent';
+import { chipAccent, statusColors } from '../../constants/colors';
+import { Modal, Button } from '../../ui';
 
 import { wizardStyles, StepIndicator } from './wizard/WizardShared';
 import { AgentForm, INITIAL_AGENT_FORM, type AgentFormState } from './wizard/AgentForm';
@@ -82,8 +85,8 @@ function NameDescriptionFields({
           autoFocus
         />
         {name && (
-          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 3 }}>
-            Reference: <code style={{ background: '#F3F4F6', padding: '1px 4px', borderRadius: 3, fontSize: 10 }}>
+          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 3 }}>
+            Reference: <code style={{ background: 'var(--color-surface-1)', padding: '1px 4px', borderRadius: 3, fontSize: 10 }}>
               @{selectedType}({name})
             </code>
           </div>
@@ -122,7 +125,7 @@ function ReviewStep({
 }) {
   return (
     <div>
-      <div style={{ padding: 16, borderRadius: 10, background: '#FAFAF9', border: '1px solid #E5E7EB' }}>
+      <div style={{ padding: 16, borderRadius: 10, background: 'var(--color-surface-0)', border: '1px solid var(--color-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
           <span style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -132,21 +135,21 @@ function ReviewStep({
             {CHIP_ICONS[selectedType]}
           </span>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
               @{selectedType}({name})
             </div>
-            <div style={{ fontSize: 11, color: '#9CA3AF' }}>v0.1.0 &middot; Draft</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>v0.1.0 &middot; Draft</div>
           </div>
         </div>
         {description && (
-          <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 10px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', margin: '0 0 10px', lineHeight: 1.5 }}>
             {description}
           </p>
         )}
 
-        <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 10, marginTop: 6 }}>
+        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 10, marginTop: 6 }}>
           {selectedType === 'agent' && (
-            <div style={{ fontSize: 11, color: '#6B7280' }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
               <div>Model: <strong>{agentForm.model}</strong></div>
               {agentForm.tools.length > 0 && <div>Tools: {agentForm.tools.map((t) => `@tool(${t})`).join(', ')}</div>}
               {agentForm.delegatesTo.length > 0 && <div>Delegates: {agentForm.delegatesTo.map((a) => `@agent(${a})`).join(', ')}</div>}
@@ -154,7 +157,7 @@ function ReviewStep({
             </div>
           )}
           {selectedType === 'tool' && (
-            <div style={{ fontSize: 11, color: '#6B7280' }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
               <div>Type: <strong>{toolForm.toolType}</strong></div>
               {toolForm.endpoint && <div>Endpoint: {toolForm.endpoint}</div>}
               <div>Auth: {toolForm.authMethod}</div>
@@ -162,18 +165,18 @@ function ReviewStep({
             </div>
           )}
           {selectedType === 'skill' && (
-            <div style={{ fontSize: 11, color: '#6B7280' }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
               <div>Scope: <strong>{skillForm.scope}</strong> &middot; Activation: <strong>{skillForm.activationMode}</strong></div>
               {skillForm.tags && <div>Tags: {skillForm.tags}</div>}
             </div>
           )}
           {selectedType === 'guard' && (
-            <div style={{ fontSize: 11, color: '#6B7280' }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
               <div>Kind: <strong>G.{guardForm.guardKind}()</strong> &middot; Phase: {guardForm.phase}</div>
             </div>
           )}
           {selectedType === 'trigger' && (
-            <div style={{ fontSize: 11, color: '#6B7280' }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
               <div>Type: <strong>{triggerForm.triggerType}</strong></div>
               {triggerForm.triggerType === 'schedule' && triggerForm.cronExpression && (
                 <div>Cron: {triggerForm.cronExpression}</div>
@@ -181,7 +184,7 @@ function ReviewStep({
             </div>
           )}
           {!hasTypeSpecificForm && (
-            <div style={{ fontSize: 11, color: '#9CA3AF' }}>Ready to create as draft.</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>Ready to create as draft.</div>
           )}
         </div>
       </div>
@@ -204,40 +207,40 @@ function ReviewStep({
           style={{
             display: 'flex', alignItems: 'center', gap: 6, width: '100%',
             padding: '8px 10px', borderRadius: 8,
-            border: '1px solid #E5E7EB',
-            background: showCode ? '#F9FAFB' : '#fff',
-            cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#374151',
+            border: '1px solid var(--color-border)',
+            background: showCode ? 'var(--color-surface-1)' : '#fff',
+            cursor: 'pointer', fontSize: 11, fontWeight: 600, color: 'var(--color-text-primary)',
             transition: 'all 0.15s',
           }}
         >
           <span style={{ fontSize: 14 }}>{showCode ? '\u25BE' : '\u25B8'}</span>
-          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)', color: '#7C3AED' }}>adk-fluent</span>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)', color: chipAccent.skill }}>adk-fluent</span>
           <span>Python Code Preview</span>
           {codePreview && (
             <span style={{
               marginLeft: 'auto', fontSize: 9, padding: '2px 6px', borderRadius: 4,
-              background: '#ECFDF5', color: '#047857', fontWeight: 500,
+              background: statusColors.resolved.bg, color: statusColors.resolved.text, fontWeight: 500,
             }}>
               {codePreview.dependencies.join(' + ')}
             </span>
           )}
         </button>
         {showCode && (
-          <div style={{ marginTop: 6, borderRadius: 8, overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+          <div style={{ marginTop: 6, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--color-border)' }}>
             {codeLoading ? (
-              <div style={{ padding: '20px', textAlign: 'center', fontSize: 11, color: '#9CA3AF' }}>
+              <div style={{ padding: '20px', textAlign: 'center', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
                 Generating adk-fluent code...
               </div>
             ) : codePreview ? (
               <>
                 <div style={{
-                  padding: '8px 12px', background: '#F9FAFB', borderBottom: '1px solid #E5E7EB',
+                  padding: '8px 12px', background: 'var(--color-surface-1)', borderBottom: '1px solid var(--color-border)',
                   display: 'flex', alignItems: 'center', gap: 6,
                 }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase' }}>Expression</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Expression</span>
                   <code style={{
                     fontSize: 11, fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-                    color: '#7C3AED', background: '#F5F3FF', padding: '2px 6px', borderRadius: 4,
+                    color: chipAccent.skill, background: '#F5F3FF', padding: '2px 6px', borderRadius: 4,
                   }}>
                     {codePreview.expression}
                   </code>
@@ -254,7 +257,7 @@ function ReviewStep({
                   <>
                     <div style={{
                       padding: '6px 12px', background: '#F5F3FF',
-                      borderTop: '1px solid #E5E7EB',
+                      borderTop: '1px solid var(--color-border)',
                       fontSize: 10, fontWeight: 600, color: '#6D28D9', textTransform: 'uppercase',
                     }}>
                       SKILL.md
@@ -270,8 +273,8 @@ function ReviewStep({
                   </>
                 )}
                 <div style={{
-                  padding: '8px 12px', background: '#F9FAFB', borderTop: '1px solid #E5E7EB',
-                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#6B7280',
+                  padding: '8px 12px', background: 'var(--color-surface-1)', borderTop: '1px solid var(--color-border)',
+                  display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--color-text-secondary)',
                 }}>
                   <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>Playbook ref</span>
                   <code style={{
@@ -282,11 +285,11 @@ function ReviewStep({
                   }}>
                     {codePreview.playbookRef}
                   </code>
-                  <span style={{ marginLeft: 'auto', color: '#9CA3AF' }}>Use this reference in your playbook</span>
+                  <span style={{ marginLeft: 'auto', color: 'var(--color-text-tertiary)' }}>Use this reference in your playbook</span>
                 </div>
               </>
             ) : (
-              <div style={{ padding: '12px', fontSize: 11, color: '#9CA3AF' }}>
+              <div style={{ padding: '12px', fontSize: 11, color: 'var(--color-text-tertiary)' }}>
                 Code preview not available.
               </div>
             )}
@@ -388,138 +391,123 @@ export function CreateAssetWizard({ isOpen, onClose, onCreate, initialType, init
     onClose();
   }, [name, description, selectedType, agentForm, toolForm, skillForm, guardForm, triggerForm, onCreate, onClose]);
 
-  if (!isOpen) return null;
-
   const chipColor = CHIP_COLORS[selectedType];
   const isLastStep = step === totalSteps - 1;
   const canProceed = step === 0 ? true : name.trim().length > 0;
   const hasTypeSpecificForm = ['agent', 'tool', 'skill', 'guard', 'trigger'].includes(selectedType);
 
+  const modalTitle = step === 0 ? 'Create New Asset' : `New @${selectedType}`;
+  const modalSubtitle = step > 0
+    ? (step === (hasInitialType ? 0 : 1) ? 'Configure your asset' : 'Review & create')
+    : undefined;
+
   return (
-    <div style={wizardStyles.overlay} onClick={onClose}>
-      <div style={wizardStyles.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div style={wizardStyles.header}>
-          <div>
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>
-              {step === 0 ? 'Create New Asset' : `New @${selectedType}`}
-            </h2>
-            {step > 0 && (
-              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
-                {step === (hasInitialType ? 0 : 1) ? 'Configure your asset' : 'Review & create'}
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <StepIndicator current={step} total={totalSteps} />
-            <button
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 18, lineHeight: 1 }}
-            >
-              &times;
-            </button>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div style={wizardStyles.body}>
-          {/* Step 0: Type Selection */}
-          {step === 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {TYPE_OPTIONS.map((opt) => {
-                const c = CHIP_COLORS[opt.type];
-                const isSelected = selectedType === opt.type;
-                return (
-                  <button
-                    key={opt.type}
-                    onClick={() => setSelectedType(opt.type)}
-                    style={{
-                      padding: '14px 12px', borderRadius: 10,
-                      border: `2px solid ${isSelected ? c.accent : '#E5E7EB'}`,
-                      background: isSelected ? c.bg : '#fff',
-                      cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        width: 24, height: 24, borderRadius: 6,
-                        background: isSelected ? c.accent : c.tint,
-                        color: isSelected ? '#fff' : c.text, fontSize: 12, fontWeight: 600,
-                      }}>
-                        {opt.icon}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? c.text : '#374151' }}>
-                        {opt.label}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 10, color: '#9CA3AF', lineHeight: 1.4 }}>
-                      {opt.description}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Step 1: Configuration */}
-          {step === (hasInitialType ? 0 : 1) && (
-            <>
-              <NameDescriptionFields
-                selectedType={selectedType} name={name} setName={setName}
-                description={description} setDescription={setDescription}
-                chipColor={chipColor}
-              />
-              {selectedType === 'agent' && <AgentForm state={agentForm} onChange={setAgentForm} />}
-              {selectedType === 'tool' && <ToolForm state={toolForm} onChange={setToolForm} />}
-              {selectedType === 'skill' && <SkillForm state={skillForm} onChange={setSkillForm} />}
-              {selectedType === 'guard' && <GuardForm state={guardForm} onChange={setGuardForm} />}
-              {selectedType === 'trigger' && <TriggerForm state={triggerForm} onChange={setTriggerForm} />}
-            </>
-          )}
-
-          {/* Step 2: Review */}
-          {step === totalSteps - 1 && step !== (hasInitialType ? 0 : 1) && (
-            <ReviewStep
-              selectedType={selectedType} name={name} description={description}
-              chipColor={chipColor}
-              agentForm={agentForm} toolForm={toolForm} skillForm={skillForm}
-              guardForm={guardForm} triggerForm={triggerForm}
-              codePreview={codePreview} codeLoading={codeLoading}
-              showCode={showCode} setShowCode={setShowCode}
-              hasTypeSpecificForm={hasTypeSpecificForm}
-            />
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={wizardStyles.footer}>
-          <button
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      title={modalTitle}
+      subtitle={modalSubtitle}
+      headerRight={<StepIndicator current={step} total={totalSteps} />}
+      footer={
+        <>
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => {
               if (step === 0 || (hasInitialType && step === 0)) onClose();
               else setStep((s) => s - 1);
             }}
-            style={wizardStyles.btnSecondary}
           >
             {step === 0 ? 'Cancel' : 'Back'}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            disabled={!canProceed}
             onClick={() => {
               if (isLastStep) handleCreate();
               else setStep((s) => s + 1);
             }}
-            disabled={!canProceed}
             style={{
-              ...wizardStyles.btnPrimary,
-              background: canProceed ? (isLastStep ? chipColor.accent : '#2563EB') : '#93C5FD',
-              cursor: canProceed ? 'pointer' : 'not-allowed',
+              background: canProceed
+                ? (isLastStep ? chipColor.accent : undefined)
+                : undefined,
             }}
           >
             {isLastStep ? `Create @${selectedType}` : 'Next'}
-          </button>
+          </Button>
+        </>
+      }
+    >
+      {/* Step 0: Type Selection */}
+      {step === 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+          {TYPE_OPTIONS.map((opt) => {
+            const c = CHIP_COLORS[opt.type];
+            const isSelected = selectedType === opt.type;
+            return (
+              <button
+                key={opt.type}
+                onClick={() => setSelectedType(opt.type)}
+                style={{
+                  padding: '14px 12px', borderRadius: 10,
+                  border: `2px solid ${isSelected ? c.accent : 'var(--color-border)'}`,
+                  background: isSelected ? c.bg : '#fff',
+                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 24, height: 24, borderRadius: 6,
+                    background: isSelected ? c.accent : c.tint,
+                    color: isSelected ? '#fff' : c.text, fontSize: 12, fontWeight: 600,
+                  }}>
+                    {opt.icon}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? c.text : 'var(--color-text-primary)' }}>
+                    {opt.label}
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', lineHeight: 1.4 }}>
+                  {opt.description}
+                </div>
+              </button>
+            );
+          })}
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Step 1: Configuration */}
+      {step === (hasInitialType ? 0 : 1) && (
+        <>
+          <NameDescriptionFields
+            selectedType={selectedType} name={name} setName={setName}
+            description={description} setDescription={setDescription}
+            chipColor={chipColor}
+          />
+          {selectedType === 'agent' && <AgentForm state={agentForm} onChange={setAgentForm} />}
+          {selectedType === 'tool' && <ToolForm state={toolForm} onChange={setToolForm} />}
+          {selectedType === 'skill' && <SkillForm state={skillForm} onChange={setSkillForm} />}
+          {selectedType === 'guard' && <GuardForm state={guardForm} onChange={setGuardForm} />}
+          {selectedType === 'trigger' && <TriggerForm state={triggerForm} onChange={setTriggerForm} />}
+        </>
+      )}
+
+      {/* Step 2: Review */}
+      {step === totalSteps - 1 && step !== (hasInitialType ? 0 : 1) && (
+        <ReviewStep
+          selectedType={selectedType} name={name} description={description}
+          chipColor={chipColor}
+          agentForm={agentForm} toolForm={toolForm} skillForm={skillForm}
+          guardForm={guardForm} triggerForm={triggerForm}
+          codePreview={codePreview} codeLoading={codeLoading}
+          showCode={showCode} setShowCode={setShowCode}
+          hasTypeSpecificForm={hasTypeSpecificForm}
+        />
+      )}
+    </Modal>
   );
 }
 

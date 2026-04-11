@@ -32,6 +32,8 @@ import { CommandPalette } from './CommandPalette';
 import { StatusBar, TabIcon } from './EditorStatusBar';
 import { findNodeForChip } from '../chips/InlineChip';
 import { useBreakpoint } from '../../hooks';
+import { Button, Tabs, Kbd, Badge, StatusBadge, EmptyState } from '../../ui';
+import { statusColors } from '../../constants/colors';
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -151,6 +153,20 @@ export function PlaybookEditor() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // Tab definitions for the Tabs primitive
+  const editorTabs = useMemo(() => [
+    { id: 'document' as EditorTab, label: 'Document', icon: <TabIcon tab="document" active={activeTab === 'document'} /> },
+    { id: 'structured' as EditorTab, label: 'Structured', icon: <TabIcon tab="structured" active={activeTab === 'structured'} /> },
+    { id: 'flow' as EditorTab, label: 'Flow', icon: <TabIcon tab="flow" active={activeTab === 'flow'} /> },
+    { id: 'notebook' as EditorTab, label: 'Notebook', icon: <TabIcon tab="notebook" active={activeTab === 'notebook'} /> },
+  ], [activeTab]);
+
+  // Inspector tab definitions
+  const inspectorTabs = useMemo(() => [
+    { id: 'details' as InspectorTab, label: 'Details' },
+    { id: 'space' as InspectorTab, label: 'Problem Space' },
+  ], []);
+
   // Tab descriptions for the subtle hint
   const tabHints: Record<EditorTab, string> = {
     document: 'Write your agent as a document',
@@ -158,6 +174,30 @@ export function PlaybookEditor() {
     flow: 'See the compiled topology',
     notebook: 'Test and prototype',
   };
+
+  // Trailing content for the editor tab bar (hint + inspector toggle)
+  const tabBarTrailing = (
+    <>
+      {!isMobile && (
+        <span className="text-[11px] italic mr-2" style={{ color: 'var(--color-border-strong)' }}>
+          {tabHints[activeTab]}
+        </span>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setInspectorOpen(!inspectorOpen)}
+        icon={
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M10.5 2v12" stroke="currentColor" strokeWidth="1.2"/>
+          </svg>
+        }
+      >
+        {!isMobile && 'Inspector'}
+      </Button>
+    </>
+  );
 
   return (
     <div className="h-full flex flex-col bg-[var(--color-surface-0)]">
@@ -191,35 +231,35 @@ export function PlaybookEditor() {
               Claims Processing Agent
             </h1>
             <div className="flex items-center gap-1.5 shrink-0">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#DCFCE7] text-[#166534]">
+              <Badge bg={statusColors.production.bg} color={statusColors.production.text}>
                 v{currentVersion}
-              </span>
+              </Badge>
               {!isMobile && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
-                  Published
-                </span>
+                <StatusBadge status="production" />
               )}
               {dirty && !saving && <span className="text-[10px] text-amber-500">Unsaved changes</span>}
-              {saving && <span className="text-[10px] text-gray-400">Saving...</span>}
+              {saving && <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>Saving...</span>}
             </div>
           </div>
 
           {/* Command palette trigger — hidden on mobile */}
           {!isMobile && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setCommandPaletteOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs hover:border-gray-300 transition-colors"
-              style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-tertiary)' }}
+              icon={
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.2"/>
+                  <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+              }
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.2"/>
-                <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
               <span>Search</span>
-              <kbd className="text-[10px] px-1 py-0.5 rounded font-mono ml-2" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-tertiary)' }}>
+              <Kbd>
                 {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl+'}K
-              </kbd>
-            </button>
+              </Kbd>
+            </Button>
           )}
 
           {/* Actions — condensed on mobile */}
@@ -250,63 +290,29 @@ export function PlaybookEditor() {
                 </Link>
               </>
             )}
-            <button
+            <Button
+              variant="primary"
+              size="md"
               onClick={() => openPublishModal()}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 text-[12px] font-medium text-white rounded-lg transition-colors"
-              style={{ background: 'var(--color-accent)' }}
+              icon={
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2.5 4L5 6.5 7.5 4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              }
             >
               Publish
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <path d="M2.5 4L5 6.5 7.5 4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Tab bar — the three lenses */}
-        <div className="px-3 sm:px-5 flex items-center gap-0 overflow-x-auto" style={{ marginTop: -1 }}>
-          {(['document', 'structured', 'flow', 'notebook'] as EditorTab[]).map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className="relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 transition-colors group shrink-0"
-              >
-                <TabIcon tab={tab} active={isActive} />
-                <span className={`text-[12px] font-medium ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-secondary)]'}`}>
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </span>
-                {isActive && (
-                  <div className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: 'var(--color-accent)' }} />
-                )}
-              </button>
-            );
-          })}
-
-          {/* Tab hint — hidden on mobile */}
-          {!isMobile && (
-            <div className="flex-1 flex justify-center">
-              <span className="text-[11px] italic" style={{ color: 'var(--color-border-strong)' }}>
-                {tabHints[activeTab]}
-              </span>
-            </div>
-          )}
-
-          <div className="flex-1" />
-
-          {/* Inspector toggle */}
-          <button
-            onClick={() => setInspectorOpen(!inspectorOpen)}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-[12px] transition-colors shrink-0"
-            style={{ color: 'var(--color-text-tertiary)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-              <path d="M10.5 2v12" stroke="currentColor" strokeWidth="1.2"/>
-            </svg>
-            {!isMobile && 'Inspector'}
-          </button>
+        <div className="px-3 sm:px-5" style={{ marginTop: -1 }}>
+          <Tabs
+            tabs={editorTabs}
+            active={activeTab}
+            onChange={setActiveTab}
+            trailing={tabBarTrailing}
+          />
         </div>
       </header>
 
@@ -345,30 +351,30 @@ export function PlaybookEditor() {
             </div>
           )}
           {activeTab === 'notebook' && (
-            <div key="tab-notebook" className="tab-content-enter h-full flex flex-col items-center justify-center text-center px-8">
-              <div className="w-12 h-12 rounded-xl bg-[#F3F4F6] flex items-center justify-center mb-4">
-                <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
-                  <rect x="3" y="2" width="10" height="4" rx="1" stroke="#9CA3AF" strokeWidth="1.2"/>
-                  <rect x="3" y="8" width="10" height="3" rx="1" stroke="#9CA3AF" strokeWidth="1.2"/>
-                  <rect x="3" y="13" width="6" height="1.5" rx="0.75" fill="#D1D5DB"/>
-                </svg>
-              </div>
-              <div className="text-[13px] text-[#6B7280] mb-1" style={{ fontFamily: 'var(--font-ui)' }}>
-                Notebook is the development surface
-              </div>
-              <div className="text-[12px] text-[#9CA3AF] mb-4 max-w-sm">
-                Prototype with code cells, test the agent loop, define tool schemas — all from the same playbook.
-              </div>
-              <Link
-                to="/notebook"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors"
-                style={{ background: '#2563EB', fontFamily: 'var(--font-ui)' }}
-              >
-                Open Notebook
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M4.5 2.5L8 6 4.5 9.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </Link>
+            <div key="tab-notebook" className="tab-content-enter h-full flex flex-col">
+              <EmptyState
+                icon={
+                  <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+                    <rect x="3" y="2" width="10" height="4" rx="1" stroke="var(--color-text-tertiary)" strokeWidth="1.2"/>
+                    <rect x="3" y="8" width="10" height="3" rx="1" stroke="var(--color-text-tertiary)" strokeWidth="1.2"/>
+                    <rect x="3" y="13" width="6" height="1.5" rx="0.75" fill="var(--color-border-strong)"/>
+                  </svg>
+                }
+                title="Notebook is the development surface"
+                description="Prototype with code cells, test the agent loop, define tool schemas — all from the same playbook."
+                action={
+                  <Link
+                    to="/notebook"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-medium text-white transition-colors"
+                    style={{ background: 'var(--color-accent)', fontFamily: 'var(--font-ui)' }}
+                  >
+                    Open Notebook
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M4.5 2.5L8 6 4.5 9.5" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </Link>
+                }
+              />
             </div>
           )}
         </div>
@@ -396,27 +402,13 @@ export function PlaybookEditor() {
               }}
             >
             {/* Inspector tab bar */}
-            <div className="flex" style={{ borderBottom: '1px solid #F3F4F6' }}>
-              {([
-                { id: 'details' as InspectorTab, label: 'Details' },
-                { id: 'space' as InspectorTab, label: 'Problem Space' },
-              ]).map(({ id, label }) => (
-                <button
-                  key={id}
-                  onClick={() => setInspectorTab(id)}
-                  className={`flex-1 px-3 py-2.5 text-[11px] font-medium transition-colors relative ${
-                    inspectorTab === id
-                      ? 'text-[#2563EB]'
-                      : 'text-[#9CA3AF] hover:text-[#6B7280]'
-                  }`}
-                  style={{ fontFamily: 'var(--font-ui)' }}
-                >
-                  {label}
-                  {inspectorTab === id && (
-                    <div className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-[#2563EB]" />
-                  )}
-                </button>
-              ))}
+            <div style={{ borderBottom: '1px solid var(--color-surface-2)' }}>
+              <Tabs
+                tabs={inspectorTabs}
+                active={inspectorTab}
+                onChange={setInspectorTab}
+                size="sm"
+              />
             </div>
 
             {inspectorTab === 'details' && (
@@ -431,13 +423,13 @@ export function PlaybookEditor() {
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-center px-8">
-                  <div className="w-10 h-10 rounded-lg bg-[#F9FAFB] flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-lg bg-[var(--color-surface-1)] flex items-center justify-center mb-3">
                     <svg width="20" height="20" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 3v10M4 8l4-4 4 4" stroke="#D1D5DB" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M8 3v10M4 8l4-4 4 4" stroke="var(--color-border-strong)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-                  <div className="text-[12px] text-[#9CA3AF]" style={{ fontFamily: 'var(--font-ui)' }}>
-                    Select any <span className="font-medium text-[#6B7280]">@reference</span> in the document or node in the flow graph to inspect it
+                  <div className="text-[12px]" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-tertiary)' }}>
+                    Select any <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>@reference</span> in the document or node in the flow graph to inspect it
                   </div>
                 </div>
               )

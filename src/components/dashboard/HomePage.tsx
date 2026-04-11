@@ -11,6 +11,7 @@ import { useRegistry } from '../../contexts/AppContext';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip } from '../../parser/types';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
+import { Button, StatusBadge } from '../../ui';
 
 // ─── Quick-create card data ─────────────────────────────────────────
 
@@ -130,18 +131,22 @@ export function HomePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <button
+              <Button
+                variant="secondary"
+                size="lg"
                 onClick={() => navigate('/editor')}
-                className="px-4 py-2 bg-white text-blue-700 text-sm font-semibold rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
+                className="bg-white text-blue-700 hover:bg-blue-50 font-semibold shadow-sm border-transparent"
               >
                 Open Editor
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
                 onClick={() => navigate('/live')}
-                className="px-4 py-2 bg-white/15 text-white text-sm font-medium rounded-lg hover:bg-white/25 transition-colors border border-white/20"
+                className="bg-white/15 text-white hover:bg-white/25 border border-white/20"
               >
                 Live Author
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -171,15 +176,16 @@ export function HomePage() {
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Create New</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Each asset you create becomes an @reference in your playbooks</p>
+              <h2 className="text-base font-semibold" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}>Create New</h2>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>Each asset you create becomes an @reference in your playbooks</p>
             </div>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => { setWizardType(undefined); setWizardOpen(true); }}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
             >
               Browse All Types...
-            </button>
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -200,12 +206,12 @@ export function HomePage() {
                       {card.icon}
                     </span>
                     <div>
-                      <div className="text-sm font-semibold text-gray-900 group-hover:text-gray-700">{card.title}</div>
-                      <div className="text-[10px] text-gray-400">{card.subtitle}</div>
+                      <div className="text-sm font-semibold group-hover:opacity-80" style={{ color: 'var(--color-text-primary)' }}>{card.title}</div>
+                      <div className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>{card.subtitle}</div>
                     </div>
                     <span className="ml-auto text-gray-300 group-hover:text-gray-400 transition-colors text-lg">+</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">
+                  <p className="text-[11px] leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>
                     {card.description}
                   </p>
                 </button>
@@ -216,7 +222,7 @@ export function HomePage() {
 
         {/* Section: Quick Actions */}
         <div className="mb-10">
-          <h2 className="text-base font-semibold text-gray-900 mb-4" style={{ fontFamily: 'var(--font-ui)' }}>Quick Actions</h2>
+          <h2 className="text-base font-semibold mb-4" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}>Quick Actions</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: 'Edit Playbook', desc: 'Open the playbook editor', icon: '\u270E', route: '/editor', color: '#2563EB' },
@@ -240,8 +246,8 @@ export function HomePage() {
                   {action.icon}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-gray-900 truncate">{action.label}</div>
-                  <div className="text-[10px] text-gray-400 truncate">{action.desc}</div>
+                  <div className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>{action.label}</div>
+                  <div className="text-[10px] truncate" style={{ color: 'var(--color-text-tertiary)' }}>{action.desc}</div>
                 </div>
               </Link>
             ))}
@@ -251,7 +257,7 @@ export function HomePage() {
         {/* Section: Recent Assets */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>Recent Assets</h2>
+            <h2 className="text-base font-semibold" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}>Recent Assets</h2>
             <Link to="/registry" className="text-xs font-medium text-blue-600 hover:text-blue-700">
               View all in Registry &rarr;
             </Link>
@@ -272,21 +278,15 @@ export function HomePage() {
                     >
                       {CHIP_ICONS[chip.type]}
                     </span>
-                    <span className="text-xs font-semibold text-gray-800 truncate">
+                    <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>
                       {chip.name}
                     </span>
-                    <span
-                      className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                      style={{
-                        background: chip.status === 'resolved' ? '#DCFCE7' : chip.status === 'draft' ? '#FEF9C3' : '#FEE2E2',
-                        color: chip.status === 'resolved' ? '#166534' : chip.status === 'draft' ? '#854D0E' : '#991B1B',
-                      }}
-                    >
-                      {chip.status === 'resolved' ? 'PUBLISHED' : chip.status.toUpperCase()}
+                    <span className="ml-auto">
+                      <StatusBadge status={chip.status} size="xs" />
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-500 line-clamp-1">{chip.description}</p>
-                  <div className="flex items-center justify-between mt-1.5 text-[9px] text-gray-400">
+                  <p className="text-[10px] line-clamp-1" style={{ color: 'var(--color-text-secondary)' }}>{chip.description}</p>
+                  <div className="flex items-center justify-between mt-1.5 text-[9px]" style={{ color: 'var(--color-text-tertiary)' }}>
                     <span>v{chip.version}</span>
                     <span>{chip.usageCount} refs</span>
                   </div>
@@ -298,26 +298,26 @@ export function HomePage() {
 
         {/* Section: How It Works */}
         <div className="mb-8 p-5 rounded-xl bg-white border border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3" style={{ fontFamily: 'var(--font-ui)' }}>How It Works</h2>
+          <h2 className="text-sm font-semibold mb-3" style={{ fontFamily: 'var(--font-ui)', color: 'var(--color-text-primary)' }}>How It Works</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             {[
               {
                 step: '1',
                 title: 'Write a Playbook',
                 desc: 'Author instructions with @references. Each @tool, @connector, @guard shapes the agent\'s action space.',
-                color: '#2563EB',
+                color: 'var(--color-accent)',
               },
               {
                 step: '2',
                 title: 'Create Assets',
                 desc: 'Define tools, skills, connectors, guards, and schemas. The wizard generates adk-fluent Python code for you.',
-                color: '#7C3AED',
+                color: 'var(--color-chip-skill)',
               },
               {
                 step: '3',
                 title: 'Deploy & Monitor',
                 desc: 'Publish versions, set up triggers, and monitor your agent fleet from the portfolio dashboard.',
-                color: '#059669',
+                color: 'var(--color-chip-data)',
               },
             ].map((s) => (
               <div key={s.step} className="flex flex-col items-center gap-2">
@@ -327,8 +327,8 @@ export function HomePage() {
                 >
                   {s.step}
                 </div>
-                <div className="text-xs font-semibold text-gray-800">{s.title}</div>
-                <p className="text-[11px] text-gray-500 leading-relaxed max-w-[200px]">{s.desc}</p>
+                <div className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>{s.title}</div>
+                <p className="text-[11px] leading-relaxed max-w-[200px]" style={{ color: 'var(--color-text-secondary)' }}>{s.desc}</p>
               </div>
             ))}
           </div>

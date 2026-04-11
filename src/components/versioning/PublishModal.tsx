@@ -13,6 +13,11 @@
 import { useState, useMemo } from 'react';
 import { VERSIONS, DIFF_SUMMARY } from '../../data/versions';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
+import { statusColors } from '../../constants/colors';
+import { Modal } from '../../ui/Modal';
+import { Button } from '../../ui/Button';
+import { TextInput, TextArea, Field } from '../../ui/Input';
+import { Badge } from '../../ui/Badge';
 import type { ChipChange, SemverBump } from '../../parser/types';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -57,32 +62,28 @@ const BUMP_OPTIONS: Array<{
   bump: SemverBump;
   label: string;
   description: string;
-  badgeColor: string;
-  badgeBg: string;
+  colorKey: 'deprecated' | 'staging' | 'rolled-back';
   newVersion: string;
 }> = [
   {
     bump: 'patch',
     label: 'Patch',
     description: 'Bug fixes, minor wording changes, no structural changes',
-    badgeColor: '#6B7280',
-    badgeBg: '#F3F4F6',
+    colorKey: 'deprecated',
     newVersion: '2.1.1',
   },
   {
     bump: 'minor',
     label: 'Minor',
     description: 'New capabilities added, existing behavior preserved',
-    badgeColor: '#1E40AF',
-    badgeBg: '#DBEAFE',
+    colorKey: 'staging',
     newVersion: '2.2.0',
   },
   {
     bump: 'major',
     label: 'Major',
     description: 'Breaking changes, guards removed, logic restructured',
-    badgeColor: '#C2410C',
-    badgeBg: '#FFEDD5',
+    colorKey: 'rolled-back',
     newVersion: '3.0.0',
   },
 ];
@@ -95,18 +96,18 @@ const CANARY_STAGES = [
 
 // ─── Chip Change Badge ───────────────────────────────────────────────
 
+const chipChangeColors: Record<string, { bg: string; text: string; shadow: string }> = {
+  added:    { bg: statusColors.resolved.bg, text: statusColors.resolved.text, shadow: '0 0 8px rgba(34,197,94,0.3)' },
+  removed:  { bg: statusColors.unresolved.bg, text: statusColors.unresolved.text, shadow: '0 0 8px rgba(239,68,68,0.3)' },
+  modified: { bg: statusColors.draft.bg, text: statusColors.draft.text, shadow: '0 0 8px rgba(234,179,8,0.3)' },
+};
+
 function ChipChangeBadge({ change }: { change: ChipChange }) {
   const colors = CHIP_COLORS[change.chipType];
   const icon = CHIP_ICONS[change.chipType];
 
-  const glowStyles: Record<string, { bg: string; text: string; shadow: string }> = {
-    added:    { bg: '#DCFCE7', text: '#166534', shadow: '0 0 8px rgba(34,197,94,0.3)' },
-    removed:  { bg: '#FEE2E2', text: '#991B1B', shadow: '0 0 8px rgba(239,68,68,0.3)' },
-    modified: { bg: '#FEF9C3', text: '#854D0E', shadow: '0 0 8px rgba(234,179,8,0.3)' },
-  };
-
   const prefix = change.action === 'added' ? '+' : change.action === 'removed' ? '-' : '~';
-  const glow = glowStyles[change.action];
+  const glow = chipChangeColors[change.action];
 
   return (
     <span
@@ -147,29 +148,31 @@ function ReviewerPill({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white hover:border-gray-300 transition-colors group">
+    <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--color-border)] bg-white hover:border-[var(--color-border-strong)] transition-colors group">
       <Avatar name={reviewer.name} isGroup={reviewer.isGroup} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-gray-800 truncate">{reviewer.name}</span>
-          <span className="text-[10px] text-gray-400 px-1.5 py-0.5 rounded bg-gray-50 shrink-0">
+          <span className="text-xs font-medium text-[var(--color-text-primary)] truncate">{reviewer.name}</span>
+          <Badge size="xs" color="var(--color-text-tertiary)">
             {reviewer.role}
-          </span>
+          </Badge>
           {reviewer.isGroup && (
             <span className="text-[10px] text-blue-500 shrink-0">
               {reviewer.memberCount} members
             </span>
           )}
         </div>
-        <span className="text-[10px] text-gray-400 truncate block">{reviewer.email}</span>
+        <span className="text-[10px] text-[var(--color-text-tertiary)] truncate block">{reviewer.email}</span>
       </div>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={onRemove}
-        className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center text-xs shrink-0"
+        className="opacity-0 group-hover:opacity-100 !p-0 w-5 h-5 !rounded-full hover:!bg-red-50 !text-[var(--color-text-tertiary)] hover:!text-red-500"
         aria-label={`Remove ${reviewer.name}`}
       >
         x
-      </button>
+      </Button>
     </div>
   );
 }
@@ -228,406 +231,335 @@ export function PublishModal({ open, onClose, onPublish }: PublishModalProps) {
     onClose();
   };
 
-  if (!open) return null;
+  const footerContent = (
+    <>
+      <div className="text-[10px] text-[var(--color-text-tertiary)]">
+        {deployTarget === 'production' && reviewers.length === 0 ? (
+          <span className="text-amber-600 font-medium">
+            Production deploy requires at least 1 reviewer
+          </span>
+        ) : (
+          <span>
+            Publishing as{' '}
+            <span className="font-medium text-[var(--color-text-secondary)]">Wei Chen</span>
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="lg" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handlePublish}
+          disabled={deployTarget === 'production' && reviewers.length === 0}
+        >
+          Publish v{selectedBumpConfig.newVersion}
+          {deployTarget !== 'draft' && ` to ${deployTarget === 'staging' ? 'Staging' : 'Production'}`}
+        </Button>
+      </div>
+    </>
+  );
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100] transition-opacity duration-200"
-        onClick={onClose}
-      />
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      title="Publish New Version"
+      subtitle={`v${CURRENT_VERSION} -> v${selectedBumpConfig.newVersion}`}
+      footer={footerContent}
+    >
+      {/* ── Change Summary ────────────────────────────────────────── */}
+      <div className="px-0 py-3 border-b border-[var(--color-surface-2)] mb-4" style={{ background: 'var(--color-surface-1)', margin: '-20px -24px 16px', padding: '16px 24px' }}>
+        <h3 className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">
+          Change Summary
+        </h3>
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
-        <div
-          className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in"
-          style={{
-            animation: 'modalSlideUp 0.25s ease-out',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* ── Header ─────────────────────────────────────────────── */}
-          <div className="px-6 py-5 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Publish New Version
-                </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  v{CURRENT_VERSION}{' '}
-                  <span className="text-gray-300 mx-1">{'->'}</span>{' '}
-                  <span className="font-medium text-gray-700">
-                    v{selectedBumpConfig.newVersion}
-                  </span>
-                </p>
-              </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
-                aria-label="Close"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
+        {/* Chip change badges */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {chipChanges.map((c, i) => (
+            <ChipChangeBadge key={i} change={c} />
+          ))}
+        </div>
 
-          {/* ── Scrollable Content ─────────────────────────────────── */}
-          <div className="overflow-y-auto max-h-[calc(100vh-220px)]">
+        {/* Text summary */}
+        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+          {latestStaging?.changeSummary ||
+            'No changes detected.'}
+        </p>
+      </div>
 
-            {/* ── Change Summary ────────────────────────────────────── */}
-            <div className="px-6 py-4 border-b border-gray-50 bg-gray-50/50">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Change Summary
-              </h3>
+      {/* ── Semver Bump Selector ──────────────────────────────────── */}
+      <Field label="Version Bump">
+        <div className="space-y-2">
+          {BUMP_OPTIONS.map((opt) => {
+            const isSelected = selectedBump === opt.bump;
+            const isSuggested = opt.bump === DIFF_SUMMARY.suggestedBump;
+            const bumpColors = statusColors[opt.colorKey];
 
-              {/* Chip change badges */}
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {chipChanges.map((c, i) => (
-                  <ChipChangeBadge key={i} change={c} />
-                ))}
-              </div>
-
-              {/* Text summary */}
-              <p className="text-xs text-gray-600 leading-relaxed">
-                {latestStaging?.changeSummary ||
-                  'No changes detected.'}
-              </p>
-            </div>
-
-            {/* ── Semver Bump Selector ──────────────────────────────── */}
-            <div className="px-6 py-4 border-b border-gray-50">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Version Bump
-              </h3>
-
-              <div className="space-y-2">
-                {BUMP_OPTIONS.map((opt) => {
-                  const isSelected = selectedBump === opt.bump;
-                  const isSuggested = opt.bump === DIFF_SUMMARY.suggestedBump;
-
-                  return (
-                    <label
-                      key={opt.bump}
-                      className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-150 ${
-                        isSelected
-                          ? 'border-[#1A73E8] bg-blue-50/50 shadow-sm'
-                          : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50/50'
-                      }`}
-                    >
-                      {/* Radio circle */}
-                      <div className="pt-0.5 shrink-0">
-                        <div
-                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                            isSelected
-                              ? 'border-[#1A73E8]'
-                              : 'border-gray-300'
-                          }`}
-                        >
-                          {isSelected && (
-                            <div className="w-2 h-2 rounded-full bg-[#1A73E8]" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-[11px] font-bold px-2 py-0.5 rounded"
-                            style={{ background: opt.badgeBg, color: opt.badgeColor }}
-                          >
-                            {opt.label.toUpperCase()}
-                          </span>
-                          <span className="text-xs text-gray-700 font-medium">
-                            v{CURRENT_VERSION} {'->'} v{opt.newVersion}
-                          </span>
-                          {isSuggested && (
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-700">
-                              Suggested
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-gray-500 mt-1">{opt.description}</p>
-                        {isSuggested && (
-                          <p className="text-[10px] text-green-600 mt-1">
-                            {DIFF_SUMMARY.suggestedBumpReason}
-                          </p>
-                        )}
-                      </div>
-
-                      <input
-                        type="radio"
-                        name="semver-bump"
-                        className="sr-only"
-                        checked={isSelected}
-                        onChange={() => setSelectedBump(opt.bump)}
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ── Environment Deployment ────────────────────────────── */}
-            <div className="px-6 py-4 border-b border-gray-50">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Deploy To
-              </h3>
-
-              <div className="flex gap-2 mb-3">
-                {(
-                  [
-                    { key: 'draft', label: 'Draft only', icon: '○', desc: 'Save without deploying' },
-                    { key: 'staging', label: 'Staging', icon: '◐', desc: 'Deploy to staging environment' },
-                    { key: 'production', label: 'Production', icon: '●', desc: 'Deploy to production' },
-                  ] as const
-                ).map((t) => {
-                  const isSelected = deployTarget === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      onClick={() => setDeployTarget(t.key)}
-                      className={`flex-1 p-3 rounded-xl border-2 text-left transition-all duration-150 ${
-                        isSelected
-                          ? 'border-[#1A73E8] bg-blue-50/50 shadow-sm'
-                          : 'border-gray-100 hover:border-gray-200'
-                      }`}
-                    >
-                      <div className="text-base mb-1">{t.icon}</div>
-                      <div className="text-xs font-medium text-gray-800">{t.label}</div>
-                      <div className="text-[10px] text-gray-400 mt-0.5">{t.desc}</div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Production warning */}
-              {deployTarget === 'production' && (
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 mb-3">
-                  <span className="text-amber-500 text-sm shrink-0 mt-0.5">!</span>
-                  <div>
-                    <p className="text-xs text-amber-800 font-medium">
-                      Production deployment requires at least 1 reviewer approval
-                    </p>
-                    <p className="text-[10px] text-amber-600 mt-0.5">
-                      The version will be held in staging until all required approvals are obtained.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Canary toggle */}
-              {deployTarget !== 'draft' && (
-                <div className="mt-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className="text-xs font-medium text-gray-700">Canary rollout</span>
-                      <span className="text-[10px] text-gray-400 ml-2">
-                        Roll out gradually to minimize risk
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setCanaryEnabled(!canaryEnabled)}
-                      className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${
-                        canaryEnabled ? 'bg-[#1A73E8]' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
-                          canaryEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {canaryEnabled && (
-                    <div className="flex items-center gap-1 mt-2">
-                      {CANARY_STAGES.map((stage, i) => (
-                        <div key={i} className="flex items-center gap-1">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[11px] font-bold text-[#1A73E8]">{stage.pct}</span>
-                            <span className="text-[9px] text-gray-400">{stage.time}</span>
-                          </div>
-                          {i < CANARY_STAGES.length - 1 && (
-                            <div className="w-8 h-px bg-gray-300 mx-1" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* ── Reviewers ────────────────────────────────────────── */}
-            <div className="px-6 py-4 border-b border-gray-50">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Reviewers
-                </h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400">Approval policy:</span>
-                  <div className="flex rounded-md border border-gray-200 overflow-hidden">
-                    <button
-                      onClick={() => setApprovalMode('any')}
-                      className={`px-2 py-1 text-[10px] font-medium transition-colors ${
-                        approvalMode === 'any'
-                          ? 'bg-[#1A73E8] text-white'
-                          : 'bg-white text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      Any 1
-                    </button>
-                    <button
-                      onClick={() => setApprovalMode('all')}
-                      className={`px-2 py-1 text-[10px] font-medium border-l border-gray-200 transition-colors ${
-                        approvalMode === 'all'
-                          ? 'bg-[#1A73E8] text-white'
-                          : 'bg-white text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      All
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search input */}
-              <div className="relative mb-3">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  placeholder="Add people or groups..."
-                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]/20 bg-white placeholder-gray-400"
-                />
-
-                {/* Suggestions dropdown */}
-                {showSuggestions && filteredSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg z-10 overflow-hidden">
-                    {filteredSuggestions.map((s) => (
-                      <button
-                        key={s.email}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          addReviewer(s);
-                        }}
-                      >
-                        <Avatar name={s.name} isGroup={s.isGroup} />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-gray-800">{s.name}</span>
-                            <span className="text-[10px] text-gray-400 px-1 py-0.5 rounded bg-gray-50">
-                              {s.role}
-                            </span>
-                            {s.isGroup && (
-                              <span className="text-[10px] text-blue-500">
-                                {s.memberCount} members
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-gray-400">{s.email}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Selected reviewers */}
-              {reviewers.length > 0 ? (
-                <div className="space-y-1.5">
-                  {reviewers.map((r) => (
-                    <ReviewerPill
-                      key={r.email}
-                      reviewer={r}
-                      onRemove={() => removeReviewer(r.email)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-gray-400 py-2 text-center">
-                  No reviewers added. Add at least one reviewer for production deployments.
-                </p>
-              )}
-            </div>
-
-            {/* ── Change Description ───────────────────────────────── */}
-            <div className="px-6 py-4">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                Change Description
-                <span className="text-gray-300 font-normal ml-1">(optional)</span>
-              </h3>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add notes for reviewers... e.g. 'Added Slack integration per JIRA-1234. Removed legacy filter as it's superseded by apac-compliance-rules guard.'"
-                className="w-full px-3 py-2.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]/20 bg-white placeholder-gray-400 resize-none"
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* ── Footer ─────────────────────────────────────────────── */}
-          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/30 flex items-center justify-between">
-            <div className="text-[10px] text-gray-400">
-              {deployTarget === 'production' && reviewers.length === 0 ? (
-                <span className="text-amber-600 font-medium">
-                  Production deploy requires at least 1 reviewer
-                </span>
-              ) : (
-                <span>
-                  Publishing as{' '}
-                  <span className="font-medium text-gray-600">Wei Chen</span>
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePublish}
-                disabled={deployTarget === 'production' && reviewers.length === 0}
-                className={`px-5 py-2 rounded-lg text-xs font-medium text-white transition-all duration-150 ${
-                  deployTarget === 'production' && reviewers.length === 0
-                    ? 'bg-gray-300 cursor-not-allowed'
-                    : 'bg-[#1A73E8] hover:bg-[#1557B0] shadow-sm hover:shadow'
+            return (
+              <label
+                key={opt.bump}
+                className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all duration-150 ${
+                  isSelected
+                    ? 'border-[var(--color-accent)] bg-[var(--color-accent-light)] shadow-sm'
+                    : 'border-[var(--color-surface-2)] hover:border-[var(--color-border)] hover:bg-[var(--color-surface-1)]'
                 }`}
               >
-                Publish v{selectedBumpConfig.newVersion}
-                {deployTarget !== 'draft' && ` to ${deployTarget === 'staging' ? 'Staging' : 'Production'}`}
+                {/* Radio circle */}
+                <div className="pt-0.5 shrink-0">
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      isSelected
+                        ? 'border-[var(--color-accent)]'
+                        : 'border-[var(--color-border-strong)]'
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="w-2 h-2 rounded-full bg-[var(--color-accent)]" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      size="sm"
+                      bg={bumpColors.bg}
+                      color={bumpColors.text}
+                      className="font-bold"
+                    >
+                      {opt.label.toUpperCase()}
+                    </Badge>
+                    <span className="text-xs text-[var(--color-text-primary)] font-medium">
+                      v{CURRENT_VERSION} {'->'} v{opt.newVersion}
+                    </span>
+                    {isSuggested && (
+                      <Badge size="xs" bg={statusColors.resolved.bg} color={statusColors.resolved.text}>
+                        Suggested
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[var(--color-text-tertiary)] mt-1">{opt.description}</p>
+                  {isSuggested && (
+                    <p className="text-[10px] mt-1" style={{ color: statusColors.resolved.text }}>
+                      {DIFF_SUMMARY.suggestedBumpReason}
+                    </p>
+                  )}
+                </div>
+
+                <input
+                  type="radio"
+                  name="semver-bump"
+                  className="sr-only"
+                  checked={isSelected}
+                  onChange={() => setSelectedBump(opt.bump)}
+                />
+              </label>
+            );
+          })}
+        </div>
+      </Field>
+
+      {/* ── Environment Deployment ────────────────────────────────── */}
+      <Field label="Deploy To">
+        <div className="flex gap-2 mb-3">
+          {(
+            [
+              { key: 'draft', label: 'Draft only', icon: '\u25CB', desc: 'Save without deploying' },
+              { key: 'staging', label: 'Staging', icon: '\u25D0', desc: 'Deploy to staging environment' },
+              { key: 'production', label: 'Production', icon: '\u25CF', desc: 'Deploy to production' },
+            ] as const
+          ).map((t) => {
+            const isSelected = deployTarget === t.key;
+            return (
+              <Button
+                key={t.key}
+                variant={isSelected ? 'secondary' : 'ghost'}
+                onClick={() => setDeployTarget(t.key)}
+                className={`!flex-1 !p-3 !rounded-xl !border-2 !text-left !items-start !flex-col !h-auto ${
+                  isSelected
+                    ? '!border-[var(--color-accent)] !bg-[var(--color-accent-light)] shadow-sm'
+                    : '!border-[var(--color-surface-2)] hover:!border-[var(--color-border)]'
+                }`}
+              >
+                <div className="text-base mb-1">{t.icon}</div>
+                <div className="text-xs font-medium text-[var(--color-text-primary)]">{t.label}</div>
+                <div className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">{t.desc}</div>
+              </Button>
+            );
+          })}
+        </div>
+
+        {/* Production warning */}
+        {deployTarget === 'production' && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 mb-3">
+            <span className="text-amber-500 text-sm shrink-0 mt-0.5">!</span>
+            <div>
+              <p className="text-xs text-amber-800 font-medium">
+                Production deployment requires at least 1 reviewer approval
+              </p>
+              <p className="text-[10px] text-amber-600 mt-0.5">
+                The version will be held in staging until all required approvals are obtained.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Canary toggle */}
+        {deployTarget !== 'draft' && (
+          <div className="mt-3 p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-1)]">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <span className="text-xs font-medium text-[var(--color-text-primary)]">Canary rollout</span>
+                <span className="text-[10px] text-[var(--color-text-tertiary)] ml-2">
+                  Roll out gradually to minimize risk
+                </span>
+              </div>
+              <button
+                onClick={() => setCanaryEnabled(!canaryEnabled)}
+                className={`relative w-9 h-5 rounded-full transition-colors duration-200 ${
+                  canaryEnabled ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border-strong)]'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                    canaryEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
               </button>
+            </div>
+
+            {canaryEnabled && (
+              <div className="flex items-center gap-1 mt-2">
+                {CANARY_STAGES.map((stage, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[11px] font-bold text-[var(--color-accent)]">{stage.pct}</span>
+                      <span className="text-[9px] text-[var(--color-text-tertiary)]">{stage.time}</span>
+                    </div>
+                    {i < CANARY_STAGES.length - 1 && (
+                      <div className="w-8 h-px bg-[var(--color-border-strong)] mx-1" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Field>
+
+      {/* ── Reviewers ────────────────────────────────────────────── */}
+      <div className="mb-3.5">
+        <div className="flex items-center justify-between mb-3">
+          <label className="block text-[11px] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+            Reviewers
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--color-text-tertiary)]">Approval policy:</span>
+            <div className="flex rounded-md border border-[var(--color-border)] overflow-hidden">
+              <Button
+                variant={approvalMode === 'any' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setApprovalMode('any')}
+                className="!rounded-none !border-none"
+              >
+                Any 1
+              </Button>
+              <Button
+                variant={approvalMode === 'all' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setApprovalMode('all')}
+                className="!rounded-none !border-none !border-l !border-l-[var(--color-border)]"
+              >
+                All
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* Search input */}
+        <div className="relative mb-3">
+          <TextInput
+            inputSize="sm"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            placeholder="Add people or groups..."
+          />
+
+          {/* Suggestions dropdown */}
+          {showSuggestions && filteredSuggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg border border-[var(--color-border)] shadow-lg z-10 overflow-hidden">
+              {filteredSuggestions.map((s) => (
+                <button
+                  key={s.email}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-[var(--color-surface-1)] transition-colors text-left"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    addReviewer(s);
+                  }}
+                >
+                  <Avatar name={s.name} isGroup={s.isGroup} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-[var(--color-text-primary)]">{s.name}</span>
+                      <Badge size="xs" color="var(--color-text-tertiary)">
+                        {s.role}
+                      </Badge>
+                      {s.isGroup && (
+                        <span className="text-[10px] text-blue-500">
+                          {s.memberCount} members
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">{s.email}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Selected reviewers */}
+        {reviewers.length > 0 ? (
+          <div className="space-y-1.5">
+            {reviewers.map((r) => (
+              <ReviewerPill
+                key={r.email}
+                reviewer={r}
+                onRemove={() => removeReviewer(r.email)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-[var(--color-text-tertiary)] py-2 text-center">
+            No reviewers added. Add at least one reviewer for production deployments.
+          </p>
+        )}
       </div>
 
-      {/* Modal slide-up animation */}
-      <style>{`
-        @keyframes modalSlideUp {
-          from {
-            opacity: 0;
-            transform: translateY(12px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
-    </>
+      {/* ── Change Description ───────────────────────────────────── */}
+      <Field
+        label="Change Description"
+        hint="Optional"
+      >
+        <TextArea
+          inputSize="sm"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Add notes for reviewers... e.g. 'Added Slack integration per JIRA-1234. Removed legacy filter as it's superseded by apac-compliance-rules guard.'"
+          rows={3}
+          className="!resize-none"
+        />
+      </Field>
+    </Modal>
   );
 }

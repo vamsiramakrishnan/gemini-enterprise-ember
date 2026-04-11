@@ -3,9 +3,11 @@
  *
  * Renders a stack of toast notifications in the bottom-right corner.
  * Used by all screens for success/error/info feedback on user actions.
+ * Uses shared UI primitives: Button.
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { Button } from '../../ui/Button';
 
 export interface ToastNotification {
   id: string;
@@ -28,10 +30,10 @@ const ICONS: Record<ToastNotification['type'], string> = {
 };
 
 const COLORS: Record<ToastNotification['type'], { bg: string; border: string; icon: string; iconBg: string }> = {
-  success: { bg: '#F0FDF4', border: '#BBF7D0', icon: '#166534', iconBg: '#DCFCE7' },
-  error:   { bg: '#FEF2F2', border: '#FECACA', icon: '#991B1B', iconBg: '#FEE2E2' },
-  info:    { bg: '#EFF6FF', border: '#BFDBFE', icon: '#1E40AF', iconBg: '#DBEAFE' },
-  warning: { bg: '#FFFBEB', border: '#FDE68A', icon: '#92400E', iconBg: '#FEF3C7' },
+  success: { bg: 'var(--color-toast-success-bg, #F0FDF4)', border: 'var(--color-toast-success-border, #BBF7D0)', icon: 'var(--color-toast-success-icon, #166534)', iconBg: 'var(--color-toast-success-icon-bg, #DCFCE7)' },
+  error:   { bg: 'var(--color-toast-error-bg, #FEF2F2)',   border: 'var(--color-toast-error-border, #FECACA)',   icon: 'var(--color-toast-error-icon, #991B1B)',   iconBg: 'var(--color-toast-error-icon-bg, #FEE2E2)' },
+  info:    { bg: 'var(--color-toast-info-bg, #EFF6FF)',    border: 'var(--color-toast-info-border, #BFDBFE)',    icon: 'var(--color-toast-info-icon, #1E40AF)',    iconBg: 'var(--color-toast-info-icon-bg, #DBEAFE)' },
+  warning: { bg: 'var(--color-toast-warning-bg, #FFFBEB)', border: 'var(--color-toast-warning-border, #FDE68A)', icon: 'var(--color-toast-warning-icon, #92400E)', iconBg: 'var(--color-toast-warning-icon-bg, #FEF3C7)' },
 };
 
 function Toast({ notification, onDismiss }: { notification: ToastNotification; onDismiss: () => void }) {
@@ -77,13 +79,15 @@ function Toast({ notification, onDismiss }: { notification: ToastNotification; o
           </div>
         )}
       </div>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={dismiss}
-        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] hover:bg-black/5 transition-colors"
-        style={{ color: 'var(--color-text-tertiary)' }}
+        className="shrink-0 !p-0 !w-5 !h-5 !min-w-0 rounded-full"
+        aria-label="Dismiss notification"
       >
         x
-      </button>
+      </Button>
     </div>
   );
 }
