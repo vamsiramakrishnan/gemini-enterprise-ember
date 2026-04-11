@@ -160,7 +160,7 @@ const dialogVariants = {
     scale: 1,
     y: 0,
     transition: {
-      type: 'spring',
+      type: 'spring' as const,
       stiffness: 500,
       damping: 32,
       mass: 0.8,
@@ -172,7 +172,7 @@ const dialogVariants = {
     y: -8,
     transition: {
       duration: 0.15,
-      ease: [0.4, 0, 1, 1],
+      ease: [0.4, 0, 1, 1] as [number, number, number, number],
     },
   },
 };

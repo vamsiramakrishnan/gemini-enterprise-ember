@@ -2179,7 +2179,7 @@ function SortableCell({
       </div>
       {children({
         dragHandleListeners: listeners as Record<string, unknown>,
-        dragHandleAttributes: attributes as Record<string, unknown>,
+        dragHandleAttributes: attributes as unknown as Record<string, unknown>,
         isDragging,
       })}
     </div>

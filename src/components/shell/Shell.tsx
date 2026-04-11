@@ -22,8 +22,8 @@ import { CommandPalette, useCommandPalette } from '../shared/CommandPalette';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8, filter: 'blur(4px)' },
-  enter: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
-  exit: { opacity: 0, y: -6, filter: 'blur(2px)', transition: { duration: 0.15, ease: [0.4, 0, 1, 1] } },
+  enter: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } },
+  exit: { opacity: 0, y: -6, filter: 'blur(2px)', transition: { duration: 0.15, ease: [0.4, 0, 1, 1] as [number, number, number, number] } },
 };
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ export function Shell({ children }: { children: ReactNode }) {
           onClose={() => setCreateWizardOpen(false)}
           onCreate={(partial) => createChip(partial)}
         />
-        <CommandPalette open={commandPalette.open} onOpenChange={commandPalette.setOpen} />
+        <CommandPalette open={commandPalette.open} onClose={() => commandPalette.setOpen(false)} />
       </div>
     );
   }
@@ -155,7 +155,7 @@ export function Shell({ children }: { children: ReactNode }) {
         onClose={() => setCreateWizardOpen(false)}
         onCreate={(partial) => createChip(partial)}
       />
-      <CommandPalette open={commandPalette.open} onOpenChange={commandPalette.setOpen} />
+      <CommandPalette open={commandPalette.open} onClose={() => commandPalette.setOpen(false)} />
     </div>
   );
 }

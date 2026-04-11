@@ -447,7 +447,7 @@ function StatePreviewTable({
         >
           Before (full state)
         </div>
-        <div className="divide-y" style={{ divideColor: 'var(--color-border, #E5E7EB)' }}>
+        <div className="divide-y" style={{ borderColor: 'var(--color-border, #E5E7EB)' }}>
           {beforeEntries.map(e => (
             <div key={e.key} className="flex items-center px-3 py-1.5 gap-2">
               <span className="text-[11px] font-medium" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-text-secondary, #6B7280)' }}>
@@ -482,7 +482,7 @@ function StatePreviewTable({
         >
           After (transformed)
         </div>
-        <div className="divide-y" style={{ divideColor: C.border }}>
+        <div className="divide-y" style={{ borderColor: C.border }}>
           {afterEntries.map(e => (
             <div key={e.key} className="flex items-center px-3 py-1.5 gap-2">
               <span className="text-[11px] font-medium" style={{ fontFamily: 'var(--font-mono, monospace)', color: C.text }}>

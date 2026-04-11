@@ -31,11 +31,6 @@ function getStoredTheme(): Theme {
   return 'system';
 }
 
-function resolveTheme(theme: Theme): ResolvedTheme {
-  if (theme === 'system') return getSystemPreference();
-  return theme;
-}
-
 function applyThemeToDOM(resolved: ResolvedTheme) {
   if (resolved === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
