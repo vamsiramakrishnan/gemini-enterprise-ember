@@ -7,7 +7,7 @@
  * and Code Execution (the escape hatch).
  */
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useTest, useNotifications, useConnectors, useRegistry } from '../../contexts/AppContext';
 import { getAdkFluentService } from '../../services/adk-fluent';
@@ -15,6 +15,24 @@ import type { AssetCodeResult } from '../../services/adk-fluent';
 import type { SkillActivationResult } from '../../contexts/AppContext';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import type { ChipType } from '../../parser/types';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // ---------------------------------------------------------------------------
 // Add Cell Divider — shown between cells on hover
@@ -56,11 +74,41 @@ function AddCellDivider({ onInsertCell }: { onInsertCell?: (cellType: DynamicCel
   }, [showMenu]);
 
   return (
-    <div className="relative flex items-center justify-center h-2 group">
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-transparent group-hover:bg-gray-300 transition-colors" />
+    <div className="relative flex items-center justify-center h-3 group" style={{ margin: '2px 0' }}>
+      <div
+        className="absolute inset-x-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100"
+        style={{
+          height: 1,
+          background: 'linear-gradient(90deg, transparent, var(--color-border-strong), transparent)',
+          transition: 'opacity 200ms ease-out',
+        }}
+      />
       <button
         onClick={() => setShowMenu((v) => !v)}
-        className="relative z-10 w-6 h-6 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-gray-600 hover:border-gray-400 text-sm leading-none opacity-0 group-hover:opacity-100 transition-all shadow-sm flex items-center justify-center"
+        className="relative z-10 flex items-center justify-center opacity-0 group-hover:opacity-100"
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: '50%',
+          background: 'var(--color-surface-0)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-text-tertiary)',
+          fontSize: 13,
+          lineHeight: 1,
+          boxShadow: 'var(--shadow-xs)',
+          transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--color-accent)';
+          e.currentTarget.style.color = 'var(--color-accent)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-sm), 0 0 0 3px rgba(37,99,235,0.08)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--color-border)';
+          e.currentTarget.style.color = 'var(--color-text-tertiary)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+        }}
         title="Add cell"
       >
         +
@@ -68,9 +116,24 @@ function AddCellDivider({ onInsertCell }: { onInsertCell?: (cellType: DynamicCel
       {showMenu && (
         <div
           ref={menuRef}
-          className="absolute top-7 z-50 bg-white rounded-lg border border-gray-200 shadow-lg py-1 min-w-[160px]"
+          className="absolute top-8 z-50 py-1.5"
+          style={{
+            minWidth: 180,
+            background: 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-xl)',
+            animation: 'fadeInScaleSpring 200ms ease-out',
+          }}
         >
-          <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Add cell</div>
+          <div
+            className="px-3 py-1.5"
+            style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-ui)' }}
+          >
+            Add cell
+          </div>
           {CELL_TYPES.map((ct) => (
             <button
               key={ct.label}
@@ -82,11 +145,36 @@ function AddCellDivider({ onInsertCell }: { onInsertCell?: (cellType: DynamicCel
                   addNotification({ type: 'info', title: 'Add cell', message: `${ct.label} cell would be inserted here` });
                 }
               }}
-              className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
+              className="w-full text-left flex items-center gap-2.5 px-3 py-2"
+              style={{
+                fontSize: 12,
+                color: 'var(--color-text-secondary)',
+                fontFamily: 'var(--font-ui)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 120ms ease-out',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--color-surface-2)';
+                e.currentTarget.style.color = 'var(--color-text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'var(--color-text-secondary)';
+              }}
             >
-              <span className="w-4 flex items-center justify-center">{ct.icon}</span>
-              <span className="flex-1">{ct.label}</span>
-              <span className="w-2 h-2 rounded-full" style={{ background: ct.borderColor }} />
+              <span className="w-4 flex items-center justify-center" style={{ fontSize: 13 }}>{ct.icon}</span>
+              <span className="flex-1 font-medium">{ct.label}</span>
+              <span
+                className="rounded-full"
+                style={{
+                  width: 7,
+                  height: 7,
+                  background: ct.borderColor,
+                  boxShadow: `0 0 4px ${ct.borderColor}30`,
+                }}
+              />
             </button>
           ))}
         </div>
@@ -118,35 +206,94 @@ function CellCodePreview({ type, name, description }: { type: string; name: stri
   }, [open, code, type, name, description]);
 
   return (
-    <div className="mt-2 border-t border-gray-100 pt-2">
+    <div style={{ marginTop: 10, borderTop: '1px solid var(--color-border-subtle)', paddingTop: 10 }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+        className="flex items-center gap-1.5"
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: 'var(--color-chip-skill)',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 0,
+          fontFamily: 'var(--font-ui)',
+          transition: 'opacity 150ms ease-out',
+        }}
       >
-        <span>{open ? '\u25BE' : '\u25B8'}</span>
-        <span className="font-mono">adk-fluent</span> code
+        <span style={{ fontSize: 9 }}>{open ? '\u25BE' : '\u25B8'}</span>
+        <span style={{ fontFamily: 'var(--font-mono)' }}>adk-fluent</span> code
       </button>
       {open && (
-        <div className="mt-1.5 rounded-lg overflow-hidden border border-gray-200">
+        <div
+          className="mt-1.5 overflow-hidden"
+          style={{
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+          }}
+        >
           {loading ? (
-            <div className="px-3 py-2 text-[10px] text-gray-400">Generating...</div>
+            <div style={{ padding: '10px 14px', fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)' }}>
+              Generating...
+            </div>
           ) : code ? (
             <>
-              <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-                <span className="text-[9px] font-semibold text-gray-500 uppercase">Expression</span>
-                <code className="text-[10px] font-mono text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded">{code.expression}</code>
+              <div
+                className="flex items-center gap-2"
+                style={{
+                  padding: '8px 14px',
+                  background: 'var(--color-surface-1)',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+              >
+                <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-text-tertiary)', textTransform: 'uppercase', fontFamily: 'var(--font-ui)' }}>Expression</span>
+                <code
+                  style={{
+                    fontSize: 10,
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--color-chip-skill)',
+                    background: '#F5F3FF',
+                    padding: '2px 6px',
+                    borderRadius: 'var(--radius-xs)',
+                  }}
+                >
+                  {code.expression}
+                </code>
               </div>
-              <pre className="m-0 px-3 py-2 text-[10px] leading-relaxed font-mono text-gray-200 overflow-x-auto max-h-48 overflow-y-auto" style={{ background: '#1E1E2E' }}>
+              <pre
+                className="m-0 overflow-x-auto max-h-48 overflow-y-auto scrollbar-thin"
+                style={{
+                  padding: '12px 14px',
+                  fontSize: 10,
+                  lineHeight: 1.7,
+                  fontFamily: 'var(--font-mono)',
+                  color: '#CBD5E1',
+                  background: '#1A1B2E',
+                }}
+              >
                 {code.python}
               </pre>
-              <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-200 flex items-center gap-2 text-[9px] text-gray-500">
-                <span className="font-semibold uppercase">Ref</span>
-                <code className="font-mono text-[10px]">{code.playbookRef}</code>
+              <div
+                className="flex items-center gap-2"
+                style={{
+                  padding: '6px 14px',
+                  background: 'var(--color-surface-1)',
+                  borderTop: '1px solid var(--color-border)',
+                  fontSize: 9,
+                  color: 'var(--color-text-tertiary)',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                <span style={{ fontWeight: 600, textTransform: 'uppercase' }}>Ref</span>
+                <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10 }}>{code.playbookRef}</code>
                 <span className="ml-auto">{code.dependencies.join(', ')}</span>
               </div>
             </>
           ) : (
-            <div className="px-3 py-2 text-[10px] text-gray-400">No preview available</div>
+            <div style={{ padding: '10px 14px', fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)' }}>
+              No preview available
+            </div>
           )}
         </div>
       )}
@@ -384,10 +531,16 @@ function Chip({ kind, label }: { kind: ChipKind; label: string }) {
   const c = CHIP_SOFT[kind];
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold mx-0.5 whitespace-nowrap"
-      style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}
+      className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-semibold mx-0.5 whitespace-nowrap"
+      style={{
+        background: `linear-gradient(135deg, ${c.bg}, ${c.border}30)`,
+        color: c.text,
+        border: `1px solid ${c.border}`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px ${c.accent}08`,
+        letterSpacing: '-0.01em',
+      }}
     >
-      @{kind}({label})
+      <span style={{ opacity: 0.6, marginRight: 1 }}>@</span>{kind}({label})
     </span>
   );
 }
@@ -411,46 +564,62 @@ function Cell({
 
   return (
     <div
-      className="rounded-xl bg-white shadow-sm overflow-hidden transition-all hover:shadow-md group/cell relative"
+      className="overflow-hidden group/cell relative"
       style={{
+        borderRadius: 'var(--radius-lg)',
+        background: 'var(--color-surface-0)',
+        border: '1px solid var(--color-border)',
         borderLeft: warningStripe
-          ? undefined
+          ? `1px solid var(--color-border)`
           : `4px solid ${borderColor}`,
         backgroundImage: warningStripe
-          ? `repeating-linear-gradient(135deg, transparent, transparent 6px, ${borderColor}15 6px, ${borderColor}15 12px)`
+          ? `repeating-linear-gradient(135deg, transparent, transparent 6px, ${borderColor}08 6px, ${borderColor}08 12px)`
           : undefined,
-        borderLeftWidth: warningStripe ? undefined : 4,
+        boxShadow: 'var(--shadow-xs)',
+        transition: 'all 220ms cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = `var(--shadow-md), 0 0 0 1px ${borderColor}10`;
+        e.currentTarget.style.borderColor = warningStripe ? 'var(--color-border-strong)' : borderColor;
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+        e.currentTarget.style.borderColor = warningStripe ? 'var(--color-border)' : borderColor;
+        e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
       {warningStripe && (
         <div
-          className="h-1"
           style={{
+            height: 3,
             background: `repeating-linear-gradient(90deg, ${borderColor}, ${borderColor} 8px, transparent 8px, transparent 16px)`,
+            opacity: 0.6,
           }}
         />
       )}
-      {/* Drag handle — visual only */}
-      <div
-        className="absolute left-0 top-0 bottom-0 w-6 flex items-start pt-5 justify-center opacity-0 group-hover/cell:opacity-40 transition-opacity cursor-grab z-10"
-        title="Drag to reorder"
-        style={{ marginLeft: warningStripe ? 0 : -2 }}
-      >
-        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
-          <circle cx="2.5" cy="2" r="1.2" fill="#9CA3AF" />
-          <circle cx="7.5" cy="2" r="1.2" fill="#9CA3AF" />
-          <circle cx="2.5" cy="6" r="1.2" fill="#9CA3AF" />
-          <circle cx="7.5" cy="6" r="1.2" fill="#9CA3AF" />
-          <circle cx="2.5" cy="10" r="1.2" fill="#9CA3AF" />
-          <circle cx="7.5" cy="10" r="1.2" fill="#9CA3AF" />
-          <circle cx="2.5" cy="14" r="1.2" fill="#9CA3AF" />
-          <circle cx="7.5" cy="14" r="1.2" fill="#9CA3AF" />
-        </svg>
-      </div>
       {/* Collapse/expand toggle */}
       <button
         onClick={() => setCollapsed((v) => !v)}
-        className="absolute right-3 top-3.5 z-10 w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all opacity-0 group-hover/cell:opacity-100"
+        className="absolute right-3 top-3.5 z-10 flex items-center justify-center opacity-0 group-hover/cell:opacity-100"
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 'var(--radius-sm)',
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--color-text-tertiary)',
+          cursor: 'pointer',
+          transition: 'all 150ms ease-out',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'var(--color-surface-2)';
+          e.currentTarget.style.color = 'var(--color-text-secondary)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--color-text-tertiary)';
+        }}
         title={collapsed ? 'Expand cell' : 'Collapse cell'}
       >
         <svg
@@ -458,17 +627,49 @@ function Cell({
           height="12"
           viewBox="0 0 12 12"
           fill="none"
-          className="transition-transform"
-          style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+          style={{
+            transition: 'transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+          }}
         >
           <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       <div className={warningStripe ? 'border-l-4' : ''} style={warningStripe ? { borderColor } : {}}>
         {collapsed ? (
-          <div className="px-5 py-3 flex items-center gap-2 cursor-pointer select-none" onClick={() => setCollapsed(false)}>
-            <span className="text-xs font-medium text-gray-400" style={{ fontFamily: 'var(--font-ui)' }}>
-              {headerLabel || 'Cell'} <span className="text-[10px]">(collapsed)</span>
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={() => setCollapsed(false)}
+            style={{ padding: '12px 20px' }}
+          >
+            <span
+              className="rounded-full"
+              style={{
+                width: 7,
+                height: 7,
+                background: borderColor,
+                boxShadow: `0 0 4px ${borderColor}30`,
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--color-text-tertiary)',
+                fontFamily: 'var(--font-ui)',
+              }}
+            >
+              {headerLabel || 'Cell'}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                color: 'var(--color-text-quaternary)',
+                fontFamily: 'var(--font-ui)',
+              }}
+            >
+              (collapsed)
             </span>
           </div>
         ) : (
@@ -1896,6 +2097,96 @@ function CodeExecutionCell() {
 }
 
 // ---------------------------------------------------------------------------
+// Sortable cell wrapper — wraps each notebook cell for drag-to-reorder
+// ---------------------------------------------------------------------------
+
+interface NotebookCellItem {
+  id: string;
+  type: 'trigger' | 'playbook' | 'tool' | 'test' | 'skill' | 'connector' | 'schema' | 'code-execution' | 'dynamic';
+  dynamicCell?: DynamicCell;
+}
+
+function SortableCell({
+  item,
+  children,
+}: {
+  item: NotebookCellItem;
+  children: (props: {
+    dragHandleListeners: Record<string, unknown>;
+    dragHandleAttributes: Record<string, unknown>;
+    isDragging: boolean;
+  }) => React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    position: 'relative' as const,
+    // When dragging, dim the original slot so the overlay stands out
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group/sortable">
+      {/* Placeholder dashed border shown when this cell is being dragged away */}
+      {isDragging && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            border: '2px dashed var(--color-border-strong)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--color-surface-1)',
+            zIndex: 1,
+          }}
+        />
+      )}
+      {/* Sortable drag handle overlay — positioned over the Cell's visual drag handle area */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-7 flex items-start pt-5 justify-center opacity-0 group-hover/sortable:opacity-100 z-20"
+        style={{
+          color: 'var(--color-text-quaternary)',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          transition: 'opacity 150ms ease-out, color 150ms ease-out',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'var(--color-text-secondary)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--color-text-quaternary)';
+        }}
+        {...attributes}
+        {...listeners}
+      >
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none">
+          <circle cx="2.5" cy="2" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="2" r="1.2" fill="currentColor" />
+          <circle cx="2.5" cy="6" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="6" r="1.2" fill="currentColor" />
+          <circle cx="2.5" cy="10" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="10" r="1.2" fill="currentColor" />
+          <circle cx="2.5" cy="14" r="1.2" fill="currentColor" />
+          <circle cx="7.5" cy="14" r="1.2" fill="currentColor" />
+        </svg>
+      </div>
+      {children({
+        dragHandleListeners: listeners as Record<string, unknown>,
+        dragHandleAttributes: attributes as unknown as Record<string, unknown>,
+        isDragging,
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main NotebookView export
 // ---------------------------------------------------------------------------
 
@@ -1905,6 +2196,77 @@ export function NotebookView() {
   const [dynamicCells, setDynamicCells] = useState<DynamicCell[]>([]);
   const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const [createWizardType, setCreateWizardType] = useState<ChipType | undefined>(undefined);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Stable IDs for the 8 static cells
+  const STATIC_CELLS: NotebookCellItem[] = useMemo(() => [
+    { id: 'static-trigger', type: 'trigger' as const },
+    { id: 'static-playbook', type: 'playbook' as const },
+    { id: 'static-tool', type: 'tool' as const },
+    { id: 'static-test', type: 'test' as const },
+    { id: 'static-skill', type: 'skill' as const },
+    { id: 'static-connector', type: 'connector' as const },
+    { id: 'static-schema', type: 'schema' as const },
+    { id: 'static-code-execution', type: 'code-execution' as const },
+  ], []);
+
+  // Unified ordered cell list: static + dynamic
+  const [cellOrder, setCellOrder] = useState<string[]>(() =>
+    STATIC_CELLS.map((c) => c.id)
+  );
+
+  // Rebuild the full ordered items list from cellOrder + dynamicCells
+  const orderedItems: NotebookCellItem[] = useMemo(() => {
+    const staticMap = new Map(STATIC_CELLS.map((c) => [c.id, c]));
+    const dynamicMap = new Map(dynamicCells.map((c) => [c.id, { id: c.id, type: 'dynamic' as const, dynamicCell: c }]));
+
+    // Start from cellOrder, resolving each ID
+    const result: NotebookCellItem[] = [];
+    for (const id of cellOrder) {
+      const s = staticMap.get(id);
+      if (s) { result.push(s); continue; }
+      const d = dynamicMap.get(id);
+      if (d) { result.push(d); continue; }
+      // ID not found — skip (was removed)
+    }
+    // Append any dynamic cells not yet in cellOrder (newly added)
+    for (const dc of dynamicCells) {
+      if (!cellOrder.includes(dc.id)) {
+        result.push({ id: dc.id, type: 'dynamic', dynamicCell: dc });
+      }
+    }
+    return result;
+  }, [cellOrder, dynamicCells, STATIC_CELLS]);
+
+  const cellIds = useMemo(() => orderedItems.map((item) => item.id), [orderedItems]);
+
+  // Sensors for dnd-kit
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor)
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = cellIds.indexOf(active.id as string);
+    const newIndex = cellIds.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    setCellOrder(arrayMove(cellIds, oldIndex, newIndex));
+  }, [cellIds]);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveDragId(null);
+  }, []);
 
   const cellTypeToChipType: Record<DynamicCellType, ChipType | null> = {
     tool: 'tool',
@@ -1926,12 +2288,14 @@ export function NotebookView() {
       // For playbook, test, code cells — insert directly
       const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setDynamicCells((prev) => [...prev, { id, cellType, name: '', createdAt: Date.now() }]);
+      setCellOrder((prev) => [...prev, id]);
       addNotification({ type: 'success', title: `${cellType} cell added`, message: 'New cell inserted at the bottom of the notebook.' });
     }
   }, [addNotification]);
 
   const handleRemoveCell = useCallback((id: string) => {
     setDynamicCells((prev) => prev.filter((c) => c.id !== id));
+    setCellOrder((prev) => prev.filter((cid) => cid !== id));
     addNotification({ type: 'info', title: 'Cell removed' });
   }, [addNotification]);
 
@@ -1944,37 +2308,127 @@ export function NotebookView() {
       : 'playbook';
     const id = `cell-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     setDynamicCells((prev) => [...prev, { id, cellType, name: partial.name, createdAt: Date.now() }]);
+    setCellOrder((prev) => [...prev, id]);
   }, [createChip]);
 
-  const totalCells = 8 + dynamicCells.length;
+  // Render a cell by its item descriptor
+  // dragProps are available for future per-cell drag styling if needed
+  const renderCellContent = (
+    item: NotebookCellItem,
+    _dragProps: { dragHandleListeners: Record<string, unknown>; dragHandleAttributes: Record<string, unknown>; isDragging: boolean },
+  ) => {
+    switch (item.type) {
+      case 'trigger': return <TriggerCell />;
+      case 'playbook': return <PlaybookCell />;
+      case 'tool': return <ToolCell />;
+      case 'test': return <TestCell />;
+      case 'skill': return <SkillCell />;
+      case 'connector': return <ConnectorCell />;
+      case 'schema': return <SchemaCell />;
+      case 'code-execution': return <CodeExecutionCell />;
+      case 'dynamic':
+        if (item.dynamicCell) {
+          return <DynamicCellRenderer cell={item.dynamicCell} onRemove={() => handleRemoveCell(item.id)} />;
+        }
+        return null;
+      default: return null;
+    }
+  };
+
+  // For DragOverlay: find the currently dragged item and render a static preview
+  const activeDragItem = activeDragId ? orderedItems.find((item) => item.id === activeDragId) : null;
+
+  const totalCells = orderedItems.length;
 
   return (
     <div
-      className="h-full"
+      className="h-full overflow-auto"
       style={{
-        background: '#FAFAF9',
-        backgroundImage: 'radial-gradient(circle, #D1D5DB 0.5px, transparent 0.5px)',
-        backgroundSize: '20px 20px',
+        background: 'var(--color-surface-1)',
+        backgroundImage: 'radial-gradient(circle, var(--color-border) 0.5px, transparent 0.5px)',
+        backgroundSize: '24px 24px',
       }}
     >
       {/* Top bar */}
-      <header className="border-b border-[var(--color-border)] bg-white/90 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between">
+      <header
+        className="sticky top-0 z-50"
+        style={{
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+      >
+        <div className="max-w-4xl mx-auto flex items-center justify-between" style={{ padding: '12px 24px' }}>
           <div className="flex items-center gap-3">
+            <div
+              className="flex items-center justify-center shrink-0"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, var(--color-surface-2), var(--color-surface-3))',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="2" y="2" width="10" height="10" rx="2" stroke="var(--color-text-secondary)" strokeWidth="1.3"/>
+                <path d="M4.5 5.5h5M4.5 7.5h3.5M4.5 9.5h4.5" stroke="var(--color-text-secondary)" strokeWidth="1" strokeLinecap="round"/>
+              </svg>
+            </div>
             <div>
-              <h1 className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'var(--font-ui)' }}>
+              <h1
+                style={{
+                  fontSize: 14,
+                  fontWeight: 650,
+                  color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-ui)',
+                  letterSpacing: '-0.015em',
+                  margin: 0,
+                }}
+              >
                 Claims Processing Agent
               </h1>
-              <span className="text-[10px] text-gray-500">Notebook View &mdash; {totalCells} cells</span>
+              <span
+                style={{
+                  fontSize: 10.5,
+                  color: 'var(--color-text-tertiary)',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                Notebook View &mdash; {totalCells} cells
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-flex items-center gap-1.5"
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                padding: '3px 10px',
+                borderRadius: 'var(--radius-sm)',
+                background: '#ECFDF5',
+                color: '#047857',
+                fontFamily: 'var(--font-ui)',
+              }}
+            >
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#16A34A', boxShadow: '0 0 4px rgba(22,163,74,0.3)' }} />
               v2.1 Production
             </span>
             <Link
               to="/editor"
-              className="text-xs font-medium text-[var(--color-accent)] hover:underline"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--color-accent)',
+                fontFamily: 'var(--font-ui)',
+                textDecoration: 'none',
+                padding: '4px 10px',
+                borderRadius: 'var(--radius-sm)',
+                transition: 'all 150ms ease-out',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-accent-light)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               Open in Editor
             </Link>
@@ -1982,45 +2436,84 @@ export function NotebookView() {
         </div>
       </header>
 
-      {/* Notebook cells */}
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-1">
-        <TriggerCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <PlaybookCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <ToolCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <TestCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <SkillCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <ConnectorCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <SchemaCell />
-        <AddCellDivider onInsertCell={handleInsertCell} />
-        <CodeExecutionCell />
+      {/* Notebook cells with drag-to-reorder */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <SortableContext items={cellIds} strategy={verticalListSortingStrategy}>
+          <div className="max-w-4xl mx-auto space-y-1" style={{ padding: '32px 24px' }}>
+            {orderedItems.map((item, idx) => (
+              <div key={item.id}>
+                {idx > 0 && <AddCellDivider onInsertCell={handleInsertCell} />}
+                <SortableCell item={item}>
+                  {(dragProps) => renderCellContent(item, dragProps)}
+                </SortableCell>
+              </div>
+            ))}
 
-        {/* Dynamic cells */}
-        {dynamicCells.map((cell) => (
-          <div key={cell.id}>
-            <AddCellDivider onInsertCell={handleInsertCell} />
-            <DynamicCellRenderer cell={cell} onRemove={() => handleRemoveCell(cell.id)} />
+            {/* Add cell button */}
+            <div className="flex justify-center" style={{ padding: '20px 0' }}>
+              <button
+                onClick={() => {
+                  setCreateWizardType(undefined);
+                  setCreateWizardOpen(true);
+                }}
+                className="flex items-center gap-2"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--color-text-tertiary)',
+                  background: 'var(--color-surface-0)',
+                  border: '1px dashed var(--color-border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '9px 24px',
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                  transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-accent)';
+                  e.currentTarget.style.color = 'var(--color-accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.06)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--color-border-strong)';
+                  e.currentTarget.style.color = 'var(--color-text-tertiary)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> Add Cell
+              </button>
+            </div>
           </div>
-        ))}
+        </SortableContext>
 
-        {/* Add cell button */}
-        <div className="flex justify-center py-4">
-          <button
-            onClick={() => {
-              setCreateWizardType(undefined);
-              setCreateWizardOpen(true);
-            }}
-            className="text-xs font-medium text-gray-500 bg-white border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-700 px-6 py-2 rounded-lg transition-all flex items-center gap-1.5"
-          >
-            <span className="text-base">+</span> Add Cell
-          </button>
-        </div>
-      </div>
+        {/* Drag overlay — renders a lightweight preview of the dragged cell */}
+        <DragOverlay dropAnimation={null}>
+          {activeDragItem ? (
+            <div
+              style={{
+                opacity: 0.85,
+                boxShadow: '0 16px 32px rgba(0,0,0,0.18), 0 6px 12px rgba(0,0,0,0.1)',
+                borderRadius: 'var(--radius-lg)',
+                transform: 'scale(1.02)',
+                pointerEvents: 'none',
+                maxWidth: '100%',
+              }}
+            >
+              {renderCellContent(activeDragItem, {
+                dragHandleListeners: {},
+                dragHandleAttributes: {},
+                isDragging: true,
+              })}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <CreateAssetWizard
         isOpen={createWizardOpen}

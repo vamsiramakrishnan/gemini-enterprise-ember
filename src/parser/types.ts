@@ -25,6 +25,33 @@ export type ChipType =
 
 export type ChipStatus = 'resolved' | 'draft' | 'unresolved' | 'deprecated';
 
+/** Visibility level for a chip — mirrors workspace visibility model. */
+export type ChipVisibility =
+  | 'private'      // only the owning workspace
+  | 'shared'       // explicit cross-workspace grants (see ChipScope.sharedWith)
+  | 'org-catalog'  // discoverable org-wide
+  | 'published';   // external marketplace
+
+/**
+ * ChipScope — Where a chip lives and who can see it.
+ *
+ * Every chip is owned by exactly ONE workspace. Cross-workspace access
+ * is granted via `visibility` and `sharedWith`. The registry is a flat
+ * pool; the workspace-scoped view is computed by filtering on scope.
+ */
+export interface ChipScope {
+  /** The workspace that owns this chip (source of truth, single home). */
+  workspaceId: string;
+  /** Who outside the owning workspace can see / invoke it. */
+  visibility: ChipVisibility;
+  /** Explicit cross-workspace grants (used when visibility = 'shared'). */
+  sharedWith?: {
+    workspaceIds?: string[];
+    groups?: string[];
+    users?: string[];
+  };
+}
+
 export interface SmartChip {
   id: string;
   type: ChipType;
@@ -37,6 +64,8 @@ export interface SmartChip {
   permissions: {
     currentUser: 'viewer' | 'invoker' | 'editor' | 'admin';
   };
+  /** Workspace ownership + visibility. Required; registry filters on this. */
+  scope: ChipScope;
   metadata: Record<string, unknown>;
   lastUpdated: string;
   usageCount: number;
@@ -159,6 +188,138 @@ export interface TriggerMetadata {
   payloadSchema?: Record<string, unknown>;
   // GCP mapping
   gcpService: 'gemini-enterprise' | 'pubsub' | 'eventarc' | 'cloud-scheduler' | 'cloud-functions';
+}
+
+// ─── Tool Metadata (maps to FunctionTool / MCPToolset / OpenAPIToolset) ──
+
+export type ToolKind = 'function' | 'mcp' | 'openapi' | 'toolbox';
+export type ToolAuthMethod = 'none' | 'api-key' | 'oauth' | 'service-account';
+
+export interface ToolParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  required: boolean;
+  description: string;
+  default?: string;
+  validation?: string;
+}
+
+export interface ToolMetadata {
+  toolKind: ToolKind;
+  endpoint?: string;
+  authMethod: ToolAuthMethod;
+  parameters: ToolParameter[];
+  // MCP-specific
+  mcpTransport?: 'stdio' | 'sse' | 'streamable-http';
+  mcpCommand?: string;
+  mcpArgs?: string[];
+  mcpEnvVars?: Record<string, string>;
+  // OpenAPI-specific
+  openapiSpecUrl?: string;
+  openapiSelectedEndpoints?: string[];
+  // Health
+  healthStatus: 'healthy' | 'degraded' | 'down';
+  latencyP50Ms?: number;
+  latencyP99Ms?: number;
+}
+
+// ─── Agent Metadata (maps to Agent builder) ──────────────────────────
+
+export type AgentModel = 'gemini-2.5-pro' | 'gemini-2.5-flash' | 'gemini-2.0-flash' | 'gemini-2.0-flash-lite';
+
+export interface AgentMetadata {
+  model: AgentModel;
+  instructions: string;
+  maxTurns: number;
+  tools: string[];       // @tool references
+  guards: string[];      // @guard references
+  delegatesTo: string[]; // @agent references
+  outputSchema?: string; // @schema reference
+  outputKey?: string;
+  contextStrategy: {
+    windowSize: number;
+    stateInjections: string[];
+    filterMode: 'all' | 'user_only' | 'relevant';
+    summarize: boolean;
+  };
+  a2aConfig: {
+    mode: 'local' | 'remote';
+    endpointUrl?: string;
+    discoveryDomain?: string;
+  };
+}
+
+// ─── Doc Metadata (maps to VertexAiSearchTool / DiscoveryEngineSearchTool) ──
+
+export type DocSourceType = 'vertex-ai-search' | 'discovery-engine' | 'manual';
+
+export interface DocDocument {
+  name: string;
+  type: string;
+  size: string;
+  indexed: boolean;
+}
+
+export interface DocMetadata {
+  sourceType: DocSourceType;
+  dataStoreId?: string;
+  dataStoreRegion?: string;
+  projectId?: string;
+  documents: DocDocument[];
+  indexingStatus: 'indexed' | 'indexing' | 'pending' | 'error';
+  documentCount: number;
+}
+
+// ─── Data Metadata (maps to S namespace transforms) ──────────────────
+
+export type DataTransformKind = 'capture' | 'pick' | 'rename' | 'merge';
+
+export interface DataTransform {
+  kind: DataTransformKind;
+  // capture
+  captureKey?: string;
+  captureType?: string;
+  // pick
+  pickKeys?: string[];
+  // rename
+  renameFrom?: string;
+  renameTo?: string;
+  // merge
+  mergeSource?: string;
+}
+
+export interface DataStateKey {
+  key: string;
+  type: string;
+  description: string;
+}
+
+export interface DataMetadata {
+  transforms: DataTransform[];
+  sourceConnection: 'bigquery' | 'sheets' | 'state' | 'none';
+  sourceReference?: string;
+  stateKeys: DataStateKey[];
+}
+
+// ─── Schema Metadata (maps to agent @ OutputSchema) ──────────────────
+
+export type SchemaFieldType = 'str' | 'int' | 'float' | 'bool' | 'list' | 'dict' | 'Optional';
+
+export interface SchemaField {
+  name: string;
+  type: SchemaFieldType;
+  required: boolean;
+  description: string;
+  validation?: string;
+  default?: string;
+  children?: SchemaField[];
+}
+
+export interface SchemaMetadata {
+  fields: SchemaField[];
+  pydanticClassName: string;
+  jsonSchemaRaw?: string;
+  a2uiSurface?: string;
 }
 
 // ─── Compiled Graph IR (maps to adk-fluent _ir.py + _ir_generated.py) ──

@@ -6,9 +6,19 @@
  * resolution, the Registry Browser (Screen 3), and chip autocomplete.
  */
 
-import type { SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../parser/types';
+import type { SmartChip, ChipScope, ConnectorMetadata, SkillMetadata, TriggerMetadata, ToolMetadata, AgentMetadata, DocMetadata, DataMetadata, SchemaMetadata } from '../parser/types';
+import { WORKSPACE_IDS } from './workspaces';
 
 // ─── Helper ───────────────────────────────────────────────────────────
+
+/**
+ * Default scope — overwritten per-chip by WORKSPACE_ASSIGNMENTS post-step.
+ * Present so the chip() factory always returns a well-typed SmartChip.
+ */
+const DEFAULT_SCOPE: ChipScope = {
+  workspaceId: WORKSPACE_IDS.PLATFORM,
+  visibility: 'org-catalog',
+};
 
 function chip(
   id: string,
@@ -26,6 +36,7 @@ function chip(
     owner: 'platform-team@acme.com',
     description: '',
     permissions: { currentUser: 'invoker' },
+    scope: DEFAULT_SCOPE,
     metadata: {},
     lastUpdated: '2026-03-20T10:00:00Z',
     usageCount: 5,
@@ -43,6 +54,20 @@ export const DOCS: SmartChip[] = [
     usageCount: 18,
     lastUpdated: '2026-02-15T08:30:00Z',
     permissions: { currentUser: 'viewer' },
+    metadata: {
+      sourceType: 'vertex-ai-search',
+      dataStoreId: 'ds-claims-policy',
+      dataStoreRegion: 'us-central1',
+      projectId: 'acme-insurance-prod',
+      documents: [
+        { name: 'claims-policy-2024.pdf', type: 'PDF', size: '2.4 MB', indexed: true },
+        { name: 'apac-addendum.pdf', type: 'PDF', size: '890 KB', indexed: true },
+        { name: 'coverage-matrix.xlsx', type: 'Excel', size: '1.1 MB', indexed: true },
+        { name: 'faq-claims.md', type: 'Markdown', size: '245 KB', indexed: true },
+      ],
+      indexingStatus: 'indexed',
+      documentCount: 4,
+    } satisfies DocMetadata,
   }),
   chip('doc-apac-regulatory-matrix', 'doc', 'apac-regulatory-matrix', {
     version: '3.1.0',
@@ -50,6 +75,19 @@ export const DOCS: SmartChip[] = [
     owner: 'compliance@acme.com',
     usageCount: 11,
     lastUpdated: '2026-01-10T14:00:00Z',
+    metadata: {
+      sourceType: 'vertex-ai-search',
+      dataStoreId: 'ds-regulatory',
+      dataStoreRegion: 'asia-southeast1',
+      projectId: 'acme-insurance-prod',
+      documents: [
+        { name: 'apac-matrix-2024.pdf', type: 'PDF', size: '5.8 MB', indexed: true },
+        { name: 'country-profiles.xlsx', type: 'Excel', size: '2.1 MB', indexed: true },
+        { name: 'regulatory-updates-q1.pdf', type: 'PDF', size: '1.3 MB', indexed: true },
+      ],
+      indexingStatus: 'indexed',
+      documentCount: 3,
+    } satisfies DocMetadata,
   }),
   chip('doc-mas-guidelines-2024', 'doc', 'mas-guidelines-2024', {
     version: '1.2.0',
@@ -57,6 +95,18 @@ export const DOCS: SmartChip[] = [
     owner: 'compliance@acme.com',
     usageCount: 6,
     lastUpdated: '2026-03-01T09:00:00Z',
+    metadata: {
+      sourceType: 'discovery-engine',
+      dataStoreId: 'ds-mas-guidelines',
+      dataStoreRegion: 'asia-southeast1',
+      projectId: 'acme-insurance-prod',
+      documents: [
+        { name: 'mas-notice-126.pdf', type: 'PDF', size: '3.2 MB', indexed: true },
+        { name: 'mas-circular-2024.pdf', type: 'PDF', size: '1.8 MB', indexed: true },
+      ],
+      indexingStatus: 'indexed',
+      documentCount: 2,
+    } satisfies DocMetadata,
   }),
   chip('doc-apra-prudential-standards', 'doc', 'apra-prudential-standards', {
     version: '2.0.0',
@@ -64,6 +114,18 @@ export const DOCS: SmartChip[] = [
     owner: 'compliance@acme.com',
     usageCount: 4,
     lastUpdated: '2025-12-20T11:00:00Z',
+    metadata: {
+      sourceType: 'vertex-ai-search',
+      dataStoreId: 'ds-apra',
+      dataStoreRegion: 'australia-southeast1',
+      projectId: 'acme-insurance-prod',
+      documents: [
+        { name: 'cps-220-risk.pdf', type: 'PDF', size: '4.5 MB', indexed: true },
+        { name: 'cps-234-info-security.pdf', type: 'PDF', size: '2.9 MB', indexed: true },
+      ],
+      indexingStatus: 'indexed',
+      documentCount: 2,
+    } satisfies DocMetadata,
   }),
   chip('doc-refund-policy-q4', 'doc', 'refund-policy-q4', {
     version: '1.0.0',
@@ -72,6 +134,15 @@ export const DOCS: SmartChip[] = [
     owner: 'policy-ops@acme.com',
     usageCount: 1,
     lastUpdated: '2026-03-28T16:00:00Z',
+    metadata: {
+      sourceType: 'manual',
+      documents: [
+        { name: 'refund-policy-draft.docx', type: 'Word', size: '780 KB', indexed: false },
+        { name: 'rider-definitions.pdf', type: 'PDF', size: '3.2 MB', indexed: false },
+      ],
+      indexingStatus: 'pending',
+      documentCount: 2,
+    } satisfies DocMetadata,
   }),
 ];
 
@@ -86,6 +157,20 @@ export const TOOLS: SmartChip[] = [
     endpoint: 'https://tools.acme.internal/mcp/policy-lookup',
     healthStatus: 'healthy',
     permissions: { currentUser: 'invoker' },
+    metadata: {
+      toolKind: 'function',
+      endpoint: 'https://tools.acme.internal/mcp/policy-lookup',
+      authMethod: 'service-account',
+      parameters: [
+        { name: 'policy_id', type: 'string', required: true, description: 'The customer policy ID', validation: 'regex: POL-[A-Z]{2}-[0-9]{6}' },
+        { name: 'include_riders', type: 'boolean', required: false, description: 'Include policy riders/addons', default: 'false' },
+        { name: 'effective_date', type: 'string', required: false, description: 'Check policy as of this date', validation: 'must be <= today', default: 'today' },
+        { name: 'format', type: 'string', required: false, description: 'Response format', validation: 'oneOf: summary, full, minimal', default: 'summary' },
+      ],
+      healthStatus: 'healthy',
+      latencyP50Ms: 120,
+      latencyP99Ms: 340,
+    } satisfies ToolMetadata,
   }),
   chip('tool-claims-history', 'tool', 'claims-history', {
     version: '1.5.0',
@@ -94,6 +179,20 @@ export const TOOLS: SmartChip[] = [
     usageCount: 15,
     endpoint: 'https://tools.acme.internal/mcp/claims-history',
     healthStatus: 'healthy',
+    metadata: {
+      toolKind: 'function',
+      endpoint: 'https://tools.acme.internal/mcp/claims-history',
+      authMethod: 'service-account',
+      parameters: [
+        { name: 'customer_id', type: 'string', required: true, description: 'Customer identifier' },
+        { name: 'start_date', type: 'string', required: false, description: 'Start of date range (ISO 8601)' },
+        { name: 'end_date', type: 'string', required: false, description: 'End of date range (ISO 8601)' },
+        { name: 'limit', type: 'number', required: false, description: 'Maximum results', default: '20' },
+      ],
+      healthStatus: 'healthy',
+      latencyP50Ms: 200,
+      latencyP99Ms: 580,
+    } satisfies ToolMetadata,
   }),
   chip('tool-payment-processor', 'tool', 'payment-processor', {
     version: '3.0.1',
@@ -103,6 +202,23 @@ export const TOOLS: SmartChip[] = [
     endpoint: 'https://tools.acme.internal/mcp/payment-processor',
     healthStatus: 'healthy',
     permissions: { currentUser: 'editor' },
+    metadata: {
+      toolKind: 'mcp',
+      endpoint: 'https://tools.acme.internal/mcp/payment-processor',
+      authMethod: 'oauth',
+      parameters: [
+        { name: 'claim_id', type: 'string', required: true, description: 'The claim to process payment for' },
+        { name: 'amount', type: 'number', required: true, description: 'Payment amount in USD' },
+        { name: 'method', type: 'string', required: true, description: 'Payment method', validation: 'oneOf: swift, local_transfer, check' },
+      ],
+      mcpTransport: 'streamable-http',
+      mcpCommand: 'payment-processor-server',
+      mcpArgs: ['--port', '8080'],
+      mcpEnvVars: { PAYMENT_GATEWAY: 'stripe', REGION: 'apac' },
+      healthStatus: 'healthy',
+      latencyP50Ms: 450,
+      latencyP99Ms: 1200,
+    } satisfies ToolMetadata,
   }),
   chip('tool-notification-sender', 'tool', 'notification-sender', {
     version: '1.1.0',
@@ -111,6 +227,22 @@ export const TOOLS: SmartChip[] = [
     usageCount: 12,
     endpoint: 'https://tools.acme.internal/mcp/notification-sender',
     healthStatus: 'degraded',
+    metadata: {
+      toolKind: 'openapi',
+      endpoint: 'https://tools.acme.internal/mcp/notification-sender',
+      authMethod: 'api-key',
+      parameters: [
+        { name: 'recipient', type: 'string', required: true, description: 'Email or phone number' },
+        { name: 'template', type: 'string', required: true, description: 'Notification template ID' },
+        { name: 'data', type: 'object', required: true, description: 'Template data payload' },
+        { name: 'channel', type: 'string', required: false, description: 'Channel: email or sms', default: 'email' },
+      ],
+      openapiSpecUrl: 'https://tools.acme.internal/api/notification-sender/openapi.yaml',
+      openapiSelectedEndpoints: ['/send', '/templates', '/status/{id}'],
+      healthStatus: 'degraded',
+      latencyP50Ms: 350,
+      latencyP99Ms: 2100,
+    } satisfies ToolMetadata,
   }),
   chip('tool-regtech-api', 'tool', 'regtech-api', {
     version: '0.9.0',
@@ -120,6 +252,18 @@ export const TOOLS: SmartChip[] = [
     usageCount: 2,
     endpoint: 'https://tools.acme.internal/mcp/regtech-api',
     healthStatus: 'healthy',
+    metadata: {
+      toolKind: 'function',
+      endpoint: 'https://tools.acme.internal/mcp/regtech-api',
+      authMethod: 'api-key',
+      parameters: [
+        { name: 'jurisdiction', type: 'string', required: true, description: 'Country code (SG, AU, IN, ID, TW)' },
+        { name: 'regulation_type', type: 'string', required: false, description: 'Regulation category', default: 'all' },
+      ],
+      healthStatus: 'healthy',
+      latencyP50Ms: 180,
+      latencyP99Ms: 420,
+    } satisfies ToolMetadata,
   }),
 ];
 
@@ -132,12 +276,34 @@ export const AGENTS: SmartChip[] = [
     owner: 'claims-team@acme.com',
     usageCount: 7,
     permissions: { currentUser: 'invoker' },
+    metadata: {
+      model: 'gemini-2.5-pro',
+      instructions: 'You are a senior claims adjuster with authority to approve claims up to $200,000. Review high-value claims thoroughly, checking policy coverage, claim history, and fraud indicators. Approve or deny with detailed justification.',
+      maxTurns: 15,
+      tools: ['tool-policy-lookup', 'tool-claims-history', 'tool-payment-processor'],
+      guards: ['guard-pii-redaction', 'guard-fraud-detection'],
+      delegatesTo: [],
+      outputSchema: 'schema-claims-response-v2',
+      outputKey: 'adjuster_decision',
+      contextStrategy: { windowSize: 5, stateInjections: ['claim_context', 'customer_tier'], filterMode: 'all', summarize: false },
+      a2aConfig: { mode: 'local' },
+    } satisfies AgentMetadata,
   }),
   chip('agent-fraud-specialist', 'agent', 'fraud-specialist', {
     version: '1.3.0',
     description: 'Specialized fraud detection and investigation agent. Activated when fraud signals exceed threshold.',
     owner: 'security@acme.com',
     usageCount: 4,
+    metadata: {
+      model: 'gemini-2.5-pro',
+      instructions: 'You are a fraud investigation specialist. Analyze claim patterns, cross-reference with known fraud indicators, and assess risk level. Flag suspicious claims with detailed evidence.',
+      maxTurns: 10,
+      tools: ['tool-claims-history'],
+      guards: ['guard-pii-redaction'],
+      delegatesTo: [],
+      contextStrategy: { windowSize: 3, stateInjections: ['fraud_signals'], filterMode: 'relevant', summarize: true },
+      a2aConfig: { mode: 'remote', endpointUrl: 'https://fraud-agent.acme.internal:8001' },
+    } satisfies AgentMetadata,
   }),
   chip('agent-compliance-officer', 'agent', 'compliance-officer', {
     version: '1.0.0',
@@ -146,6 +312,16 @@ export const AGENTS: SmartChip[] = [
     owner: 'compliance@acme.com',
     usageCount: 1,
     lastUpdated: '2026-03-30T10:00:00Z',
+    metadata: {
+      model: 'gemini-2.5-flash',
+      instructions: 'You are a compliance officer reviewing cross-border transactions. Check regulatory requirements for each jurisdiction involved and ensure all disclosures are properly made.',
+      maxTurns: 8,
+      tools: ['tool-regtech-api'],
+      guards: ['guard-apac-compliance-rules'],
+      delegatesTo: [],
+      contextStrategy: { windowSize: 3, stateInjections: ['jurisdiction'], filterMode: 'all', summarize: false },
+      a2aConfig: { mode: 'local' },
+    } satisfies AgentMetadata,
   }),
 ];
 
@@ -158,18 +334,33 @@ export const GUARDS: SmartChip[] = [
     owner: 'security@acme.com',
     usageCount: 24,
     permissions: { currentUser: 'viewer' },
+    metadata: {
+      kind: 'pii',
+      phase: 'post_model',
+      config: { action: 'redact', detector: 'cloud-dlp', projectId: 'acme-insurance-prod' },
+    },
   }),
   chip('guard-fraud-detection', 'guard', 'fraud-detection', {
     version: '1.4.0',
     description: 'Pre-processing fraud signal detection. Checks claim patterns against known fraud indicators. Blocks and escalates on high confidence. Maps to G.topic() + custom.',
     owner: 'security@acme.com',
     usageCount: 9,
+    metadata: {
+      kind: 'topic',
+      phase: 'pre_model',
+      config: { denyTopics: ['known-fraud-patterns', 'suspicious-activity'], threshold: 0.75 },
+    },
   }),
   chip('guard-apac-compliance-rules', 'guard', 'apac-compliance-rules', {
     version: '1.2.0',
     description: 'Enforces APAC-specific regulatory constraints on agent responses. Prevents disclosure of internal thresholds. Maps to G.grounded() + G.topic().',
     owner: 'compliance@acme.com',
     usageCount: 11,
+    metadata: {
+      kind: 'grounded',
+      phase: 'post_model',
+      config: { sources: ['doc-apac-regulatory-matrix'], confidence: 0.85, denyTopics: ['internal-thresholds', 'pricing-models'] },
+    },
   }),
 ];
 
@@ -181,6 +372,19 @@ export const DATA_SOURCES: SmartChip[] = [
     description: 'Reference dataset of high-risk claim categories requiring additional review: fire, flood, theft >$10k, liability, medical malpractice.',
     owner: 'claims-team@acme.com',
     usageCount: 6,
+    metadata: {
+      transforms: [
+        { kind: 'capture', captureKey: 'risk_category', captureType: 'string' },
+        { kind: 'pick', pickKeys: ['category', 'threshold', 'review_required'] },
+      ],
+      sourceConnection: 'sheets',
+      sourceReference: 'https://docs.google.com/spreadsheets/d/1abc-risk-categories',
+      stateKeys: [
+        { key: 'category', type: 'string', description: 'Risk category name' },
+        { key: 'threshold', type: 'number', description: 'Dollar threshold for review' },
+        { key: 'review_required', type: 'boolean', description: 'Whether manual review is required' },
+      ],
+    } satisfies DataMetadata,
   }),
   chip('data-claims-database', 'data', 'claims-database', {
     version: '4.0.0',
@@ -188,6 +392,22 @@ export const DATA_SOURCES: SmartChip[] = [
     owner: 'data-eng@acme.com',
     usageCount: 3,
     permissions: { currentUser: 'editor' },
+    metadata: {
+      transforms: [
+        { kind: 'capture', captureKey: 'claim_data', captureType: 'object' },
+        { kind: 'pick', pickKeys: ['policy_id', 'claim_amount', 'jurisdiction', 'status', 'risk_score'] },
+        { kind: 'rename', renameFrom: 'claim_amount', renameTo: 'amount_usd' },
+      ],
+      sourceConnection: 'bigquery',
+      sourceReference: 'acme-insurance-prod.claims.all_claims',
+      stateKeys: [
+        { key: 'policy_id', type: 'string', description: 'Policy identifier' },
+        { key: 'amount_usd', type: 'number', description: 'Claim amount in USD' },
+        { key: 'jurisdiction', type: 'string', description: 'Customer jurisdiction code' },
+        { key: 'status', type: 'string', description: 'Current claim status' },
+        { key: 'risk_score', type: 'number', description: 'Computed risk score 0-100' },
+      ],
+    } satisfies DataMetadata,
   }),
 ];
 
@@ -199,12 +419,33 @@ export const SCHEMAS: SmartChip[] = [
     description: 'Standard response schema for claims processing. Includes claim_ref, status, estimated_time, next_steps, and customer_message fields.',
     owner: 'platform-team@acme.com',
     usageCount: 14,
+    metadata: {
+      fields: [
+        { name: 'claim_ref', type: 'str', required: true, description: 'Unique claim reference number' },
+        { name: 'status', type: 'str', required: true, description: 'Current claim status', validation: 'oneOf: pending,approved,denied,escalated' },
+        { name: 'estimated_time', type: 'str', required: true, description: 'Estimated processing time' },
+        { name: 'next_steps', type: 'list', required: true, description: 'Ordered list of next steps for the customer' },
+        { name: 'customer_message', type: 'str', required: true, description: 'Human-readable message for the customer' },
+      ],
+      pydanticClassName: 'ClaimsResponseV2',
+    } satisfies SchemaMetadata,
   }),
   chip('schema-escalation-request', 'schema', 'escalation-request', {
     version: '1.1.0',
     description: 'Schema for escalation payloads sent to senior agents. Includes claim context, reason, priority, and source agent details.',
     owner: 'platform-team@acme.com',
     usageCount: 5,
+    metadata: {
+      fields: [
+        { name: 'claim_id', type: 'str', required: true, description: 'Claim identifier being escalated' },
+        { name: 'reason', type: 'str', required: true, description: 'Reason for escalation' },
+        { name: 'priority', type: 'str', required: true, description: 'Escalation priority', validation: 'oneOf: low,medium,high,critical' },
+        { name: 'source_agent', type: 'str', required: true, description: 'Agent that initiated escalation' },
+        { name: 'context', type: 'dict', required: true, description: 'Full claim context for the receiving agent' },
+        { name: 'amount', type: 'float', required: false, description: 'Claim amount triggering escalation' },
+      ],
+      pydanticClassName: 'EscalationRequest',
+    } satisfies SchemaMetadata,
   }),
 ];
 
@@ -580,6 +821,79 @@ export const TRIGGERS: SmartChip[] = [
 
 export const UNRESOLVED_CHIP_NAMES = ['shipping-status', 'warehouse-return-check'];
 
+// ─── Workspace Assignments ────────────────────────────────────────────
+//
+// Every chip belongs to exactly ONE workspace. Cross-workspace visibility
+// is set via the scope.visibility field + scope.sharedWith grants.
+//
+// Design notes:
+//   - Platform workspace owns the governed primitives (PII guard, Salesforce,
+//     Slack, Gmail, BigQuery, notification sender, customer-empathy skill,
+//     claims-response schema). These are 'org-catalog' visible so every team
+//     can reference them directly.
+//   - APAC Compliance owns the regulatory docs, compliance skill, compliance
+//     guards, and compliance officer agent. Shared to Claims + Refund.
+//   - Claims owns the claim-specific tools + docs + agents + triggers. Most
+//     are private; policy-lookup is explicitly shared with Refund.
+//   - Refund owns the refund policy doc. Imports the shared claims assets.
+//   - Onboarding owns nothing in this mock (it consumes Platform only).
+
+const WORKSPACE_ASSIGNMENTS: Record<string, ChipScope> = {
+  // ─── Platform workspace (org-wide primitives) ──────────────────────
+  'connector-salesforce':     { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-jira':           { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-google-drive':   { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-slack':          { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-gmail':          { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-bigquery':       { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'guard-pii-redaction':      { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'tool-notification-sender': { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'schema-claims-response-v2':{ workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'schema-escalation-request':{ workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'skill-customer-empathy':   { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'data-claims-database':     { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'trigger-chat':             { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+
+  // ─── APAC Compliance workspace ─────────────────────────────────────
+  'doc-apac-regulatory-matrix':  { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'doc-mas-guidelines-2024':     { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'doc-apra-prudential-standards': { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'skill-apac-compliance':       { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'guard-apac-compliance-rules': { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'agent-compliance-officer':    { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.CLAIMS] } },
+  'tool-regtech-api':            { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.CLAIMS, WORKSPACE_IDS.REFUND] } },
+
+  // ─── Claims workspace ──────────────────────────────────────────────
+  'doc-claims-policy-2024':    { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'tool-policy-lookup':        { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.REFUND] } },
+  'tool-claims-history':       { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'tool-payment-processor':    { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.REFUND] } },
+  'agent-senior-adjuster':     { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'agent-fraud-specialist':    { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'guard-fraud-detection':     { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'data-high-risk-categories': { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-claims-queue':      { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-jira-issue-created':{ workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-drive-file-uploaded': { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-weekday-9am':       { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+
+  // ─── Refund workspace ──────────────────────────────────────────────
+  'doc-refund-policy-q4':      { workspaceId: WORKSPACE_IDS.REFUND, visibility: 'private' },
+
+  // ─── Data Analyst skill (user-scoped, cross-workspace) ─────────────
+  'skill-data-analyst':        { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'skill-sop-writer':          { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+};
+
+/**
+ * Apply workspace scope to a chip. If no explicit assignment exists,
+ * the chip falls back to Platform + org-catalog (safe default for demo).
+ */
+function withScope(c: SmartChip): SmartChip {
+  const scope = WORKSPACE_ASSIGNMENTS[c.id] ?? DEFAULT_SCOPE;
+  return { ...c, scope };
+}
+
 // ─── Full Registry ────────────────────────────────────────────────────
 
 export const REGISTRY: SmartChip[] = [
@@ -592,7 +906,7 @@ export const REGISTRY: SmartChip[] = [
   ...CONNECTORS,
   ...SKILLS,
   ...TRIGGERS,
-];
+].map(withScope);
 
 /** Look up a chip by type + name. */
 export function findChip(type: SmartChip['type'], name: string): SmartChip | undefined {

@@ -165,7 +165,10 @@ function HealthBadge({ status }: { status?: string }) {
 
 function VersionBadge({ version }: { version: string }) {
   return (
-    <span className="px-1.5 py-0 rounded text-[10px] font-medium bg-gray-100 text-gray-500 flex-shrink-0">
+    <span
+      className="px-1.5 py-0 rounded-md text-[10px] font-medium flex-shrink-0"
+      style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}
+    >
       v{version}
     </span>
   );
@@ -174,29 +177,37 @@ function VersionBadge({ version }: { version: string }) {
 function PermBadge({ level }: { level: string }) {
   const p = permissionIcon(level);
   return (
-    <span className="text-[11px] text-gray-400 flex-shrink-0" title={p.label}>
+    <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--color-text-quaternary)' }} title={p.label}>
       {p.icon}
     </span>
   );
 }
 
 function ScopeBadge({ scope }: { scope: string }) {
-  const colors: Record<string, string> = {
-    workspace: 'bg-violet-100 text-violet-700',
-    user: 'bg-blue-100 text-blue-700',
-    extension: 'bg-gray-100 text-gray-600',
+  const styles: Record<string, { bg: string; text: string }> = {
+    workspace: { bg: '#F3F0FF', text: '#6D28D9' },
+    user: { bg: '#EFF6FF', text: '#2563EB' },
+    extension: { bg: 'var(--color-surface-2)', text: 'var(--color-text-tertiary)' },
   };
+  const s = styles[scope] ?? styles.extension;
   return (
-    <span className={`px-1.5 py-0 rounded text-[10px] font-medium flex-shrink-0 ${colors[scope] ?? colors.extension}`}>
+    <span className="px-1.5 py-0 rounded-md text-[10px] font-semibold flex-shrink-0" style={{ background: s.bg, color: s.text }}>
       {scope.charAt(0).toUpperCase() + scope.slice(1)}
     </span>
   );
 }
 
 function ActivationBadge({ mode }: { mode: string }) {
+  const isPinned = mode === 'pinned';
   return (
-    <span className={`px-1.5 py-0 rounded text-[10px] font-medium flex-shrink-0 ${mode === 'pinned' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
-      {mode === 'pinned' ? 'Pinned' : 'On-Demand'}
+    <span
+      className="px-1.5 py-0 rounded-md text-[10px] font-semibold flex-shrink-0"
+      style={{
+        background: isPinned ? '#FEF3C7' : 'var(--color-surface-2)',
+        color: isPinned ? '#92400E' : 'var(--color-text-tertiary)',
+      }}
+    >
+      {isPinned ? 'Pinned' : 'On-Demand'}
     </span>
   );
 }
@@ -230,18 +241,32 @@ function ItemRow({
 
   return (
     <button
-      className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors duration-100
-        ${isHighlighted ? 'bg-blue-50' : 'hover:bg-gray-50'}
+      className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-left transition-all duration-150
         ${noAccess ? 'opacity-50' : ''}`}
+      style={{
+        background: isHighlighted ? 'var(--color-accent-light)' : 'transparent',
+        borderLeft: isHighlighted ? `2px solid var(--color-accent)` : '2px solid transparent',
+      }}
       onClick={onSelect}
-      onMouseEnter={onHover}
+      onMouseEnter={(e) => {
+        onHover();
+        if (!isHighlighted) e.currentTarget.style.background = 'var(--color-surface-1)';
+      }}
+      onMouseLeave={(e) => {
+        if (!isHighlighted) e.currentTarget.style.background = 'transparent';
+      }}
       role="option"
       aria-selected={isHighlighted}
     >
-      {/* Colored type dot + icon */}
+      {/* Colored type icon */}
       <span
-        className="flex items-center justify-center w-6 h-6 rounded-md text-xs flex-shrink-0"
-        style={{ backgroundColor: colors.bg, color: colors.accent }}
+        className="flex items-center justify-center w-7 h-7 rounded-lg text-xs flex-shrink-0"
+        style={{
+          background: `linear-gradient(135deg, ${colors.bg} 0%, ${colors.tint} 100%)`,
+          color: colors.accent,
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px ${colors.accent}10`,
+          border: `1px solid ${colors.border}`,
+        }}
       >
         {leadIcon}
       </span>
@@ -249,17 +274,17 @@ function ItemRow({
       {/* Name + description */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-[13px] font-semibold text-gray-800 truncate">
+          <span className="text-[13px] font-semibold truncate" style={{ color: 'var(--color-text-primary)', letterSpacing: '-0.01em' }}>
             {chip.type === 'trigger' ? `@trigger(${chip.name})` : chip.name}
           </span>
           {chip.status === 'draft' && (
-            <span className="px-1 py-0 rounded text-[9px] font-medium bg-yellow-100 text-yellow-700">Draft</span>
+            <span className="px-1.5 py-0 rounded-full text-[9px] font-semibold" style={{ background: '#FEF3C7', color: '#92400E' }}>Draft</span>
           )}
           {chip.status === 'deprecated' && (
-            <span className="px-1 py-0 rounded text-[9px] font-medium bg-gray-100 text-gray-400">Deprecated</span>
+            <span className="px-1.5 py-0 rounded-full text-[9px] font-semibold" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-quaternary)' }}>Deprecated</span>
           )}
         </div>
-        <p className="text-[11px] text-gray-400 truncate leading-tight">
+        <p className="text-[11px] truncate leading-tight mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
           {truncate(chip.description, 65)}
         </p>
       </div>
@@ -480,27 +505,36 @@ export function ChipAutocomplete({
 
   return (
     <>
-      {/* Backdrop for click-to-close */}
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-
-      {/* Dropdown panel */}
+      {/* Backdrop for click-to-close — subtle blur */}
       <div
-        className="fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+        style={{ background: 'rgba(0,0,0,0.04)', backdropFilter: 'blur(2px)' }}
+      />
+
+      {/* Dropdown panel — frosted glass */}
+      <div
+        className="fixed z-50 flex flex-col overflow-hidden"
         style={{
           top: position.top,
           left: position.left,
-          width: 400,
-          maxHeight: 440,
-          animation: 'chipDropdownIn 150ms ease-out',
-          backdropFilter: 'blur(8px)',
+          width: Math.min(420, window.innerWidth - 32),
+          maxHeight: 460,
+          animation: 'chipDropdownIn 200ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+          background: 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(24px) saturate(200%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+          borderRadius: 'var(--radius-xl)',
+          border: '1px solid rgba(255, 255, 255, 0.5)',
+          boxShadow: '0 24px 48px -8px rgba(0,0,0,0.12), 0 8px 20px -4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.5)',
         }}
         role="listbox"
         onKeyDown={handleKeyDown}
       >
         {/* Search bar */}
-        <div className="px-3 pt-3 pb-2 border-b border-gray-100 flex-shrink-0">
+        <div className="px-3.5 pt-3.5 pb-2.5 flex-shrink-0" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div className="relative">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--color-text-tertiary)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
@@ -510,29 +544,48 @@ export function ChipAutocomplete({
               value={query}
               onChange={e => { setQuery(e.target.value); setHighlightIndex(0); }}
               placeholder="Search capabilities..."
-              className="w-full pl-8 pr-3 py-1.5 text-[13px] rounded-lg border border-gray-200 bg-gray-50
-                focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300
-                placeholder:text-gray-400 transition-all"
+              className="w-full pl-9 pr-3 py-2 text-[13px] rounded-xl transition-all"
+              style={{
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface-0)',
+                color: 'var(--color-text-primary)',
+                fontFamily: 'var(--font-ui)',
+                outline: 'none',
+                letterSpacing: '-0.01em',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--color-accent)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-ring)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           </div>
           {/* Shortcut hints */}
-          <div className="flex gap-2 mt-1.5 text-[10px] text-gray-400">
-            <span className="font-mono bg-gray-100 px-1 rounded">@t:</span>
-            <span>tools</span>
-            <span className="font-mono bg-gray-100 px-1 rounded">@c:</span>
-            <span>connectors</span>
-            <span className="font-mono bg-gray-100 px-1 rounded">@s:</span>
-            <span>skills</span>
+          <div className="flex gap-2.5 mt-2 text-[10px]" style={{ color: 'var(--color-text-quaternary)' }}>
+            {[['@t:', 'tools'], ['@c:', 'connectors'], ['@s:', 'skills']].map(([key, label]) => (
+              <span key={key} className="flex items-center gap-1">
+                <span
+                  className="px-1.5 py-0 rounded"
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: 9, background: 'var(--color-surface-2)', color: 'var(--color-text-tertiary)' }}
+                >
+                  {key}
+                </span>
+                <span>{label}</span>
+              </span>
+            ))}
           </div>
         </div>
 
         {/* Scrollable body */}
-        <div ref={listRef} className="flex-1 overflow-y-auto overscroll-contain" style={{ maxHeight: 340 }}>
+        <div ref={listRef} className="flex-1 overflow-y-auto overscroll-contain scrollbar-thin" style={{ maxHeight: 360 }}>
 
           {/* Recently Used */}
           {recentlyUsed.length > 0 && (
-            <div className="px-3 pt-2 pb-1.5">
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+            <div className="px-3.5 pt-3 pb-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--color-text-quaternary)' }}>
                 Recently Used
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -542,9 +595,23 @@ export function ChipAutocomplete({
                     <button
                       key={chip.id}
                       onClick={() => onSelect({ type: chip.type, name: chip.name })}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium
-                        transition-all hover:shadow-sm hover:scale-[1.03] active:scale-[0.97]"
-                      style={{ backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}` }}
+                      className="inline-flex items-center gap-1 px-2.5 py-[3px] rounded-full text-[11px] font-semibold"
+                      style={{
+                        background: `linear-gradient(135deg, ${c.bg} 0%, ${c.tint} 100%)`,
+                        color: c.text,
+                        border: `1px solid ${c.border}`,
+                        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.5)`,
+                        transition: 'all 180ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        letterSpacing: '-0.01em',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px) scale(1.03)';
+                        e.currentTarget.style.boxShadow = `0 2px 6px ${c.accent}20, inset 0 1px 0 rgba(255,255,255,0.5)`;
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.5)`;
+                      }}
                     >
                       <span className="text-[10px]" style={{ color: c.accent }}>{CHIP_ICONS[chip.type]}</span>
                       {chip.name}
@@ -557,9 +624,10 @@ export function ChipAutocomplete({
 
           {/* Empty state */}
           {filteredSections.length === 0 && (
-            <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-400">No matching capabilities found.</p>
-              <p className="text-xs text-gray-300 mt-1">Try a different search term.</p>
+            <div className="px-4 py-10 text-center">
+              <div className="text-2xl mb-2 opacity-40">&#x1F50D;</div>
+              <p className="text-[13px] font-medium" style={{ color: 'var(--color-text-tertiary)' }}>No matching capabilities found</p>
+              <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-quaternary)' }}>Try a different search term</p>
             </div>
           )}
 
@@ -589,23 +657,37 @@ export function ChipAutocomplete({
             }
 
             return (
-              <div key={sec.type} className="border-b border-gray-50 last:border-b-0">
-                {/* Section header -- sticky */}
+              <div key={sec.type} style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
+                {/* Section header -- sticky with glass */}
                 <button
-                  className="sticky top-0 z-10 w-full flex items-center gap-2 px-3 py-1.5
-                    bg-white/95 backdrop-blur-sm hover:bg-gray-50 transition-colors"
+                  className="sticky top-0 z-10 w-full flex items-center gap-2.5 px-3.5 py-2 transition-colors"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(12px)',
+                  }}
                   onClick={() => toggleSection(sec.type)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)'; }}
                 >
                   <span
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: colors.accent }}
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: colors.accent, boxShadow: `0 0 4px ${colors.accent}30` }}
                   />
-                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider flex-1 text-left">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider flex-1 text-left" style={{ color: 'var(--color-text-tertiary)' }}>
                     {sec.label}
                   </span>
-                  <span className="text-[10px] text-gray-400 tabular-nums">{sec.items.length}</span>
+                  <span
+                    className="text-[10px] tabular-nums px-1.5 py-0 rounded-full font-medium"
+                    style={{ color: colors.accent, background: colors.bg }}
+                  >
+                    {sec.items.length}
+                  </span>
                   <svg
-                    className={`w-3 h-3 text-gray-400 transition-transform duration-150 ${isCollapsed ? '-rotate-90' : ''}`}
+                    className="w-3 h-3 transition-transform duration-200"
+                    style={{
+                      color: 'var(--color-text-quaternary)',
+                      transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                    }}
                     fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                   >
                     <path d="M19 9l-7 7-7-7" />
@@ -619,10 +701,19 @@ export function ChipAutocomplete({
           })}
         </div>
 
-        {/* Footer */}
-        <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between flex-shrink-0 bg-gray-50/60">
+        {/* Footer — glass effect */}
+        <div
+          className="px-3.5 py-2.5 flex items-center justify-between flex-shrink-0"
+          style={{
+            borderTop: '1px solid var(--color-border-subtle)',
+            background: 'rgba(249, 249, 248, 0.8)',
+          }}
+        >
           <button
-            className="text-[11px] text-blue-600 hover:text-blue-700 font-medium transition-colors"
+            className="text-[11px] font-semibold transition-all duration-150"
+            style={{ color: 'var(--color-accent)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-accent-hover)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-accent)'; }}
             onClick={() => {
               onClose();
               onCreateNew?.();
@@ -630,10 +721,18 @@ export function ChipAutocomplete({
           >
             + Create new...
           </button>
-          <div className="flex gap-3 text-[10px] text-gray-400">
-            <span><kbd className="font-mono bg-gray-200 px-1 rounded text-[9px]">&uarr;&darr;</kbd> navigate</span>
-            <span><kbd className="font-mono bg-gray-200 px-1 rounded text-[9px]">Enter</kbd> select</span>
-            <span><kbd className="font-mono bg-gray-200 px-1 rounded text-[9px]">Esc</kbd> close</span>
+          <div className="flex gap-3 text-[10px]" style={{ color: 'var(--color-text-quaternary)' }}>
+            {[['↑↓', 'navigate'], ['↵', 'select'], ['esc', 'close']].map(([key, action]) => (
+              <span key={key} className="flex items-center gap-1">
+                <span
+                  className="px-1 py-0 rounded text-[9px]"
+                  style={{ fontFamily: 'var(--font-mono)', background: 'var(--color-surface-2)', color: 'var(--color-text-tertiary)' }}
+                >
+                  {key}
+                </span>
+                <span>{action}</span>
+              </span>
+            ))}
           </div>
         </div>
       </div>
@@ -643,11 +742,18 @@ export function ChipAutocomplete({
         @keyframes chipDropdownIn {
           from {
             opacity: 0;
-            transform: scale(0.96) translateY(-4px);
+            transform: scale(0.94) translateY(-6px);
+            filter: blur(4px);
+          }
+          60% {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1.01) translateY(0);
           }
           to {
             opacity: 1;
             transform: scale(1) translateY(0);
+            filter: blur(0);
           }
         }
       `}</style>

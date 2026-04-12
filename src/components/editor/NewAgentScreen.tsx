@@ -28,7 +28,7 @@ export function NewAgentScreen() {
     if (!name.trim()) return;
 
     // Create a new workspace for this agent
-    createWorkspace(name.trim());
+    createWorkspace({ name: name.trim() });
 
     addNotification({
       type: 'success',

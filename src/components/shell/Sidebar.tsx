@@ -1,13 +1,17 @@
 /**
  * SidebarContent — Shared sidebar UI for mobile drawer and desktop panel.
  *
- * Contains: logo area, "Create New" button, nav items with section headers,
- * and an agent status footer. Used by Shell in both mobile and desktop layouts.
+ * Contains: logo area with gradient, "Create New" button, nav items with
+ * section headers, active glow indicator, and an agent status footer.
+ * Used by Shell in both mobile and desktop layouts.
  */
 
 import { NavLink, useLocation } from 'react-router-dom';
 import { NAV } from './Navigation';
 import { ICON_MAP } from './Icons';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -20,73 +24,31 @@ interface SidebarContentProps {
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }: SidebarContentProps) {
+export function SidebarContent({ collapsed, onToggle: _onToggle, onNavigate, onCreateNew }: SidebarContentProps) {
   const location = useLocation();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { current: currentWorkspace } = useWorkspace();
+
+  // Derive footer agent-identity from the active workspace so it stays
+  // in sync when the user switches workspaces.
+  const agentInitials = (currentWorkspace?.agentName ?? 'Agent')
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const agentStatusDot =
+    currentWorkspace?.status === 'active'
+      ? 'var(--color-success)'
+      : currentWorkspace?.status === 'draft'
+        ? 'var(--color-warning)'
+        : 'var(--color-text-tertiary)';
 
   return (
     <>
-      {/* Logo area */}
-      <div
-        className="flex items-center shrink-0"
-        style={{
-          height: 64,
-          padding: collapsed ? '0 12px' : '0 18px',
-          borderBottom: '1px solid var(--color-border)',
-          background: 'var(--color-surface-0)',
-          transition: `padding var(--duration-normal) var(--ease-out)`,
-        }}
-      >
-        <button
-          onClick={onToggle}
-          className="flex items-center gap-3 w-full"
-          style={{
-            transition: `opacity var(--duration-fast) var(--ease-out)`,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-        >
-          <div
-            className="shrink-0 flex items-center justify-center"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--color-accent)',
-              boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3.5 4.5h9M3.5 8h5.5M3.5 11.5h7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  lineHeight: 1.25,
-                  letterSpacing: '-0.01em',
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                Playbook
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  lineHeight: 1.25,
-                  color: 'var(--color-text-tertiary)',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                Agent Builder
-              </span>
-            </div>
-          )}
-        </button>
-      </div>
+      {/* Workspace switcher — replaces the generic logo */}
+      <WorkspaceSwitcher collapsed={collapsed} />
 
       {/* Create New Button */}
       <div
@@ -100,22 +62,29 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
           className="w-full flex items-center justify-center gap-2"
           style={{
             padding: collapsed ? '11px 0' : '11px 16px',
-            background: 'var(--color-accent)',
+            background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
             color: 'var(--color-surface-0)',
             fontSize: 13,
             fontWeight: 600,
             fontFamily: 'var(--font-ui)',
+            letterSpacing: '-0.01em',
             borderRadius: 'var(--radius-md)',
-            transition: `background var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)`,
-            boxShadow: 'var(--shadow-xs)',
+            transition: `all var(--duration-fast) var(--ease-out)`,
+            boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-accent-hover)';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(37, 99, 235, 0.3)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--color-accent)';
-            e.currentTarget.style.boxShadow = 'var(--shadow-xs)';
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'none';
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = 'translateY(0.5px)';
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
           }}
           title="Create new asset"
         >
@@ -128,8 +97,8 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
 
       {/* Navigation */}
       <nav
-        className="flex-1 overflow-y-auto"
-        style={{ padding: '6px 10px' }}
+        className="flex-1 overflow-y-auto scrollbar-thin"
+        style={{ padding: '8px 10px' }}
       >
         {NAV.map((item, i) => {
           const isActive = location.pathname === item.path;
@@ -161,7 +130,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
               <NavLink
                 to={item.path}
                 onClick={onNavigate}
-                className="flex items-center relative"
+                className="flex items-center relative group/nav"
                 style={{
                   padding: '10px 12px',
                   gap: 10,
@@ -170,9 +139,10 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   color: isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)',
                   background: isActive ? 'var(--color-accent-light)' : 'transparent',
                   fontWeight: isActive ? 500 : 400,
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   marginBottom: 2,
-                  transition: `background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out)`,
+                  transition: `all var(--duration-fast) var(--ease-out)`,
+                  boxShadow: isActive ? 'inset 0 0 0 1px rgba(37, 99, 235, 0.08)' : 'none',
                 }}
                 title={collapsed ? item.label : undefined}
                 onMouseEnter={(e) => {
@@ -196,6 +166,8 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                       height: 22,
                       borderRadius: '0 3px 3px 0',
                       background: 'var(--color-accent)',
+                      boxShadow: '2px 0 8px rgba(37, 99, 235, 0.2)',
+                      transition: 'height 200ms ease-out',
                     }}
                   />
                 )}
@@ -203,7 +175,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 {!collapsed && (
                   <span
                     className="truncate"
-                    style={{ fontSize: 13, fontFamily: 'var(--font-ui)' }}
+                    style={{ fontSize: 13, fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}
                   >
                     {item.label}
                   </span>
@@ -227,6 +199,77 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
         })}
       </nav>
 
+      {/* Theme Toggle */}
+      <div
+        className="shrink-0"
+        style={{
+          padding: collapsed ? '8px 10px' : '8px 14px',
+          borderTop: '1px solid var(--color-border)',
+        }}
+      >
+        <button
+          onClick={() => {
+            const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+            setTheme(next);
+          }}
+          className="w-full flex items-center gap-2.5 group/theme"
+          style={{
+            padding: collapsed ? '8px 0' : '8px 12px',
+            borderRadius: 'var(--radius-md)',
+            background: 'transparent',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            transition: 'all 150ms ease-out',
+            color: 'var(--color-text-secondary)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-surface-2)';
+            e.currentTarget.style.color = 'var(--color-text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--color-text-secondary)';
+          }}
+          title={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: resolvedTheme === 'dark'
+                ? 'linear-gradient(135deg, #1E293B 0%, #334155 100%)'
+                : 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+              transition: 'all 300ms ease-out',
+              flexShrink: 0,
+            }}
+          >
+            {resolvedTheme === 'dark' ? (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M13.5 8.5a5.5 5.5 0 0 1-6-6 5.5 5.5 0 1 0 6 6Z" stroke="#94A3B8" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="3" stroke="#D97706" strokeWidth="1.3"/>
+                <path d="M8 2v1.5M8 12.5V14M2 8h1.5M12.5 8H14M3.76 3.76l1.06 1.06M11.18 11.18l1.06 1.06M3.76 12.24l1.06-1.06M11.18 4.82l1.06-1.06" stroke="#D97706" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            )}
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col" style={{ animation: 'fadeIn 200ms ease-out' }}>
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em' }}>
+                {resolvedTheme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)' }}>
+                {theme === 'system' ? 'System' : theme === 'dark' ? 'Manual' : 'Manual'}
+              </span>
+            </div>
+          )}
+        </button>
+      </div>
+
       {/* Footer: Agent Status */}
       <div
         className="shrink-0"
@@ -245,21 +288,25 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   fontSize: 10,
-                  background: 'var(--color-surface-2)',
-                  color: 'var(--color-text-secondary)',
+                  background: currentWorkspace
+                    ? `linear-gradient(135deg, ${currentWorkspace.color} 0%, ${currentWorkspace.color}cc 100%)`
+                    : 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
+                  color: currentWorkspace ? '#fff' : 'var(--color-text-secondary)',
+                  letterSpacing: '0.02em',
                 }}
               >
-                CA
+                {agentInitials}
               </div>
               <div
                 className="absolute -bottom-0.5 -right-0.5 rounded-full"
                 style={{
                   width: 10,
                   height: 10,
-                  background: 'var(--color-success)',
+                  background: agentStatusDot,
                   border: '2px solid var(--color-surface-1)',
+                  boxShadow: '0 0 4px rgba(22, 163, 74, 0.3)',
                 }}
               />
             </div>
@@ -270,9 +317,10 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   fontSize: 12,
                   color: 'var(--color-text-primary)',
                   fontFamily: 'var(--font-ui)',
+                  letterSpacing: '-0.01em',
                 }}
               >
-                Claims Agent
+                {currentWorkspace?.agentName ?? 'Agent'}
               </div>
               <div
                 style={{
@@ -282,7 +330,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   marginTop: 1,
                 }}
               >
-                v2.1 · Running
+                v{currentWorkspace?.agentVersion ?? '0.1.0'} · {currentWorkspace?.status ?? 'idle'}
               </div>
             </div>
           </div>
@@ -294,21 +342,24 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-md)',
                   fontSize: 9,
-                  background: 'var(--color-surface-2)',
-                  color: 'var(--color-text-secondary)',
+                  background: currentWorkspace
+                    ? `linear-gradient(135deg, ${currentWorkspace.color} 0%, ${currentWorkspace.color}cc 100%)`
+                    : 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
+                  color: currentWorkspace ? '#fff' : 'var(--color-text-secondary)',
                 }}
               >
-                CA
+                {agentInitials}
               </div>
               <div
                 className="absolute -bottom-0.5 -right-0.5 rounded-full"
                 style={{
                   width: 10,
                   height: 10,
-                  background: 'var(--color-success)',
+                  background: agentStatusDot,
                   border: '2px solid var(--color-surface-1)',
+                  boxShadow: '0 0 4px rgba(22, 163, 74, 0.3)',
                 }}
               />
             </div>

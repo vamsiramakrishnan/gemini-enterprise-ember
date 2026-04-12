@@ -211,27 +211,45 @@ export function PlaybookEditor() {
         }}
       />
 
-      {/* ── Top Bar — Google Docs-inspired chrome ── */}
-      <header className="shrink-0 z-40 bg-white" style={{ borderBottom: '1px solid var(--color-border)' }}>
+      {/* ── Top Bar — Google Docs-inspired chrome with glass effect ── */}
+      <header
+        className="shrink-0 z-40"
+        style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+          borderBottom: '1px solid var(--color-border)',
+        }}
+      >
         {/* Primary toolbar */}
-        <div className="px-3 py-2 sm:px-5 sm:py-2.5 flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div className="px-3 py-2.5 sm:px-5 sm:py-3 flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Document identity */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
             <h1
               className="text-[14px] sm:text-[15px] font-semibold truncate cursor-text"
-              style={{ fontFamily: 'var(--font-ui)', letterSpacing: '-0.01em', color: 'var(--color-text-primary)' }}
+              style={{ fontFamily: 'var(--font-ui)', letterSpacing: '-0.015em', color: 'var(--color-text-primary)' }}
             >
               Claims Processing Agent
             </h1>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               <Badge bg={statusColors.production.bg} color={statusColors.production.text}>
                 v{currentVersion}
               </Badge>
               {!isMobile && (
                 <StatusBadge status="production" />
               )}
-              {dirty && !saving && <span className="text-[10px] text-amber-500">Unsaved changes</span>}
-              {saving && <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>Saving...</span>}
+              {dirty && !saving && (
+                <span className="text-[10px] font-medium flex items-center gap-1" style={{ color: '#D97706' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Unsaved
+                </span>
+              )}
+              {saving && (
+                <span className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--color-text-tertiary)' }}>
+                  <span className="w-3 h-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin" />
+                  Saving
+                </span>
+              )}
             </div>
           </div>
 
@@ -256,13 +274,21 @@ export function PlaybookEditor() {
           )}
 
           {/* Actions — condensed on mobile */}
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {!isMobile && (
               <>
                 <Link
                   to="/history"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-lg hover:bg-[var(--color-surface-1)] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-150"
                   style={{ color: 'var(--color-text-secondary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-surface-1)';
+                    e.currentTarget.style.color = 'var(--color-text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--color-text-secondary)';
+                  }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                     <circle cx="8" cy="8" r="5" stroke="currentColor" strokeWidth="1.2"/>
@@ -272,8 +298,16 @@ export function PlaybookEditor() {
                 </Link>
                 <Link
                   to="/permissions"
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-lg hover:bg-[var(--color-surface-1)] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all duration-150"
                   style={{ color: 'var(--color-text-secondary)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-surface-1)';
+                    e.currentTarget.style.color = 'var(--color-text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = 'var(--color-text-secondary)';
+                  }}
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                     <path d="M5 7V5.5a3 3 0 016 0V7" stroke="currentColor" strokeWidth="1.2"/>
@@ -288,8 +322,8 @@ export function PlaybookEditor() {
               size="md"
               onClick={() => openPublishModal()}
               icon={
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <path d="M2.5 4L5 6.5 7.5 4" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 2v8M2 6l4 4 4-4" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               }
             >
@@ -372,26 +406,30 @@ export function PlaybookEditor() {
           )}
         </div>
 
-        {/* ── Inspector Sidebar — overlay on mobile, panel on desktop ── */}
+        {/* ── Inspector Sidebar — overlay on mobile, glass panel on desktop ── */}
         {inspectorOpen && (
           <>
             {/* Mobile overlay backdrop */}
             {isMobile && (
               <div
-                className="fixed inset-0 bg-black/20 z-30"
+                className="fixed inset-0 z-30"
                 onClick={() => setInspectorOpen(false)}
+                style={{ background: 'rgba(0,0,0,0.15)', backdropFilter: 'blur(4px)' }}
               />
             )}
             <div
               className={`${
                 isMobile
-                  ? 'fixed right-0 top-0 bottom-0 z-40 w-[min(300px,85vw)]'
+                  ? 'fixed right-0 top-0 bottom-0 z-40 w-[min(320px,85vw)]'
                   : 'shrink-0 w-[280px] lg:w-[300px]'
-              } overflow-auto bg-white`}
+              } overflow-auto`}
               style={{
+                background: isMobile ? 'white' : 'rgba(255, 255, 255, 0.92)',
+                backdropFilter: isMobile ? 'none' : 'blur(16px) saturate(180%)',
+                WebkitBackdropFilter: isMobile ? 'none' : 'blur(16px) saturate(180%)',
                 borderLeft: '1px solid var(--color-border)',
-                boxShadow: isMobile ? 'var(--shadow-xl)' : 'none',
-                animation: isMobile ? 'slideInRight 200ms ease-out' : 'fadeIn 150ms ease-out',
+                boxShadow: isMobile ? 'var(--shadow-2xl)' : 'inset 1px 0 0 rgba(255,255,255,0.3)',
+                animation: isMobile ? 'slideInRight 250ms cubic-bezier(0.16, 1, 0.3, 1)' : 'fadeIn 200ms ease-out',
               }}
             >
             {/* Inspector tab bar */}

@@ -48,4 +48,13 @@ export const SECONDARY_ROUTES = [
   '/permissions',
   '/docs-embed',
   '/sheets-schema',
+  // Dedicated chip type editors
+  '/agents/edit',
+  '/tools/edit',
+  '/guards/edit',
+  '/triggers/edit',
+  '/connectors/edit',
+  '/schemas/edit',
+  '/docs/edit',
+  '/data/edit',
 ];

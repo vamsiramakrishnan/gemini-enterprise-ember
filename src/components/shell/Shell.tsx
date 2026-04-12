@@ -10,11 +10,21 @@
 
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRegistry } from '../../contexts/AppContext';
 import { CreateAssetWizard } from '../shared/CreateAssetWizard';
 import { useIsMobile } from '../../hooks';
 import { SidebarContent } from './Sidebar';
 import { IconMenu, IconClose } from './Icons';
+import { CommandPalette, useCommandPalette } from '../shared/CommandPalette';
+
+// ─── Page transition variants ───────────────────────────────────────
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8, filter: 'blur(4px)' },
+  enter: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] } },
+  exit: { opacity: 0, y: -6, filter: 'blur(2px)', transition: { duration: 0.15, ease: [0.4, 0, 1, 1] as [number, number, number, number] } },
+};
 
 // ─── Component ───────────────────────────────────────────────────────
 
@@ -25,6 +35,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const location = useLocation();
   const { createChip } = useRegistry();
+  const commandPalette = useCommandPalette();
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -85,8 +96,19 @@ export function Shell({ children }: { children: ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main key={location.pathname} className="flex-1 overflow-auto page-enter">
-          {children}
+        <main className="flex-1 overflow-auto relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="enter"
+              exit="exit"
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
 
         <CreateAssetWizard
@@ -94,6 +116,7 @@ export function Shell({ children }: { children: ReactNode }) {
           onClose={() => setCreateWizardOpen(false)}
           onCreate={(partial) => createChip(partial)}
         />
+        <CommandPalette open={commandPalette.open} onClose={() => commandPalette.setOpen(false)} />
       </div>
     );
   }
@@ -112,8 +135,19 @@ export function Shell({ children }: { children: ReactNode }) {
       >
         <SidebarContent collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} onCreateNew={openCreateWizard} />
       </aside>
-      <main key={location.pathname} className="flex-1 overflow-auto page-enter">
-        {children}
+      <main className="flex-1 overflow-auto relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            variants={pageVariants}
+            initial="initial"
+            animate="enter"
+            exit="exit"
+            className="h-full"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <CreateAssetWizard
@@ -121,6 +155,7 @@ export function Shell({ children }: { children: ReactNode }) {
         onClose={() => setCreateWizardOpen(false)}
         onCreate={(partial) => createChip(partial)}
       />
+      <CommandPalette open={commandPalette.open} onClose={() => commandPalette.setOpen(false)} />
     </div>
   );
 }

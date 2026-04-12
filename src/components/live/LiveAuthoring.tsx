@@ -326,56 +326,182 @@ function InputArea({ onSend, onMic }: { onSend: (text: string) => void; onMic: (
   );
 }
 
+// ─── Typewriter Hook ────────────────────────────────────────────────
+
+function useTypewriter(text: string, speed: number = 20) {
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const targetRef = useRef(text);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    // When text changes, determine how much new content to type
+    const prev = targetRef.current;
+    targetRef.current = text;
+
+    if (text.length <= prev.length) {
+      // Text shortened or same — snap immediately
+      setDisplayedText(text);
+      setIsTyping(false);
+      indexRef.current = text.length;
+      return;
+    }
+
+    // New text appended — start typing from where we left off
+    const startIndex = indexRef.current;
+    if (startIndex >= text.length) {
+      setIsTyping(false);
+      return;
+    }
+
+    setIsTyping(true);
+    let current = startIndex;
+
+    const interval = setInterval(() => {
+      // Advance by word chunks for performance (grab next word boundary)
+      const remaining = text.slice(current);
+      const wordMatch = remaining.match(/^(\S+\s*|\s+)/);
+      const chunk = wordMatch ? wordMatch[0] : remaining.charAt(0);
+      current += chunk.length;
+
+      if (current >= text.length) {
+        current = text.length;
+        setDisplayedText(text);
+        setIsTyping(false);
+        indexRef.current = current;
+        clearInterval(interval);
+      } else {
+        setDisplayedText(text.slice(0, current));
+        indexRef.current = current;
+      }
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [text, speed]);
+
+  return { displayedText, isTyping };
+}
+
+// ─── Typing Indicator (bouncing dots) ───────────────────────────────
+
+function TypingIndicator() {
+  return (
+    <span className="live-typing-dots">
+      <span className="live-typing-dot" style={{ animationDelay: '0ms' }} />
+      <span className="live-typing-dot" style={{ animationDelay: '150ms' }} />
+      <span className="live-typing-dot" style={{ animationDelay: '300ms' }} />
+    </span>
+  );
+}
+
 // ─── Playbook Renderer ───────────────────────────────────────────────
 
-function PlaybookDocument({ extraLines = [] }: { extraLines?: PlaybookLine[] }) {
+function PlaybookDocument({ extraLines = [], typewriterEnabled = false }: { extraLines?: PlaybookLine[]; typewriterEnabled?: boolean }) {
   const draftChips = ['tool:warehouse-return-check'];
   const allLines = [...PLAYBOOK_LINES, ...extraLines];
 
+  // Flatten all line content into a single string so the typewriter can reveal it
+  const fullText = allLines
+    .map((line) => {
+      if (line.type === 'blank') return '\n';
+      return line.content;
+    })
+    .join('\n');
+
+  const { displayedText, isTyping } = useTypewriter(fullText, typewriterEnabled ? 20 : 0);
+
+  // If typewriter is disabled, render everything immediately
+  if (!typewriterEnabled) {
+    return (
+      <div className="px-4 py-4 md:px-8 md:py-6">
+        {allLines.map((line, i) => (
+          <PlaybookLineRenderer key={i} line={line} draftChips={draftChips} />
+        ))}
+      </div>
+    );
+  }
+
+  // Reconstruct which lines are visible based on displayedText length
+  let charBudget = displayedText.length;
+  const visibleLines: Array<{ line: PlaybookLine; partialContent: string | null }> = [];
+
+  for (const line of allLines) {
+    if (charBudget <= 0) break;
+
+    if (line.type === 'blank') {
+      // blank lines consume 1 char (\n)
+      charBudget -= 1;
+      visibleLines.push({ line, partialContent: null });
+    } else {
+      const lineLen = line.content.length;
+      if (charBudget >= lineLen + 1) {
+        // +1 for the \n separator
+        charBudget -= lineLen + 1;
+        visibleLines.push({ line, partialContent: null });
+      } else {
+        // Partial line
+        visibleLines.push({ line, partialContent: line.content.slice(0, charBudget) });
+        charBudget = 0;
+      }
+    }
+  }
+
   return (
     <div className="px-4 py-4 md:px-8 md:py-6">
-      {allLines.map((line, i) => {
-        if (line.type === 'blank') {
-          return <div key={i} className="h-3" />;
-        }
-        if (line.type === 'h1') {
-          return (
-            <h1
-              key={i}
-              className="text-xl font-bold text-[var(--color-text-primary)] mb-1"
-              style={{ fontFamily: 'var(--font-ui)' }}
-            >
-              {line.content}
-            </h1>
-          );
-        }
-        if (line.type === 'h2') {
-          return (
-            <h2
-              key={i}
-              className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mt-3 mb-1"
-              style={{ fontFamily: 'var(--font-ui)' }}
-            >
-              {line.content}
-            </h2>
-          );
-        }
-        const isNumberedList = /^\d+\./.test(line.content);
+      {visibleLines.map(({ line, partialContent }, i) => {
+        const isLast = i === visibleLines.length - 1;
+        const effectiveLine =
+          partialContent !== null ? { ...line, content: partialContent } : line;
         return (
-          <div
-            key={i}
-            className={`text-[13px] leading-relaxed text-[var(--color-text-primary)] ${
-              line.type === 'list' ? (isNumberedList ? 'ml-2 mb-0.5' : 'ml-1 mb-0.5') : 'mb-1'
-            } ${line.isDraftLine ? 'opacity-80' : ''}`}
-            style={{ fontFamily: 'var(--font-body)' }}
-          >
-            {line.type === 'list' && !isNumberedList && (
-              <span className="text-[var(--color-text-tertiary)] mr-1.5">&bull;</span>
-            )}
-            {parseChipText(line.content, draftChips)}
-          </div>
+          <span key={i}>
+            <PlaybookLineRenderer line={effectiveLine} draftChips={draftChips} />
+            {isLast && isTyping && <span className="live-typewriter-cursor">|</span>}
+          </span>
         );
       })}
+      {visibleLines.length === 0 && isTyping && (
+        <span className="live-typewriter-cursor">|</span>
+      )}
+    </div>
+  );
+}
+
+function PlaybookLineRenderer({ line, draftChips }: { line: PlaybookLine; draftChips: string[] }) {
+  if (line.type === 'blank') {
+    return <div className="h-3" />;
+  }
+  if (line.type === 'h1') {
+    return (
+      <h1
+        className="text-xl font-bold text-[var(--color-text-primary)] mb-1"
+        style={{ fontFamily: 'var(--font-ui)' }}
+      >
+        {line.content}
+      </h1>
+    );
+  }
+  if (line.type === 'h2') {
+    return (
+      <h2
+        className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mt-3 mb-1"
+        style={{ fontFamily: 'var(--font-ui)' }}
+      >
+        {line.content}
+      </h2>
+    );
+  }
+  const isNumberedList = /^\d+\./.test(line.content);
+  return (
+    <div
+      className={`text-[13px] leading-relaxed text-[var(--color-text-primary)] ${
+        line.type === 'list' ? (isNumberedList ? 'ml-2 mb-0.5' : 'ml-1 mb-0.5') : 'mb-1'
+      } ${line.isDraftLine ? 'opacity-80' : ''}`}
+      style={{ fontFamily: 'var(--font-body)' }}
+    >
+      {line.type === 'list' && !isNumberedList && (
+        <span className="text-[var(--color-text-tertiary)] mr-1.5">&bull;</span>
+      )}
+      {parseChipText(line.content, draftChips)}
     </div>
   );
 }
@@ -565,6 +691,34 @@ export function LiveAuthoring() {
           0% { background-color: #FFFBEB; }
           100% { background-color: transparent; }
         }
+        /* Typewriter blinking cursor */
+        .live-typewriter-cursor {
+          color: var(--color-accent);
+          font-weight: 600;
+          animation: typewriterBlink 530ms step-end infinite;
+        }
+        @keyframes typewriterBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        /* Typing indicator bouncing dots */
+        .live-typing-dots {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          height: 16px;
+        }
+        .live-typing-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background-color: var(--color-text-tertiary);
+          animation: typingBounce 600ms ease-in-out infinite;
+        }
+        @keyframes typingBounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
         /* Responsive split panels */
         @media (min-width: 768px) {
           .live-panel-conversation { width: 55%; flex: none; }
@@ -617,12 +771,8 @@ export function LiveAuthoring() {
                 <div className="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center text-white text-[9px] md:text-[10px] font-bold flex-shrink-0 bg-[var(--color-accent)]">
                   G
                 </div>
-                <div className="rounded-lg px-3 py-2 md:px-4 md:py-3 text-[13px] bg-white border border-[var(--color-border)]">
-                  <span className="inline-flex gap-1 items-center text-[var(--color-text-tertiary)]">
-                    <span className="animate-pulse">.</span>
-                    <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>.</span>
-                    <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>.</span>
-                  </span>
+                <div className="rounded-lg px-3 py-2 md:px-4 md:py-3 text-[13px] bg-white border border-[var(--color-border)] flex items-center">
+                  <TypingIndicator />
                 </div>
               </div>
             )}
@@ -659,7 +809,7 @@ export function LiveAuthoring() {
 
           {/* Playbook Content */}
           <div className="flex-1 overflow-y-auto">
-            <PlaybookDocument extraLines={extraPlaybookLines} />
+            <PlaybookDocument extraLines={extraPlaybookLines} typewriterEnabled />
           </div>
 
           {/* Action Buttons */}
