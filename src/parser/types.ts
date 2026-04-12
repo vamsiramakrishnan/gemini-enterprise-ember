@@ -25,6 +25,33 @@ export type ChipType =
 
 export type ChipStatus = 'resolved' | 'draft' | 'unresolved' | 'deprecated';
 
+/** Visibility level for a chip — mirrors workspace visibility model. */
+export type ChipVisibility =
+  | 'private'      // only the owning workspace
+  | 'shared'       // explicit cross-workspace grants (see ChipScope.sharedWith)
+  | 'org-catalog'  // discoverable org-wide
+  | 'published';   // external marketplace
+
+/**
+ * ChipScope — Where a chip lives and who can see it.
+ *
+ * Every chip is owned by exactly ONE workspace. Cross-workspace access
+ * is granted via `visibility` and `sharedWith`. The registry is a flat
+ * pool; the workspace-scoped view is computed by filtering on scope.
+ */
+export interface ChipScope {
+  /** The workspace that owns this chip (source of truth, single home). */
+  workspaceId: string;
+  /** Who outside the owning workspace can see / invoke it. */
+  visibility: ChipVisibility;
+  /** Explicit cross-workspace grants (used when visibility = 'shared'). */
+  sharedWith?: {
+    workspaceIds?: string[];
+    groups?: string[];
+    users?: string[];
+  };
+}
+
 export interface SmartChip {
   id: string;
   type: ChipType;
@@ -37,6 +64,8 @@ export interface SmartChip {
   permissions: {
     currentUser: 'viewer' | 'invoker' | 'editor' | 'admin';
   };
+  /** Workspace ownership + visibility. Required; registry filters on this. */
+  scope: ChipScope;
   metadata: Record<string, unknown>;
   lastUpdated: string;
   usageCount: number;

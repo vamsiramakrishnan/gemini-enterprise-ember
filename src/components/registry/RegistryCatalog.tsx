@@ -12,6 +12,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistry } from '../../contexts/AppContext';
+import { useWorkspace, type WorkspaceAccessReason } from '../../contexts/WorkspaceContext';
 import { useScrollStagger } from '../../hooks';
 import { CHIP_COLORS, CHIP_ICONS } from '../../parser/types';
 import type { ChipType, SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata } from '../../parser/types';
@@ -238,9 +239,65 @@ function healthLabel(status: string): { label: string; color: string } {
   }
 }
 
+// ─── Origin Badge (who owns this chip + how it reached us) ───────────
+
+const REASON_LABEL: Record<WorkspaceAccessReason, string> = {
+  'owned':       'Mine',
+  'shared':      'Shared',
+  'granted':     'Shared',
+  'org-catalog': 'Org',
+  'published':   'Public',
+};
+
+const REASON_COLOR: Record<WorkspaceAccessReason, string> = {
+  'owned':       CHIP_ACCENTS.connector,  // blue — this workspace owns it
+  'shared':      CHIP_ACCENTS.skill,      // violet — cross-workspace grant
+  'granted':     CHIP_ACCENTS.skill,
+  'org-catalog': CHIP_ACCENTS.data,       // green — org-wide
+  'published':   CHIP_ACCENTS.agent,      // amber — marketplace
+};
+
+function OriginBadge({ origin }: { origin: OriginInfo }) {
+  if (!origin.reason) return null;
+  const label = REASON_LABEL[origin.reason];
+  const color = REASON_COLOR[origin.reason];
+  const title =
+    origin.reason === 'owned'
+      ? `Owned by ${origin.ownerName}`
+      : `From ${origin.ownerName} · ${label}`;
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center gap-1"
+      style={{
+        fontSize: 9.5,
+        fontWeight: 600,
+        padding: '2px 6px',
+        borderRadius: 'var(--radius-xs)',
+        background: `${color}14`,
+        color,
+        fontFamily: 'var(--font-ui)',
+        letterSpacing: '0.02em',
+        textTransform: 'uppercase',
+        border: `1px solid ${color}30`,
+      }}
+    >
+      <span style={{ fontSize: 9 }}>{origin.ownerIcon}</span>
+      {label}
+    </span>
+  );
+}
+
 // ─── Registry Card ────────────────────────────────────────────────────
 
-function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: SmartChip; onSelect: (id: string) => void; onOpenEditor: (chip: SmartChip) => void; onViewHistory: () => void }) {
+interface OriginInfo {
+  reason: WorkspaceAccessReason | null;
+  ownerName: string;
+  ownerIcon: string;
+  ownerColor: string;
+}
+
+function RegistryCard({ chip, origin, onSelect, onOpenEditor, onViewHistory }: { chip: SmartChip; origin: OriginInfo; onSelect: (id: string) => void; onOpenEditor: (chip: SmartChip) => void; onViewHistory: () => void }) {
   const colors = CHIP_COLORS[chip.type];
   const icon = CHIP_ICONS[chip.type];
   const [expanded, setExpanded] = useState(false);
@@ -303,7 +360,10 @@ function RegistryCard({ chip, onSelect, onOpenEditor, onViewHistory }: { chip: S
           >
             @{chip.type}
           </Badge>
-          <StatusBadge status={chip.status} size="xs" />
+          <div className="flex items-center gap-1.5">
+            <OriginBadge origin={origin} />
+            <StatusBadge status={chip.status} size="xs" />
+          </div>
         </div>
 
         {/* Name */}
@@ -465,7 +525,7 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 // ─── List Row Variant ─────────────────────────────────────────────────
 
-function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: string) => void }) {
+function RegistryListRow({ chip, origin, onSelect }: { chip: SmartChip; origin: OriginInfo; onSelect: (id: string) => void }) {
   const colors = CHIP_COLORS[chip.type];
   const icon = CHIP_ICONS[chip.type];
 
@@ -492,6 +552,7 @@ function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: s
       <span className="text-[12px] text-[var(--color-text-secondary)] flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
         {chip.description}
       </span>
+      <OriginBadge origin={origin} />
       <StatusBadge status={chip.status} size="xs" />
       <span className="text-[10px] text-[var(--color-text-tertiary)] w-[44px] text-right shrink-0">
         v{chip.version}
@@ -505,11 +566,22 @@ function RegistryListRow({ chip, onSelect }: { chip: SmartChip; onSelect: (id: s
 
 // ─── Main Catalog ─────────────────────────────────────────────────────
 
+type ScopeFilter = 'all' | 'mine' | 'shared' | 'org';
+
+const SCOPE_TABS: { key: ScopeFilter; label: string; hint: string }[] = [
+  { key: 'all',    label: 'All',     hint: 'Every asset visible in this workspace' },
+  { key: 'mine',   label: 'Mine',    hint: 'Owned by this workspace' },
+  { key: 'shared', label: 'Shared',  hint: 'Shared from other workspaces' },
+  { key: 'org',    label: 'Org',     hint: 'Org-wide catalog (Platform + published)' },
+];
+
 export function RegistryCatalog() {
   const navigate = useNavigate();
-  const { filteredChips: contextFilteredChips, chips: allChips, searchQuery, setSearchQuery, selectChip, createModalOpen, openCreateModal, closeCreateModal, createChip } = useRegistry();
+  const { filteredChips: contextFilteredChips, chips: visibleChips, searchQuery, setSearchQuery, selectChip, createModalOpen, openCreateModal, closeCreateModal, createChip } = useRegistry();
+  const { current: currentWorkspace, getChipAccess } = useWorkspace();
 
   const [typeFilter, setTypeFilter] = useState<ChipType | 'all'>('all');
+  const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('relevance');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
@@ -521,15 +593,53 @@ export function RegistryCatalog() {
     return () => clearTimeout(t);
   }, []);
 
+  // Compute workspace-access metadata for every visible chip
+  const chipOrigins = useMemo(() => {
+    const map = new Map<string, OriginInfo>();
+    for (const chip of contextFilteredChips) {
+      const access = getChipAccess(chip);
+      map.set(chip.id, {
+        reason: access.reason,
+        ownerName: access.ownerWorkspace?.name ?? 'Unknown',
+        ownerIcon: access.ownerWorkspace?.icon ?? '•',
+        ownerColor: access.ownerWorkspace?.color ?? '#64748B',
+      });
+    }
+    return map;
+  }, [contextFilteredChips, getChipAccess]);
+
+  // Count chips per scope tab (before type filter) for the tab badges
+  const scopeCounts = useMemo(() => {
+    const counts = { all: 0, mine: 0, shared: 0, org: 0 };
+    for (const chip of contextFilteredChips) {
+      counts.all += 1;
+      const reason = chipOrigins.get(chip.id)?.reason;
+      if (reason === 'owned') counts.mine += 1;
+      else if (reason === 'shared' || reason === 'granted') counts.shared += 1;
+      else if (reason === 'org-catalog' || reason === 'published') counts.org += 1;
+    }
+    return counts;
+  }, [contextFilteredChips, chipOrigins]);
+
   const filtered = useMemo(() => {
     let items = contextFilteredChips;
+
+    if (scopeFilter !== 'all') {
+      items = items.filter((c) => {
+        const reason = chipOrigins.get(c.id)?.reason;
+        if (scopeFilter === 'mine') return reason === 'owned';
+        if (scopeFilter === 'shared') return reason === 'shared' || reason === 'granted';
+        if (scopeFilter === 'org') return reason === 'org-catalog' || reason === 'published';
+        return true;
+      });
+    }
 
     if (typeFilter !== 'all') {
       items = items.filter((c) => c.type === typeFilter);
     }
 
     return sortChips(items, sortKey);
-  }, [contextFilteredChips, typeFilter, sortKey]);
+  }, [contextFilteredChips, chipOrigins, scopeFilter, typeFilter, sortKey]);
 
   const handleOpenEditor = (chip: SmartChip) => {
     const route = CHIP_CONFIG[chip.type]?.createRoute;
@@ -598,7 +708,10 @@ export function RegistryCatalog() {
                 Registry & Catalog
               </h1>
               <p style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-ui)', margin: '1px 0 0' }}>
-                All @-referenceable assets &mdash; {allChips.length} entries
+                {currentWorkspace?.name ?? 'Workspace'} &middot; {visibleChips.length} visible {visibleChips.length === 1 ? 'asset' : 'assets'}
+                {scopeCounts.shared + scopeCounts.org > 0 && (
+                  <> &middot; {scopeCounts.shared + scopeCounts.org} shared in</>
+                )}
               </p>
             </div>
           </div>
@@ -707,6 +820,60 @@ export function RegistryCatalog() {
           </div>
         </div>
 
+        {/* Workspace scope tabs — Mine / Shared / Org / All */}
+        <div
+          className="flex items-center mb-3"
+          style={{
+            gap: 2,
+            padding: 3,
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--color-surface-2)',
+            width: 'fit-content',
+          }}
+        >
+          {SCOPE_TABS.map((tab) => {
+            const isActive = scopeFilter === tab.key;
+            const count = scopeCounts[tab.key];
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setScopeFilter(tab.key)}
+                title={tab.hint}
+                className="inline-flex items-center gap-1.5"
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 11.5,
+                  fontWeight: isActive ? 600 : 500,
+                  fontFamily: 'var(--font-ui)',
+                  letterSpacing: '-0.01em',
+                  background: isActive ? 'var(--color-surface-0)' : 'transparent',
+                  color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-secondary)',
+                  boxShadow: isActive ? 'var(--shadow-xs)' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease-out',
+                }}
+              >
+                {tab.label}
+                <span
+                  style={{
+                    fontSize: 9.5,
+                    padding: '1px 5px',
+                    borderRadius: 'var(--radius-xs)',
+                    background: isActive ? 'var(--color-accent-light)' : 'var(--color-surface-1)',
+                    color: isActive ? 'var(--color-accent)' : 'var(--color-text-tertiary)',
+                    fontWeight: 600,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Type filters */}
         <div className="mb-5">
           <TypeFilter active={typeFilter} onChange={setTypeFilter} />
@@ -743,13 +910,25 @@ export function RegistryCatalog() {
         ) : viewMode === 'grid' ? (
           <div ref={gridStaggerRef} className="grid-auto">
             {filtered.map((chip) => (
-              <RegistryCard key={chip.id} chip={chip} onSelect={handleSelect} onOpenEditor={handleOpenEditor} onViewHistory={handleViewHistory} />
+              <RegistryCard
+                key={chip.id}
+                chip={chip}
+                origin={chipOrigins.get(chip.id) ?? { reason: null, ownerName: 'Unknown', ownerIcon: '•', ownerColor: '#64748B' }}
+                onSelect={handleSelect}
+                onOpenEditor={handleOpenEditor}
+                onViewHistory={handleViewHistory}
+              />
             ))}
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             {filtered.map((chip) => (
-              <RegistryListRow key={chip.id} chip={chip} onSelect={handleSelect} />
+              <RegistryListRow
+                key={chip.id}
+                chip={chip}
+                origin={chipOrigins.get(chip.id) ?? { reason: null, ownerName: 'Unknown', ownerIcon: '•', ownerColor: '#64748B' }}
+                onSelect={handleSelect}
+              />
             ))}
           </div>
         )}
@@ -761,7 +940,7 @@ export function RegistryCatalog() {
           </h3>
           <div className="flex flex-wrap gap-2">
             {(['connector', 'skill', 'trigger', 'doc', 'tool', 'agent', 'guard', 'data', 'schema'] as ChipType[]).map((t) => {
-              const count = allChips.filter((c) => c.type === t).length;
+              const count = visibleChips.filter((c) => c.type === t).length;
               return (
                 <button
                   key={t}

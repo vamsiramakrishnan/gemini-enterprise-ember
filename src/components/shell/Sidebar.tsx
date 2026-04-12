@@ -10,6 +10,8 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { NAV } from './Navigation';
 import { ICON_MAP } from './Icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useWorkspace } from '../../contexts/WorkspaceContext';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -22,73 +24,31 @@ interface SidebarContentProps {
 
 // ─── Component ───────────────────────────────────────────────────────
 
-export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }: SidebarContentProps) {
+export function SidebarContent({ collapsed, onToggle: _onToggle, onNavigate, onCreateNew }: SidebarContentProps) {
   const location = useLocation();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { current: currentWorkspace } = useWorkspace();
+
+  // Derive footer agent-identity from the active workspace so it stays
+  // in sync when the user switches workspaces.
+  const agentInitials = (currentWorkspace?.agentName ?? 'Agent')
+    .split(' ')
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  const agentStatusDot =
+    currentWorkspace?.status === 'active'
+      ? 'var(--color-success)'
+      : currentWorkspace?.status === 'draft'
+        ? 'var(--color-warning)'
+        : 'var(--color-text-tertiary)';
 
   return (
     <>
-      {/* Logo area */}
-      <div
-        className="flex items-center shrink-0"
-        style={{
-          height: 64,
-          padding: collapsed ? '0 12px' : '0 18px',
-          borderBottom: '1px solid var(--color-border)',
-          background: 'var(--color-surface-0)',
-          transition: `padding var(--duration-normal) var(--ease-out)`,
-        }}
-      >
-        <button
-          onClick={onToggle}
-          className="flex items-center gap-3 w-full group"
-          style={{
-            transition: `opacity var(--duration-fast) var(--ease-out)`,
-          }}
-        >
-          <div
-            className="shrink-0 flex items-center justify-center relative"
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #4F46E5 100%)',
-              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255,255,255,0.2)',
-              transition: 'box-shadow 200ms ease-out, transform 200ms ease-out',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M3.5 4.5h9M3.5 8h5.5M3.5 11.5h7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col" style={{ animation: 'fadeIn 200ms ease-out' }}>
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 650,
-                  lineHeight: 1.25,
-                  letterSpacing: '-0.015em',
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                Playbook
-              </span>
-              <span
-                style={{
-                  fontSize: 11,
-                  lineHeight: 1.25,
-                  color: 'var(--color-text-tertiary)',
-                  fontFamily: 'var(--font-ui)',
-                }}
-              >
-                Agent Builder
-              </span>
-            </div>
-          )}
-        </button>
-      </div>
+      {/* Workspace switcher — replaces the generic logo */}
+      <WorkspaceSwitcher collapsed={collapsed} />
 
       {/* Create New Button */}
       <div
@@ -330,19 +290,21 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   height: 34,
                   borderRadius: 'var(--radius-md)',
                   fontSize: 10,
-                  background: 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
-                  color: 'var(--color-text-secondary)',
+                  background: currentWorkspace
+                    ? `linear-gradient(135deg, ${currentWorkspace.color} 0%, ${currentWorkspace.color}cc 100%)`
+                    : 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
+                  color: currentWorkspace ? '#fff' : 'var(--color-text-secondary)',
                   letterSpacing: '0.02em',
                 }}
               >
-                CA
+                {agentInitials}
               </div>
               <div
                 className="absolute -bottom-0.5 -right-0.5 rounded-full"
                 style={{
                   width: 10,
                   height: 10,
-                  background: 'var(--color-success)',
+                  background: agentStatusDot,
                   border: '2px solid var(--color-surface-1)',
                   boxShadow: '0 0 4px rgba(22, 163, 74, 0.3)',
                 }}
@@ -358,7 +320,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   letterSpacing: '-0.01em',
                 }}
               >
-                Claims Agent
+                {currentWorkspace?.agentName ?? 'Agent'}
               </div>
               <div
                 style={{
@@ -368,7 +330,7 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   marginTop: 1,
                 }}
               >
-                v2.1 · Running
+                v{currentWorkspace?.agentVersion ?? '0.1.0'} · {currentWorkspace?.status ?? 'idle'}
               </div>
             </div>
           </div>
@@ -382,18 +344,20 @@ export function SidebarContent({ collapsed, onToggle, onNavigate, onCreateNew }:
                   height: 34,
                   borderRadius: 'var(--radius-md)',
                   fontSize: 9,
-                  background: 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
-                  color: 'var(--color-text-secondary)',
+                  background: currentWorkspace
+                    ? `linear-gradient(135deg, ${currentWorkspace.color} 0%, ${currentWorkspace.color}cc 100%)`
+                    : 'linear-gradient(135deg, var(--color-surface-2) 0%, var(--color-surface-3) 100%)',
+                  color: currentWorkspace ? '#fff' : 'var(--color-text-secondary)',
                 }}
               >
-                CA
+                {agentInitials}
               </div>
               <div
                 className="absolute -bottom-0.5 -right-0.5 rounded-full"
                 style={{
                   width: 10,
                   height: 10,
-                  background: 'var(--color-success)',
+                  background: agentStatusDot,
                   border: '2px solid var(--color-surface-1)',
                   boxShadow: '0 0 4px rgba(22, 163, 74, 0.3)',
                 }}

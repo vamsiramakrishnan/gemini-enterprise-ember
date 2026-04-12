@@ -19,11 +19,17 @@ import type { SmartChip, ChipType, ChipStatus } from '../parser/types';
 import { REGISTRY } from '../data/registry';
 import { NotificationContext } from './NotificationContext';
 import { MOCK_USER } from './AuthContext';
+import { useWorkspace } from './WorkspaceContext';
+import { WORKSPACE_IDS } from '../data/workspaces';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
 export interface RegistryContextValue {
+  /** All chips the current workspace can see (owned + shared + org-catalog). */
   chips: SmartChip[];
+  /** The raw org-wide pool, unfiltered by workspace. Use sparingly. */
+  allChips: SmartChip[];
+  /** `chips` further filtered by searchQuery. */
   filteredChips: SmartChip[];
   loading: boolean;
   searchQuery: string;
@@ -52,21 +58,25 @@ export function useRegistry(): RegistryContextValue {
 // ─── Provider ────────────────────────────────────────────────────────
 
 export function RegistryProvider({ children }: { children: ReactNode }) {
-  const [chips, setChips] = useState<SmartChip[]>([]);
+  const [allChips, setAllChips] = useState<SmartChip[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedChip, setSelectedChip] = useState<SmartChip | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const notifCtx = useContext(NotificationContext);
+  const { getVisibleChips, current: currentWorkspace } = useWorkspace();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setChips([...REGISTRY]);
+      setAllChips([...REGISTRY]);
       setLoading(false);
     }, 150);
     return () => clearTimeout(timer);
   }, []);
+
+  // Workspace-scoped view: everything the current workspace can see.
+  const chips = React.useMemo(() => getVisibleChips(allChips), [allChips, getVisibleChips]);
 
   const filteredChips = React.useMemo(() => {
     if (!searchQuery.trim()) return chips;
@@ -80,8 +90,8 @@ export function RegistryProvider({ children }: { children: ReactNode }) {
   }, [chips, searchQuery]);
 
   const selectChip = useCallback(
-    (id: string) => setSelectedChip(chips.find((c) => c.id === id) ?? null),
-    [chips],
+    (id: string) => setSelectedChip(allChips.find((c) => c.id === id) ?? null),
+    [allChips],
   );
 
   const clearSelection = useCallback(() => setSelectedChip(null), []);
@@ -89,6 +99,7 @@ export function RegistryProvider({ children }: { children: ReactNode }) {
   const createChip = useCallback(
     (partial: Partial<SmartChip> & { type: ChipType; name: string }) => {
       const id = `${partial.type}-${partial.name}-${Date.now()}`;
+      const ownerWorkspace = currentWorkspace?.id ?? WORKSPACE_IDS.CLAIMS;
       const newChip: SmartChip = {
         id,
         registryId: `registry/${partial.type}/${partial.name}`,
@@ -97,31 +108,35 @@ export function RegistryProvider({ children }: { children: ReactNode }) {
         owner: MOCK_USER.email,
         description: partial.description ?? '',
         permissions: { currentUser: 'admin' },
+        scope: partial.scope ?? {
+          workspaceId: ownerWorkspace,
+          visibility: currentWorkspace?.defaultVisibility ?? 'private',
+        },
         metadata: partial.metadata ?? {},
         lastUpdated: new Date().toISOString(),
         usageCount: 0,
         ...partial,
       };
-      setChips((prev) => [...prev, newChip]);
+      setAllChips((prev) => [...prev, newChip]);
       setCreateModalOpen(false);
       notifCtx?.addNotification({
         type: 'success',
         title: `Created @${newChip.type}(${newChip.name})`,
-        message: 'New asset added to registry as draft.',
+        message: `New asset added to ${currentWorkspace?.name ?? 'registry'} as draft.`,
       });
     },
-    [notifCtx],
+    [notifCtx, currentWorkspace],
   );
 
   const updateChip = useCallback((id: string, updates: Partial<SmartChip>) => {
-    setChips((prev) =>
+    setAllChips((prev) =>
       prev.map((c) => (c.id === id ? { ...c, ...updates, lastUpdated: new Date().toISOString() } : c)),
     );
   }, []);
 
   const deleteChip = useCallback(
     (id: string) => {
-      setChips((prev) => prev.filter((c) => c.id !== id));
+      setAllChips((prev) => prev.filter((c) => c.id !== id));
       if (selectedChip?.id === id) setSelectedChip(null);
       notifCtx?.addNotification({ type: 'info', title: 'Asset removed from registry' });
     },
@@ -134,7 +149,7 @@ export function RegistryProvider({ children }: { children: ReactNode }) {
   return (
     <RegistryCtx.Provider
       value={{
-        chips, filteredChips, loading, searchQuery, selectedChip, createModalOpen,
+        chips, allChips, filteredChips, loading, searchQuery, selectedChip, createModalOpen,
         setSearchQuery, selectChip, clearSelection, createChip, updateChip, deleteChip,
         openCreateModal, closeCreateModal,
       }}

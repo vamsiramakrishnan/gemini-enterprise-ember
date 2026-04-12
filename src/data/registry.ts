@@ -6,9 +6,19 @@
  * resolution, the Registry Browser (Screen 3), and chip autocomplete.
  */
 
-import type { SmartChip, ConnectorMetadata, SkillMetadata, TriggerMetadata, ToolMetadata, AgentMetadata, DocMetadata, DataMetadata, SchemaMetadata } from '../parser/types';
+import type { SmartChip, ChipScope, ConnectorMetadata, SkillMetadata, TriggerMetadata, ToolMetadata, AgentMetadata, DocMetadata, DataMetadata, SchemaMetadata } from '../parser/types';
+import { WORKSPACE_IDS } from './workspaces';
 
 // ─── Helper ───────────────────────────────────────────────────────────
+
+/**
+ * Default scope — overwritten per-chip by WORKSPACE_ASSIGNMENTS post-step.
+ * Present so the chip() factory always returns a well-typed SmartChip.
+ */
+const DEFAULT_SCOPE: ChipScope = {
+  workspaceId: WORKSPACE_IDS.PLATFORM,
+  visibility: 'org-catalog',
+};
 
 function chip(
   id: string,
@@ -26,6 +36,7 @@ function chip(
     owner: 'platform-team@acme.com',
     description: '',
     permissions: { currentUser: 'invoker' },
+    scope: DEFAULT_SCOPE,
     metadata: {},
     lastUpdated: '2026-03-20T10:00:00Z',
     usageCount: 5,
@@ -810,6 +821,79 @@ export const TRIGGERS: SmartChip[] = [
 
 export const UNRESOLVED_CHIP_NAMES = ['shipping-status', 'warehouse-return-check'];
 
+// ─── Workspace Assignments ────────────────────────────────────────────
+//
+// Every chip belongs to exactly ONE workspace. Cross-workspace visibility
+// is set via the scope.visibility field + scope.sharedWith grants.
+//
+// Design notes:
+//   - Platform workspace owns the governed primitives (PII guard, Salesforce,
+//     Slack, Gmail, BigQuery, notification sender, customer-empathy skill,
+//     claims-response schema). These are 'org-catalog' visible so every team
+//     can reference them directly.
+//   - APAC Compliance owns the regulatory docs, compliance skill, compliance
+//     guards, and compliance officer agent. Shared to Claims + Refund.
+//   - Claims owns the claim-specific tools + docs + agents + triggers. Most
+//     are private; policy-lookup is explicitly shared with Refund.
+//   - Refund owns the refund policy doc. Imports the shared claims assets.
+//   - Onboarding owns nothing in this mock (it consumes Platform only).
+
+const WORKSPACE_ASSIGNMENTS: Record<string, ChipScope> = {
+  // ─── Platform workspace (org-wide primitives) ──────────────────────
+  'connector-salesforce':     { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-jira':           { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-google-drive':   { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-slack':          { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-gmail':          { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'connector-bigquery':       { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'guard-pii-redaction':      { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'tool-notification-sender': { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'schema-claims-response-v2':{ workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'schema-escalation-request':{ workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'skill-customer-empathy':   { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'data-claims-database':     { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'trigger-chat':             { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+
+  // ─── APAC Compliance workspace ─────────────────────────────────────
+  'doc-apac-regulatory-matrix':  { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'doc-mas-guidelines-2024':     { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'doc-apra-prudential-standards': { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'skill-apac-compliance':       { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'guard-apac-compliance-rules': { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'org-catalog' },
+  'agent-compliance-officer':    { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.CLAIMS] } },
+  'tool-regtech-api':            { workspaceId: WORKSPACE_IDS.COMPLIANCE, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.CLAIMS, WORKSPACE_IDS.REFUND] } },
+
+  // ─── Claims workspace ──────────────────────────────────────────────
+  'doc-claims-policy-2024':    { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'tool-policy-lookup':        { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.REFUND] } },
+  'tool-claims-history':       { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'tool-payment-processor':    { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'shared', sharedWith: { workspaceIds: [WORKSPACE_IDS.REFUND] } },
+  'agent-senior-adjuster':     { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'agent-fraud-specialist':    { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'guard-fraud-detection':     { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'data-high-risk-categories': { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-claims-queue':      { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-jira-issue-created':{ workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-drive-file-uploaded': { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+  'trigger-weekday-9am':       { workspaceId: WORKSPACE_IDS.CLAIMS, visibility: 'private' },
+
+  // ─── Refund workspace ──────────────────────────────────────────────
+  'doc-refund-policy-q4':      { workspaceId: WORKSPACE_IDS.REFUND, visibility: 'private' },
+
+  // ─── Data Analyst skill (user-scoped, cross-workspace) ─────────────
+  'skill-data-analyst':        { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+  'skill-sop-writer':          { workspaceId: WORKSPACE_IDS.PLATFORM, visibility: 'org-catalog' },
+};
+
+/**
+ * Apply workspace scope to a chip. If no explicit assignment exists,
+ * the chip falls back to Platform + org-catalog (safe default for demo).
+ */
+function withScope(c: SmartChip): SmartChip {
+  const scope = WORKSPACE_ASSIGNMENTS[c.id] ?? DEFAULT_SCOPE;
+  return { ...c, scope };
+}
+
 // ─── Full Registry ────────────────────────────────────────────────────
 
 export const REGISTRY: SmartChip[] = [
@@ -822,7 +906,7 @@ export const REGISTRY: SmartChip[] = [
   ...CONNECTORS,
   ...SKILLS,
   ...TRIGGERS,
-];
+].map(withScope);
 
 /** Look up a chip by type + name. */
 export function findChip(type: SmartChip['type'], name: string): SmartChip | undefined {
