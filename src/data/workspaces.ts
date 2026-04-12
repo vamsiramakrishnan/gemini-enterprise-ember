@@ -26,6 +26,12 @@
  *   gets governed primitives for free.
  */
 
+import type {
+  AgentPrincipal,
+  UserBinding,
+  ResourceGrant,
+} from './governance';
+
 // ─── Types ─────────────────────────────────────────────────────────────
 
 /** Where an asset is visible */
@@ -87,9 +93,37 @@ export interface Workspace {
    */
   subscribedTo: string[];
 
-  /** Primary agent/playbook name for this workspace (for header chrome) */
+  /** Primary agent/playbook name for this workspace (for header chrome).
+   *  NOTE: deprecated — a workspace may host MANY agent principals. This
+   *  field is retained for backward compatibility with the chrome that
+   *  needs a single label; prefer `agentPrincipals` for the real model. */
   agentName: string;
   agentVersion: string;
+
+  /**
+   * AIPlex-aligned agent principals — each principal is an OAuth client
+   * with its own ceiling of allowed scopes (Dimension A). A workspace
+   * typically hosts several: a primary responder, background delegates,
+   * async workers, etc. Every runtime tool/agent/model call goes through
+   * one of these principals.
+   */
+  agentPrincipals: AgentPrincipal[];
+
+  /**
+   * Workspace-level user bindings (Dimension B). Each binding maps a
+   * user or group to a role, which unlocks a bundle of default scopes.
+   * This is what lets an "editor" in this workspace approve an agent
+   * invocation on their behalf.
+   */
+  userBindings: UserBinding[];
+
+  /**
+   * Per-object grants — the finest-grained form of access. A grant
+   * either lets a specific user/group invoke a specific chip, or
+   * expands an agent principal's allowed_scopes on a specific chip.
+   * Evaluated after workspace-level visibility.
+   */
+  resourceGrants: ResourceGrant[];
 
   /** Lifecycle */
   status: 'active' | 'archived' | 'draft';
@@ -159,6 +193,39 @@ export const WORKSPACES: Workspace[] = [
     subscribedTo: [],
     agentName: 'Platform Services',
     agentVersion: '1.0.0',
+    agentPrincipals: [
+      {
+        clientId: 'svc-platform-ops',
+        displayName: 'Platform Ops Service',
+        description:
+          'Admin principal used by the platform team to register and maintain shared primitives.',
+        authMethod: 'client_credentials',
+        spiffeId: 'spiffe://acme.com/ns/platform/sa/ops',
+        allowedScopes: [
+          'mcp:tools:*',
+          'mcp:connectors:*',
+          'mcp:guards:*',
+          'mcp:docs:*',
+          'mcp:schemas:*',
+          'mcp:data:*',
+          'mcp:triggers:*',
+          'a2a:agents:*',
+          'a2a:skills:*',
+          'llm:models:*',
+        ],
+        status: 'active',
+        registeredAt: '2025-10-01T00:00:00Z',
+        registeredBy: 'platform@acme.com',
+        labels: { tier: 'platform', env: 'prod' },
+      },
+    ],
+    userBindings: [
+      { id: 'ub-plat-1', principal: 'platform@acme.com', principalKind: 'user', role: 'owner',  grantedAt: '2025-10-01T00:00:00Z', grantedBy: 'platform@acme.com' },
+      { id: 'ub-plat-2', principal: 'vamsi@acme.com',    principalKind: 'user', role: 'admin',  grantedAt: '2025-10-05T00:00:00Z', grantedBy: 'platform@acme.com' },
+      { id: 'ub-plat-3', principal: 'mira@acme.com',     principalKind: 'user', role: 'editor', grantedAt: '2025-10-05T00:00:00Z', grantedBy: 'platform@acme.com' },
+      { id: 'ub-plat-4', principal: 'group:all-engineers', principalKind: 'group', role: 'viewer', grantedAt: '2025-11-01T00:00:00Z', grantedBy: 'platform@acme.com' },
+    ],
+    resourceGrants: [],
     status: 'active',
     lastUpdated: '2026-04-11T10:00:00Z',
     createdAt: '2025-10-01T00:00:00Z',
@@ -193,6 +260,108 @@ export const WORKSPACES: Workspace[] = [
     subscribedTo: [WORKSPACE_IDS.PLATFORM, WORKSPACE_IDS.COMPLIANCE],
     agentName: 'Claims Processing Agent',
     agentVersion: '2.1.0',
+    agentPrincipals: [
+      {
+        clientId: 'svc-claims-primary',
+        agentChipId: 'agent-senior-adjuster',
+        displayName: 'Claims Primary Responder',
+        description:
+          'Customer-facing agent that handles claim intake, policy lookup, and first-line responses.',
+        authMethod: 'authorization_code',
+        spiffeId: 'spiffe://acme.com/ns/claims/sa/primary',
+        allowedScopes: [
+          'mcp:tools:policy-lookup',
+          'mcp:tools:claims-history',
+          'mcp:tools:notification-sender',
+          'mcp:connectors:salesforce',
+          'mcp:connectors:jira',
+          'mcp:connectors:slack',
+          'mcp:guards:pii-redaction',
+          'mcp:guards:fraud-detection',
+          'mcp:docs:*',
+          'a2a:agents:senior-adjuster',
+          'a2a:skills:customer-empathy',
+          'llm:models:gemini-2.5-pro',
+          'llm:models:gemini-2.5-flash',
+        ],
+        status: 'active',
+        registeredAt: '2026-01-15T10:00:00Z',
+        registeredBy: 'vamsi@acme.com',
+        labels: { tier: 'primary', env: 'prod', region: 'apac' },
+      },
+      {
+        clientId: 'svc-claims-senior-adjuster',
+        agentChipId: 'agent-senior-adjuster',
+        displayName: 'Senior Adjuster Delegate',
+        description:
+          'Escalation target for high-value or flagged claims. Invoked via a2a delegation from the primary responder.',
+        authMethod: 'client_credentials',
+        spiffeId: 'spiffe://acme.com/ns/claims/sa/senior-adjuster',
+        allowedScopes: [
+          'mcp:tools:policy-lookup',
+          'mcp:tools:claims-history',
+          'mcp:tools:payment-processor',
+          'mcp:connectors:salesforce',
+          'mcp:connectors:jira',
+          'mcp:guards:*',
+          'mcp:docs:*',
+          'llm:models:gemini-2.5-pro',
+        ],
+        status: 'active',
+        registeredAt: '2026-02-01T00:00:00Z',
+        registeredBy: 'vamsi@acme.com',
+        labels: { tier: 'escalation', env: 'prod' },
+      },
+      {
+        clientId: 'svc-claims-fraud',
+        agentChipId: 'agent-fraud-specialist',
+        displayName: 'Fraud Specialist Worker',
+        description:
+          'Background worker that runs fraud scoring on every inbound claim. Async, no direct user interaction.',
+        authMethod: 'client_credentials',
+        spiffeId: 'spiffe://acme.com/ns/claims/sa/fraud',
+        allowedScopes: [
+          'mcp:tools:claims-history',
+          'mcp:guards:fraud-detection',
+          'mcp:guards:pii-redaction',
+          'mcp:data:high-risk-categories',
+          'llm:models:gemini-2.5-flash',
+        ],
+        status: 'active',
+        registeredAt: '2026-02-10T00:00:00Z',
+        registeredBy: 'priya@acme.com',
+        labels: { tier: 'background', env: 'prod' },
+      },
+    ],
+    userBindings: [
+      { id: 'ub-claims-1', principal: 'vamsi@acme.com', principalKind: 'user',  role: 'owner',   grantedAt: '2026-01-15T10:00:00Z', grantedBy: 'vamsi@acme.com' },
+      { id: 'ub-claims-2', principal: 'priya@acme.com', principalKind: 'user',  role: 'admin',   grantedAt: '2026-01-15T10:00:00Z', grantedBy: 'vamsi@acme.com' },
+      { id: 'ub-claims-3', principal: 'wei@acme.com',   principalKind: 'user',  role: 'editor',  grantedAt: '2026-01-20T00:00:00Z', grantedBy: 'vamsi@acme.com' },
+      { id: 'ub-claims-4', principal: 'lin@acme.com',   principalKind: 'user',  role: 'viewer',  grantedAt: '2026-02-01T00:00:00Z', grantedBy: 'vamsi@acme.com' },
+      { id: 'ub-claims-5', principal: 'group:apac-support', principalKind: 'group', role: 'invoker', grantedAt: '2026-02-05T00:00:00Z', grantedBy: 'vamsi@acme.com' },
+    ],
+    resourceGrants: [
+      // Per-object grant: Priya can call the senior-adjuster delegation
+      // even though she's just admin, because of this explicit grant.
+      {
+        id: 'rg-claims-1',
+        chipId: 'agent-senior-adjuster',
+        grantee: { kind: 'user', id: 'priya@acme.com' },
+        access: 'invoker',
+        grantedAt: '2026-02-15T00:00:00Z',
+        grantedBy: 'vamsi@acme.com',
+      },
+      // Fraud specialist principal gets explicit access to the
+      // high-risk categories data (normally restricted).
+      {
+        id: 'rg-claims-2',
+        chipId: 'data-high-risk-categories',
+        grantee: { kind: 'agent-principal', id: 'svc-claims-fraud' },
+        access: 'invoker',
+        grantedAt: '2026-02-10T00:00:00Z',
+        grantedBy: 'priya@acme.com',
+      },
+    ],
     status: 'active',
     lastUpdated: '2026-04-11T08:30:00Z',
     createdAt: '2026-01-15T10:00:00Z',
@@ -220,6 +389,36 @@ export const WORKSPACES: Workspace[] = [
     subscribedTo: [WORKSPACE_IDS.PLATFORM, WORKSPACE_IDS.CLAIMS],
     agentName: 'Refund Agent',
     agentVersion: '1.0.0',
+    agentPrincipals: [
+      {
+        clientId: 'svc-refund-primary',
+        displayName: 'Refund Responder',
+        description:
+          'Handles customer refund requests end-to-end — order lookup, policy check, and payout.',
+        authMethod: 'authorization_code',
+        spiffeId: 'spiffe://acme.com/ns/refund/sa/primary',
+        allowedScopes: [
+          'mcp:tools:policy-lookup',
+          'mcp:tools:payment-processor',
+          'mcp:tools:notification-sender',
+          'mcp:connectors:salesforce',
+          'mcp:connectors:slack',
+          'mcp:guards:pii-redaction',
+          'mcp:docs:refund-policy-q4',
+          'a2a:skills:customer-empathy',
+          'llm:models:gemini-2.5-flash',
+        ],
+        status: 'active',
+        registeredAt: '2026-03-01T09:00:00Z',
+        registeredBy: 'priya@acme.com',
+        labels: { tier: 'primary', env: 'prod' },
+      },
+    ],
+    userBindings: [
+      { id: 'ub-ref-1', principal: 'priya@acme.com', principalKind: 'user', role: 'owner',  grantedAt: '2026-03-01T09:00:00Z', grantedBy: 'priya@acme.com' },
+      { id: 'ub-ref-2', principal: 'vamsi@acme.com', principalKind: 'user', role: 'viewer', grantedAt: '2026-03-01T09:00:00Z', grantedBy: 'priya@acme.com' },
+    ],
+    resourceGrants: [],
     status: 'active',
     lastUpdated: '2026-04-10T14:20:00Z',
     createdAt: '2026-03-01T09:00:00Z',
@@ -247,6 +446,30 @@ export const WORKSPACES: Workspace[] = [
     subscribedTo: [WORKSPACE_IDS.PLATFORM],
     agentName: 'Onboarding Assistant',
     agentVersion: '0.3.0',
+    agentPrincipals: [
+      {
+        clientId: 'svc-onboarding-primary',
+        displayName: 'Onboarding Buddy',
+        description:
+          'New-hire companion that answers benefits questions and schedules orientation.',
+        authMethod: 'authorization_code',
+        allowedScopes: [
+          'mcp:connectors:salesforce',
+          'mcp:docs:*',
+          'a2a:skills:customer-empathy',
+          'llm:models:gemini-2.5-flash',
+        ],
+        status: 'active',
+        registeredAt: '2026-04-01T11:00:00Z',
+        registeredBy: 'wei@acme.com',
+        labels: { tier: 'primary', env: 'dev' },
+      },
+    ],
+    userBindings: [
+      { id: 'ub-onb-1', principal: 'wei@acme.com',  principalKind: 'user', role: 'owner',  grantedAt: '2026-04-01T11:00:00Z', grantedBy: 'wei@acme.com' },
+      { id: 'ub-onb-2', principal: 'omar@acme.com', principalKind: 'user', role: 'editor', grantedAt: '2026-04-01T11:00:00Z', grantedBy: 'wei@acme.com' },
+    ],
+    resourceGrants: [],
     status: 'draft',
     lastUpdated: '2026-04-09T16:45:00Z',
     createdAt: '2026-04-01T11:00:00Z',
@@ -278,6 +501,49 @@ export const WORKSPACES: Workspace[] = [
     subscribedTo: [WORKSPACE_IDS.PLATFORM],
     agentName: 'Compliance Advisor',
     agentVersion: '1.2.0',
+    agentPrincipals: [
+      {
+        clientId: 'svc-compliance-advisor',
+        agentChipId: 'agent-compliance-officer',
+        displayName: 'Compliance Advisor',
+        description:
+          'Answers regulatory questions for APAC markets and cross-references policy docs.',
+        authMethod: 'authorization_code',
+        spiffeId: 'spiffe://acme.com/ns/compliance/sa/advisor',
+        allowedScopes: [
+          'mcp:tools:regtech-api',
+          'mcp:guards:apac-compliance-rules',
+          'mcp:guards:pii-redaction',
+          'mcp:docs:*',
+          'a2a:skills:apac-compliance',
+          'llm:models:gemini-2.5-pro',
+        ],
+        status: 'active',
+        registeredAt: '2025-11-10T00:00:00Z',
+        registeredBy: 'mira@acme.com',
+        labels: { tier: 'primary', env: 'prod', region: 'apac' },
+      },
+      {
+        clientId: 'svc-compliance-jurisdiction',
+        displayName: 'Jurisdiction Classifier',
+        description:
+          'Lightweight classifier that identifies a customer jurisdiction from context. Pipelined before the main advisor.',
+        authMethod: 'client_credentials',
+        allowedScopes: [
+          'mcp:tools:regtech-api',
+          'llm:models:gemini-2.5-flash',
+        ],
+        status: 'active',
+        registeredAt: '2025-12-01T00:00:00Z',
+        registeredBy: 'mira@acme.com',
+        labels: { tier: 'classifier', env: 'prod' },
+      },
+    ],
+    userBindings: [
+      { id: 'ub-comp-1', principal: 'mira@acme.com', principalKind: 'user', role: 'owner',  grantedAt: '2025-11-10T00:00:00Z', grantedBy: 'mira@acme.com' },
+      { id: 'ub-comp-2', principal: 'lin@acme.com',  principalKind: 'user', role: 'editor', grantedAt: '2025-11-10T00:00:00Z', grantedBy: 'mira@acme.com' },
+    ],
+    resourceGrants: [],
     status: 'active',
     lastUpdated: '2026-04-08T12:00:00Z',
     createdAt: '2025-11-10T00:00:00Z',

@@ -11,6 +11,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useWorkspace } from '../../contexts/WorkspaceContext';
+import { CreateWorkspaceModal } from '../workspaces/CreateWorkspaceModal';
 
 interface WorkspaceSwitcherProps {
   collapsed: boolean;
@@ -19,6 +20,7 @@ interface WorkspaceSwitcherProps {
 export function WorkspaceSwitcher({ collapsed }: WorkspaceSwitcherProps) {
   const { current, accessibleWorkspaces, switchWorkspace } = useWorkspace();
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -119,7 +121,11 @@ export function WorkspaceSwitcher({ collapsed }: WorkspaceSwitcherProps) {
                   textTransform: 'uppercase',
                 }}
               >
-                Workspace · {current.members.length} {current.members.length === 1 ? 'member' : 'members'}
+                {current.members.length}{' '}
+                {current.members.length === 1 ? 'member' : 'members'}
+                {' · '}
+                {current.agentPrincipals.length}{' '}
+                {current.agentPrincipals.length === 1 ? 'agent' : 'agents'}
               </span>
             </div>
             <svg
@@ -228,7 +234,9 @@ export function WorkspaceSwitcher({ collapsed }: WorkspaceSwitcherProps) {
                       marginTop: 1,
                     }}
                   >
-                    {ws.status === 'active' ? `${ws.agentName} · v${ws.agentVersion}` : ws.status}
+                    {ws.status === 'active'
+                      ? `${ws.agentPrincipals.length} ${ws.agentPrincipals.length === 1 ? 'agent' : 'agents'} · v${ws.agentVersion}`
+                      : ws.status}
                   </div>
                 </div>
                 {isActive && (
@@ -241,7 +249,10 @@ export function WorkspaceSwitcher({ collapsed }: WorkspaceSwitcherProps) {
           })}
           <div style={{ height: 1, background: 'var(--color-border)', margin: '6px 4px' }} />
           <button
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              setCreateOpen(true);
+            }}
             className="w-full flex items-center gap-2 text-left"
             style={{
               padding: '8px 10px',
@@ -261,6 +272,11 @@ export function WorkspaceSwitcher({ collapsed }: WorkspaceSwitcherProps) {
           </button>
         </div>
       )}
+
+      <CreateWorkspaceModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </div>
   );
 }
