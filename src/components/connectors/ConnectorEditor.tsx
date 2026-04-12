@@ -211,7 +211,7 @@ agent.tool(salesforce)`;
       </div>
 
       {/* Connection */}
-      <ConnectionCard endpoint={`https://${MOCK.authUser?.split('@')[1]}`} authMethod={MOCK.authMethod} accentColor={C.accent} />
+      <ConnectionCard endpoint={`https://${MOCK.authUser?.split('@')[1]}`} onEndpointChange={() => {}} authMethod={MOCK.authMethod} onAuthMethodChange={() => {}} authUser={MOCK.authUser} readOnly />
 
       {/* Entity Toggles */}
       <div style={card}>
@@ -314,7 +314,7 @@ agent.tool(salesforce)`;
       {/* Health */}
       <div style={card}>
         <SectionHeader>Health</SectionHeader>
-        <HealthIndicator status="healthy" latencyP50Ms={230} latencyP99Ms={1200} lastChecked="2 min ago" />
+        <HealthIndicator status="healthy" latencyP50={230} latencyP99={1200} lastChecked="2 min ago" />
       </div>
 
       {/* Code Preview */}

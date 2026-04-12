@@ -200,7 +200,7 @@ agent.tool(toolset)`;
       </div>
 
       {/* Connection */}
-      <ConnectionCard endpoint={MOCK.endpoint} authMethod={MOCK.authMethod} accentColor={C.accent} />
+      <ConnectionCard endpoint={MOCK.endpoint} onEndpointChange={() => {}} authMethod={MOCK.authMethod} onAuthMethodChange={() => {}} readOnly />
 
       {/* Kind-specific config */}
       {toolKind === 'function' && (
@@ -290,7 +290,7 @@ agent.tool(toolset)`;
       {/* Health */}
       <div style={card}>
         <SectionHeader>Health Status</SectionHeader>
-        <HealthIndicator status="healthy" latencyP50Ms={145} latencyP99Ms={890} lastChecked="2 min ago" />
+        <HealthIndicator status="healthy" latencyP50={145} latencyP99={890} lastChecked="2 min ago" />
       </div>
 
       {/* Usage Stats */}
