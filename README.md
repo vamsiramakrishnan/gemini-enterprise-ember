@@ -1,10 +1,29 @@
 # Gemini Enterprise Ember
 
+**Explore an agent-authoring interface where playbooks reference typed tools, data, guards, and skills.**
+
 A React + TypeScript prototype for authoring and managing agent playbooks and their referenced assets.
 
 The application has editors for agents, tools, guards, triggers, connectors, schemas, documents, data, and skills. It also includes registry, version-history, portfolio, admin, cost, notebook, and live-authoring views.
 
 This repository is currently a frontend application. The README describes the checked UI and local development path; it does not claim that every screen is backed by a production Gemini Enterprise service.
+
+## Evaluate the authoring experience
+
+After [starting locally](#run-locally), walk through one playbook rather than
+opening every screen:
+
+| Step | Route | Inspect |
+|---|---|---|
+| Create an agent | `/editor/new` | The initial playbook and its referenced assets |
+| Work on the playbook | `/editor` | Editing and asset relationships |
+| Find reusable assets | `/registry` | Catalog organization and selection |
+| Compare revisions | `/history` | The version-history experience |
+
+This is a frontend prototype. A working editor or permissions screen does not
+establish backend persistence, tenant authorization, or deployment. Use it to
+review the interaction model and identify the service contracts still needed.
+
 
 ## Run locally
 
